@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Receipt</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #1F2937;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #FFFBEB;
+        }
+        .header {
+            background: linear-gradient(135deg, #064E3B 0%, #10B981 100%);
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header img {
+            max-width: 150px;
+        }
+        .header h1 {
+            color: #FFFBEB;
+            margin: 15px 0 0 0;
+            font-size: 24px;
+        }
+        .success-badge {
+            background-color: #10B981;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: bold;
+            display: inline-block;
+            margin: 20px 0;
+            font-size: 16px;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .payment-box {
+            background: linear-gradient(135deg, #064E3B 0%, #10B981 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .payment-box .label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .payment-box .amount {
+            font-size: 42px;
+            font-weight: bold;
+            color: #F59E0B;
+            margin: 10px 0;
+        }
+        .payment-box .reference {
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 15px;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        .info-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .info-card h3 {
+            color: #064E3B;
+            margin-top: 0;
+            border-bottom: 2px solid #F59E0B;
+            padding-bottom: 10px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #064E3B;
+        }
+        .success-message {
+            background-color: #D1FAE5;
+            border-left: 4px solid #10B981;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .success-message h3 {
+            color: #064E3B;
+            margin-top: 0;
+        }
+        .order-summary {
+            background-color: #F3F4F6;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        .order-summary-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+        }
+        .footer {
+            background-color: #064E3B;
+            color: #FFFBEB;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #F59E0B;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <img src="{{ company_logo }}" alt="{{ company_name }}">
+            <h1>Payment Received!</h1>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <div style="text-align: center;">
+                <span class="success-badge">✓ PAYMENT SUCCESSFUL</span>
+            </div>
+
+            <div class="success-message">
+                <h3>Thank you for your payment!</h3>
+                <p><strong>Hi {{ orders.0.first_name }},</strong></p>
+                <p>We've successfully received your payment. Your order is now confirmed and will be processed shortly.</p>
+            </div>
+
+            <!-- Payment Details -->
+            <div class="payment-box">
+                <div class="label">Amount Paid</div>
+                <div class="amount">₦{{ payment.amount|floatformat:2 }}</div>
+                <div class="reference">
+                    Reference: {{ payment.reference }}
+                </div>
+                <div style="margin-top: 10px; font-size: 14px;">
+                    {{ payment.created|date:"F d, Y" }} at {{ payment.created|time:"g:i A" }}
+                </div>
+            </div>
+
+            <!-- Order Summary -->
+            <div class="info-card">
+                <h3>Order Summary</h3>
+                {% for order in orders %}
+                <div class="order-summary">
+                    <div style="font-weight: bold; color: #064E3B; margin-bottom: 10px;">
+                        Order #{{ order.serial_number }}
+                    </div>
+                    {% for item in order.items.all %}
+                    <div class="order-summary-item">
+                        <span>{{ item.product.name }} (x{{ item.quantity }})</span>
+                        <span>₦{{ item.get_cost|floatformat:2 }}</span>
+                    </div>
+                    {% endfor %}
+                    <div class="order-summary-item" style="font-weight: bold; border-top: 2px solid #064E3B; margin-top: 5px; padding-top: 10px;">
+                        <span>Subtotal</span>
+                        <span>₦{{ order.total_cost|floatformat:2 }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- What's Next -->
+            <div class="info-card">
+                <h3>What Happens Next?</h3>
+                <ol style="line-height: 1.8; margin-left: 20px;">
+                    <li>Your order is now being processed</li>
+                    <li>We'll prepare your items for delivery/pickup</li>
+                    <li>You'll receive updates on your order status</li>
+                    <li>Contact us if you have any questions</li>
+                </ol>
+            </div>
+
+            <!-- Customer Service -->
+            <div class="info-card">
+                <h3>Need Assistance?</h3>
+                <p>Our customer service team is here to help!</p>
+                <div class="info-row">
+                    <span class="info-label">Email:</span>
+                    <span><a href="mailto:{{ company_email }}" style="color: #F59E0B;">{{ company_email }}</a></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Phone:</span>
+                    <span>{{ company_phone }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Address:</span>
+                    <span>{{ company_address }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p><strong>{{ company_name }}</strong></p>
+            <p>{{ company_address }}</p>
+            <p>
+                <a href="mailto:{{ company_email }}">{{ company_email }}</a> | 
+                {{ company_phone }}
+            </p>
+            <p style="margin-top: 20px; font-size: 12px; opacity: 0.8;">
+                This is an official payment receipt. Keep this email for your records.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

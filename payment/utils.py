@@ -7,9 +7,9 @@ logger = logging.getLogger(__name__)
 
 
 def get_paystack_keys():
-    if settings.DEBUG:
-        return settings.PAYSTACK_TEST_SECRET_KEY, settings.PAYSTACK_TEST_PUBLIC_KEY
-    return settings.PAYSTACK_LIVE_SECRET_KEY, settings.PAYSTACK_LIVE_PUBLIC_KEY
+    
+    return settings.PAYSTACK_SECRET_KEY, settings.PAYSTACK_PUBLIC_KEY
+    
 
 
 def initialize_payment(amount, email, reference, callback_url, metadata=None):

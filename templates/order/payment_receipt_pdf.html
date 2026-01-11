@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Payment Receipt - {{ payment.reference }}</title>
+    <style>
+        @page { size: A4; margin: 1cm; }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.4;
+            color: #1F2937;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #10B981;
+        }
+        .header img { max-width: 150px; }
+        .header h1 {
+            color: #064E3B;
+            margin: 10px 0;
+            font-size: 28pt;
+        }
+        .success-badge {
+            background-color: #10B981;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-weight: bold;
+            display: inline-block;
+            margin: 10px 0;
+        }
+        .payment-box {
+            background: linear-gradient(135deg, #064E3B 0%, #10B981 100%);
+            color: white;
+            padding: 25px;
+            margin: 20px 0;
+            text-align: center;
+            border-radius: 8px;
+        }
+        .payment-box .label { font-size: 12pt; opacity: 0.9; }
+        .payment-box .amount {
+            font-size: 36pt;
+            font-weight: bold;
+            color: #F59E0B;
+            margin: 10px 0;
+        }
+        .payment-box .reference {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-top: 10px;
+            padding: 8px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        .section {
+            margin: 20px 0;
+            page-break-inside: avoid;
+        }
+        .section-title {
+            background-color: #064E3B;
+            color: #FFFBEB;
+            padding: 10px 15px;
+            font-size: 14pt;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .info-item {
+            padding: 8px;
+            background-color: #f9fafb;
+            border-left: 3px solid #10B981;
+        }
+        .info-label { font-weight: bold; color: #064E3B; font-size: 10pt; }
+        .info-value { color: #1F2937; margin-top: 3px; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        table th {
+            background-color: #064E3B;
+            color: #FFFBEB;
+            padding: 10px;
+            text-align: left;
+            font-weight: bold;
+        }
+        table td {
+            padding: 10px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        table tr:nth-child(even) { background-color: #f9fafb; }
+        .total-row {
+            background-color: #064E3B !important;
+            color: #FFFBEB;
+            font-weight: bold;
+            font-size: 12pt;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 2px solid #10B981;
+            text-align: center;
+            font-size: 9pt;
+            color: #6B7280;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <img src="{{ company_logo }}" alt="{{ company_name }}">
+        <h1>PAYMENT RECEIPT</h1>
+        <span class="success-badge">✓ PAID</span>
+    </div>
+
+    <!-- Payment Information -->
+    <div class="payment-box">
+        <div class="label">Amount Paid</div>
+        <div class="amount">₦{{ payment.amount|floatformat:2 }}</div>
+        <div class="reference">{{ payment.reference }}</div>
+        <div style="margin-top: 10px; font-size: 11pt;">
+            {{ payment.created|date:"F d, Y" }} at {{ payment.created|time:"g:i A" }}
+        </div>
+    </div>
+
+    <!-- Transaction Details -->
+    <div class="section">
+        <div class="section-title">Transaction Details</div>
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">Payment Reference</div>
+                <div class="info-value">{{ payment.reference }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Payment Date</div>
+                <div class="info-value">{{ payment.created|date:"F d, Y g:i A" }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Payment Status</div>
+                <div class="info-value">✓ Successful</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Customer Email</div>
+                <div class="info-value">{{ payment.email }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Orders -->
+    {% for order in orders %}
+    <div class="section">
+        <div class="section-title">Order #{{ order.serial_number }}</div>
+        
+        <!-- Customer Info -->
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">Customer Name</div>
+                <div class="info-value">{{ order.first_name }} {% if order.middle_name %}{{ order.middle_name }}{% endif %} {{ order.last_name }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Phone Number</div>
+                <div class="info-value">{{ order.phone_number }}</div>
+            </div>
+        </div>
+
+        <!-- Order Items -->
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Item</th>
+                    <th>Qty</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in order.items.all %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>
+                        {{ item.product.name }}
+                        {% if item.extra_fields.size %}<br><small>Size: {{ item.extra_fields.size }}</small>{% endif %}
+                    </td>
+                    <td>{{ item.quantity }}</td>
+                    <td>₦{{ item.price|floatformat:2 }}</td>
+                    <td>₦{{ item.get_cost|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+                <tr class="total-row">
+                    <td colspan="4" style="text-align: right;">Order Total:</td>
+                    <td>₦{{ order.total_cost|floatformat:2 }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    {% endfor %}
+
+    <!-- Grand Total -->
+    <div class="payment-box" style="background: #064E3B; margin-top: 20px;">
+        <div class="label">TOTAL AMOUNT PAID</div>
+        <div class="amount">₦{{ payment.amount|floatformat:2 }}</div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <strong style="color: #064E3B; font-size: 11pt;">{{ company_name }}</strong>
+        <div style="margin-top: 10px; line-height: 1.6;">
+            {{ company_address }}<br>
+            Email: {{ company_email }} | Phone: {{ company_phone }}
+        </div>
+        <div style="margin-top: 15px; font-size: 8pt;">
+            Generated on {{ generated_date|date:"F d, Y g:i A" }}<br>
+            This is an official payment receipt. Keep for your records.
+        </div>
+    </div>
+</body>
+</html>

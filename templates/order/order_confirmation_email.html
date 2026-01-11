@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Confirmation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #1F2937;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #FFFBEB;
+            padding: 0;
+        }
+        .header {
+            background-color: #064E3B;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header img {
+            max-width: 150px;
+            height: auto;
+        }
+        .header h1 {
+            color: #FFFBEB;
+            margin: 15px 0 0 0;
+            font-size: 24px;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .badge {
+            display: inline-block;
+            background-color: #F59E0B;
+            color: #FFFBEB;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        .order-info {
+            background-color: white;
+            border-left: 4px solid #064E3B;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .order-info h2 {
+            color: #064E3B;
+            margin-top: 0;
+            font-size: 20px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #064E3B;
+        }
+        .items-table {
+            width: 100%;
+            background-color: white;
+            border-radius: 4px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        .items-table th {
+            background-color: #064E3B;
+            color: #FFFBEB;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        .items-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .items-table tr:last-child td {
+            border-bottom: none;
+        }
+        .total {
+            background-color: #064E3B;
+            color: #FFFBEB;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+            text-align: right;
+        }
+        .total .amount {
+            font-size: 32px;
+            font-weight: bold;
+            color: #F59E0B;
+        }
+        .notice {
+            background-color: #FEF3C7;
+            border-left: 4px solid #F59E0B;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .notice strong {
+            color: #064E3B;
+        }
+        .button {
+            display: inline-block;
+            background-color: #F59E0B;
+            color: white;
+            padding: 14px 28px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .footer {
+            background-color: #064E3B;
+            color: #FFFBEB;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #F59E0B;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <img src="{{ company_logo }}" alt="{{ company_name }}">
+            <h1>Order Confirmation</h1>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <h2 style="color: #064E3B;">Thank you for your order!</h2>
+            <p>Hi {{ order.first_name }},</p>
+            <p>We've received your order and will process it shortly. You'll receive another email once your payment is confirmed.</p>
+
+            <span class="badge">⏳ PAYMENT PENDING</span>
+
+            <!-- Order Info -->
+            <div class="order-info">
+                <h2>Order Details</h2>
+                <div class="info-row">
+                    <span class="info-label">Order Number:</span>
+                    <span>#{{ order.serial_number }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Order Date:</span>
+                    <span>{{ order.created|date:"F d, Y" }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Customer Email:</span>
+                    <span>{{ order.email }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Phone Number:</span>
+                    <span>{{ order.phone_number }}</span>
+                </div>
+            </div>
+
+            <!-- Order Items -->
+            <h3 style="color: #064E3B;">Order Items</h3>
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in order.items.all %}
+                    <tr>
+                        <td>
+                            <strong>{{ item.product.name }}</strong>
+                            {% if item.extra_fields %}
+                            <br>
+                            <small style="color: #6B7280;">
+                                {% if item.extra_fields.size %}Size: {{ item.extra_fields.size }}{% endif %}
+                                {% if item.extra_fields.call_up_number %} | Call-up: {{ item.extra_fields.call_up_number }}{% endif %}
+                                {% if item.extra_fields.custom_name_text %} | Custom: {{ item.extra_fields.custom_name_text }}{% endif %}
+                            </small>
+                            {% endif %}
+                        </td>
+                        <td>{{ item.quantity }}</td>
+                        <td>₦{{ item.price|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Total -->
+            <div class="total">
+                <div style="font-size: 16px; margin-bottom: 10px;">Total Amount</div>
+                <div class="amount">₦{{ order.total_cost|floatformat:2 }}</div>
+            </div>
+
+            <!-- Payment Notice -->
+            <div class="notice">
+                <strong>⚠️ Payment Required</strong><br>
+                Your order is confirmed but payment is still pending. Please complete your payment to process your order.
+            </div>
+
+            <!-- Next Steps -->
+            <h3 style="color: #064E3B;">What's Next?</h3>
+            <ol style="line-height: 1.8;">
+                <li>Complete your payment using the payment link</li>
+                <li>You'll receive a payment confirmation email</li>
+                <li>Your order will be processed and prepared</li>
+                <li>We'll notify you when your order is ready</li>
+            </ol>
+
+            <!-- Contact -->
+            <p style="margin-top: 30px;">
+                <strong>Questions?</strong> Feel free to reach out:<br>
+                📧 <a href="mailto:{{ company_email }}" style="color: #F59E0B;">{{ company_email }}</a><br>
+                📞 {{ company_phone }}
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>{{ company_name }}</p>
+            <p>{{ company_address }}</p>
+            <p>
+                <a href="mailto:{{ company_email }}">{{ company_email }}</a> | 
+                {{ company_phone }}
+            </p>
+            <p style="margin-top: 20px; font-size: 12px; opacity: 0.8;">
+                This is an automated email. Please do not reply to this message.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

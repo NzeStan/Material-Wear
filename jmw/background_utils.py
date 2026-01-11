@@ -1,13 +1,15 @@
 # jmw/background_utils.py
 """
 Centralized background task and email utilities
-Replaces Celery with lightweight threading and django-background-tasks
+Uses threading for quick tasks and django-background-tasks for heavy operations
+Enhanced with Cloudinary PDF storage before emailing
 """
 from threading import Thread
 from background_task import background
 from django.core.mail import EmailMessage
 from django.conf import settings
 from django.template.loader import render_to_string
+from django.utils import timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -53,8 +55,206 @@ def send_email_async(subject, message, from_email, recipient_list, attachments=N
     logger.info(f"Email queued for async sending: {subject}")
 
 
+# ============================================================================
+# ORDER APP - EMAIL & PDF TASKS (Two-Receipt System)
+# ============================================================================
+
+def send_order_confirmation_email_async(order_id):
+    """
+    Send order confirmation email after order creation (payment pending).
+    Uses threading for quick async delivery.
+    
+    Args:
+        order_id: UUID of the order
+    """
+    def _send():
+        try:
+            from order.models import BaseOrder
+
+            order = BaseOrder.objects.select_related('user').prefetch_related('items').get(id=order_id)
+
+            context = {
+                'order': order,
+                'company_name': settings.COMPANY_NAME,
+                'company_address': settings.COMPANY_ADDRESS,
+                'company_phone': settings.COMPANY_PHONE,
+                'company_email': settings.COMPANY_EMAIL,
+                'currency_symbol': '₦',
+                'primary_color': '#064E3B',
+                'accent_color': '#F59E0B',
+            }
+
+            html_message = render_to_string('order/order_confirmation_email.html', context)
+
+            subject = f'Order Confirmation - JMW Order #{order.serial_number}'
+
+            email = EmailMessage(subject, html_message, settings.DEFAULT_FROM_EMAIL, [order.email])
+            email.content_subtype = "html"
+            email.send()
+
+            logger.info(f"Order confirmation email sent for order: #{order.serial_number}")
+
+        except Exception as e:
+            logger.error(f"Error sending order confirmation email for order_id {order_id}: {str(e)}")
+
+    thread = Thread(target=_send)
+    thread.daemon = True
+    thread.start()
+    logger.info(f"Order confirmation email queued for order_id: {order_id}")
+
+
+@background(schedule=0)
+def generate_order_confirmation_pdf_task(order_id):
+    """
+    Generate order confirmation PDF in background, store in Cloudinary, and email to customer.
+    Heavy task - uses django-background-tasks.
+    
+    Args:
+        order_id: UUID of the order
+    """
+    try:
+        from order.models import BaseOrder
+        from order.receipt_utils import generate_and_store_order_confirmation
+
+        order = BaseOrder.objects.select_related('user').prefetch_related(
+            'items__content_type',
+            'items__content_object'
+        ).get(id=order_id)
+
+        # Generate PDF and store in Cloudinary
+        pdf_bytes, cloudinary_url = generate_and_store_order_confirmation(order)
+
+        filename = f'JMW_Order_Confirmation_{order.serial_number}.pdf'
+
+        # Prepare email context
+        context = {
+            'order': order,
+            'cloudinary_url': cloudinary_url,
+            'company_name': settings.COMPANY_NAME,
+        }
+
+        html_message = render_to_string('order/order_confirmation_pdf_email.html', context)
+
+        subject = f'Order Confirmation Receipt - JMW Order #{order.serial_number}'
+        message = f"Your order confirmation receipt for Order #{order.serial_number} is attached."
+
+        send_email_async(
+            subject=subject,
+            message=message,
+            html_message=html_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[order.email],
+            attachments=[(filename, pdf_bytes, 'application/pdf')]
+        )
+
+        logger.info(f"Order confirmation PDF generated and sent for order: #{order.serial_number}")
+
+    except Exception as e:
+        logger.error(f"Error generating order confirmation PDF for order_id {order_id}: {str(e)}")
+
+
+def send_payment_receipt_email_async(payment_id):
+    """
+    Send payment receipt email after payment verification.
+    Uses threading for quick async delivery.
+    
+    Args:
+        payment_id: UUID of the payment transaction
+    """
+    def _send():
+        try:
+            from payment.models import PaymentTransaction
+
+            payment = PaymentTransaction.objects.prefetch_related('orders').get(id=payment_id)
+
+            context = {
+                'payment': payment,
+                'orders': payment.orders.all(),
+                'company_name': settings.COMPANY_NAME,
+                'company_address': settings.COMPANY_ADDRESS,
+                'company_phone': settings.COMPANY_PHONE,
+                'company_email': settings.COMPANY_EMAIL,
+                'currency_symbol': '₦',
+                'primary_color': '#064E3B',
+                'accent_color': '#F59E0B',
+            }
+
+            html_message = render_to_string('order/payment_receipt_email.html', context)
+
+            subject = f'Payment Receipt - {payment.reference}'
+
+            email = EmailMessage(subject, html_message, settings.DEFAULT_FROM_EMAIL, [payment.email])
+            email.content_subtype = "html"
+            email.send()
+
+            logger.info(f"Payment receipt email sent for payment: {payment.reference}")
+
+        except Exception as e:
+            logger.error(f"Error sending payment receipt email for payment_id {payment_id}: {str(e)}")
+
+    thread = Thread(target=_send)
+    thread.daemon = True
+    thread.start()
+    logger.info(f"Payment receipt email queued for payment_id: {payment_id}")
+
+
+@background(schedule=0)
+def generate_payment_receipt_pdf_task(payment_id):
+    """
+    Generate payment receipt PDF in background, store in Cloudinary, and email to customer.
+    Heavy task - uses django-background-tasks.
+    
+    Args:
+        payment_id: UUID of the payment transaction
+    """
+    try:
+        from payment.models import PaymentTransaction
+        from order.receipt_utils import generate_and_store_payment_receipt
+
+        payment = PaymentTransaction.objects.prefetch_related(
+            'orders',
+            'orders__items__content_type',
+            'orders__items__content_object'
+        ).get(id=payment_id)
+
+        # Generate PDF and store in Cloudinary
+        pdf_bytes, cloudinary_url = generate_and_store_payment_receipt(payment)
+
+        filename = f'JMW_Payment_Receipt_{payment.reference}.pdf'
+
+        # Prepare email context
+        context = {
+            'payment': payment,
+            'cloudinary_url': cloudinary_url,
+            'company_name': settings.COMPANY_NAME,
+        }
+
+        html_message = render_to_string('order/payment_receipt_pdf_email.html', context)
+
+        subject = f'Payment Receipt - {payment.reference}'
+        message = f"Your payment receipt for {payment.reference} is attached."
+
+        send_email_async(
+            subject=subject,
+            message=message,
+            html_message=html_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[payment.email],
+            attachments=[(filename, pdf_bytes, 'application/pdf')]
+        )
+
+        logger.info(f"Payment receipt PDF generated and sent for payment: {payment.reference}")
+
+    except Exception as e:
+        logger.error(f"Error generating payment receipt PDF for payment_id {payment_id}: {str(e)}")
+
+
+# ============================================================================
+# BULK ORDERS APP - EMAIL & PDF TASKS (Existing - Already Good)
+# ============================================================================
+
 def send_order_confirmation_email(order_entry):
-    """Send order confirmation email after order creation"""
+    """Send order confirmation email after bulk order creation"""
     context = {
         'order': order_entry,
         'bulk_order': order_entry.bulk_order,
@@ -75,7 +275,7 @@ def send_order_confirmation_email(order_entry):
 
 
 def send_payment_receipt_email(order_entry):
-    """Send payment receipt email after successful payment"""
+    """Send payment receipt email after successful bulk order payment"""
     context = {
         'order': order_entry,
         'bulk_order': order_entry.bulk_order,
@@ -98,56 +298,19 @@ def send_payment_receipt_email(order_entry):
     )
 
 
-# ============================================================================
-# BACKGROUND TASKS (Using django-background-tasks for Heavy Operations)
-# ============================================================================
-
 @background(schedule=0)
 def generate_bulk_order_pdf_task(bulk_order_id, recipient_email):
-    """
-    Generate bulk order PDF in background and email it.
-    Use for heavy PDF generation tasks.
-    
-    Args:
-        bulk_order_id: UUID of the bulk order
-        recipient_email: Email to send the PDF to
-    """
+    """Generate bulk order PDF in background and email it"""
     try:
         from bulk_orders.models import BulkOrderLink
-        from django.db.models import Count, Q, Prefetch
-        from bulk_orders.models import OrderEntry
-        from django.utils import timezone
-        from weasyprint import HTML
+        from bulk_orders.utils import generate_bulk_order_pdf
         
-        bulk_order = BulkOrderLink.objects.prefetch_related(
-            Prefetch(
-                "orders",
-                queryset=OrderEntry.objects.filter(paid=True).order_by("size", "full_name"),
-            )
-        ).get(id=bulk_order_id)
+        bulk_order = BulkOrderLink.objects.get(id=bulk_order_id)
         
-        orders = bulk_order.orders.all()
-        size_summary = orders.values("size").annotate(count=Count("size")).order_by("size")
+        pdf = generate_bulk_order_pdf(bulk_order)
         
-        context = {
-            'bulk_order': bulk_order,
-            'size_summary': size_summary,
-            'orders': orders,
-            'total_orders': orders.count(),
-            'company_name': settings.COMPANY_NAME,
-            'company_address': settings.COMPANY_ADDRESS,
-            'company_phone': settings.COMPANY_PHONE,
-            'company_email': settings.COMPANY_EMAIL,
-            'now': timezone.now(),
-        }
-        
-        html_string = render_to_string('bulk_orders/pdf_template.html', context)
-        html = HTML(string=html_string)
-        pdf = html.write_pdf()
-        
-        # Send email with PDF attachment
         subject = f"Bulk Order Report - {bulk_order.organization_name}"
-        message = f"Please find attached the bulk order report for {bulk_order.organization_name}."
+        message = f"Your bulk order report for {bulk_order.organization_name} is attached."
         
         send_email_async(
             subject=subject,
@@ -166,8 +329,8 @@ def generate_bulk_order_pdf_task(bulk_order_id, recipient_email):
 
 
 @background(schedule=0)
-def generate_payment_receipt_pdf_task(order_entry_id):
-    """Generate individual payment receipt PDF in background"""
+def generate_payment_receipt_pdf_task_bulk(order_entry_id):
+    """Generate individual payment receipt PDF in background for bulk orders"""
     try:
         from bulk_orders.models import OrderEntry
         from weasyprint import HTML
@@ -207,265 +370,3 @@ def generate_payment_receipt_pdf_task(order_entry_id):
 
     except Exception as e:
         logger.error(f"Error generating payment receipt PDF: {str(e)}")
-
-
-# ============================================================================
-# ORDER APP - EMAIL & PDF TASKS
-# ============================================================================
-
-def send_order_confirmation_email_async(order_id):
-    """
-    Send order confirmation email after order creation (payment pending).
-    Uses threading for quick async delivery.
-
-    Args:
-        order_id: UUID of the order
-    """
-    def _send():
-        try:
-            from order.models import Order
-
-            order = Order.objects.select_related('user').prefetch_related('items').get(id=order_id)
-
-            context = {
-                'order': order,
-                'company_name': settings.COMPANY_NAME,
-                'company_address': settings.COMPANY_ADDRESS,
-                'company_phone': settings.COMPANY_PHONE,
-                'company_email': settings.COMPANY_EMAIL,
-                'currency_symbol': settings.CURRENCY_SYMBOL,
-                'frontend_url': settings.FRONTEND_URL,
-            }
-
-            html_message = render_to_string('order/order_confirmation_email.html', context)
-
-            subject = settings.ORDER_CONFIRMATION_SUBJECT.format(reference=order.reference)
-
-            email = EmailMessage(subject, html_message, settings.DEFAULT_FROM_EMAIL, [order.email])
-            email.content_subtype = "html"
-            email.send()
-
-            logger.info(f"Order confirmation email sent for order: {order.reference}")
-
-        except Exception as e:
-            logger.error(f"Error sending order confirmation email for order_id {order_id}: {str(e)}")
-
-    thread = Thread(target=_send)
-    thread.daemon = True
-    thread.start()
-    logger.info(f"Order confirmation email queued for order_id: {order_id}")
-
-
-@background(schedule=0)
-def generate_order_confirmation_pdf_task(order_id):
-    """
-    Generate order confirmation PDF in background and email to customer.
-    Heavy task - uses django-background-tasks.
-
-    Args:
-        order_id: UUID of the order
-    """
-    try:
-        from order.models import Order
-        from weasyprint import HTML
-        from django.utils import timezone
-
-        order = Order.objects.select_related('user').prefetch_related(
-            'items__content_type',
-            'items__content_object'
-        ).get(id=order_id)
-
-        context = {
-            'order': order,
-            'company_name': settings.COMPANY_NAME,
-            'company_address': settings.COMPANY_ADDRESS,
-            'company_phone': settings.COMPANY_PHONE,
-            'company_email': settings.COMPANY_EMAIL,
-            'currency_symbol': settings.CURRENCY_SYMBOL,
-            'currency_code': settings.CURRENCY_CODE,
-            'generated_date': timezone.now(),
-        }
-
-        html_string = render_to_string('order/order_confirmation_pdf.html', context)
-        html = HTML(string=html_string)
-        pdf = html.write_pdf()
-
-        filename = settings.PDF_FILENAME_ORDER_CONFIRMATION.format(
-            company=settings.COMPANY_SHORT_NAME,
-            reference=order.reference
-        )
-
-        # Send email with PDF attachment
-        subject = settings.ORDER_CONFIRMATION_SUBJECT.format(reference=order.reference)
-        message = f"Thank you for your order! Your order confirmation is attached."
-
-        send_email_async(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[order.email],
-            attachments=[(filename, pdf, 'application/pdf')]
-        )
-
-        logger.info(f"Order confirmation PDF generated and sent for order: {order.reference}")
-
-    except Exception as e:
-        logger.error(f"Error generating order confirmation PDF for order_id {order_id}: {str(e)}")
-
-
-def send_payment_receipt_email_async(payment_id):
-    """
-    Send payment receipt email after payment verification.
-    Uses threading for quick async delivery.
-
-    Args:
-        payment_id: UUID of the payment transaction
-    """
-    def _send():
-        try:
-            from payment.models import PaymentTransaction
-
-            payment = PaymentTransaction.objects.select_related('order').get(id=payment_id)
-
-            context = {
-                'payment': payment,
-                'order': payment.order,
-                'company_name': settings.COMPANY_NAME,
-                'company_address': settings.COMPANY_ADDRESS,
-                'company_phone': settings.COMPANY_PHONE,
-                'company_email': settings.COMPANY_EMAIL,
-                'currency_symbol': settings.CURRENCY_SYMBOL,
-                'frontend_url': settings.FRONTEND_URL,
-            }
-
-            html_message = render_to_string('order/payment_receipt_email.html', context)
-
-            subject = settings.PAYMENT_RECEIPT_SUBJECT.format(reference=payment.reference)
-
-            email = EmailMessage(subject, html_message, settings.DEFAULT_FROM_EMAIL, [payment.email])
-            email.content_subtype = "html"
-            email.send()
-
-            logger.info(f"Payment receipt email sent for payment: {payment.reference}")
-
-        except Exception as e:
-            logger.error(f"Error sending payment receipt email for payment_id {payment_id}: {str(e)}")
-
-    thread = Thread(target=_send)
-    thread.daemon = True
-    thread.start()
-    logger.info(f"Payment receipt email queued for payment_id: {payment_id}")
-
-
-@background(schedule=0)
-def generate_payment_receipt_pdf_task(payment_id):
-    """
-    Generate payment receipt PDF in background and email to customer.
-    Heavy task - uses django-background-tasks.
-
-    Args:
-        payment_id: UUID of the payment transaction
-    """
-    try:
-        from payment.models import PaymentTransaction
-        from weasyprint import HTML
-        from django.utils import timezone
-
-        payment = PaymentTransaction.objects.select_related('order').prefetch_related(
-            'order__items__content_type',
-            'order__items__content_object'
-        ).get(id=payment_id)
-
-        context = {
-            'payment': payment,
-            'order': payment.order,
-            'company_name': settings.COMPANY_NAME,
-            'company_address': settings.COMPANY_ADDRESS,
-            'company_phone': settings.COMPANY_PHONE,
-            'company_email': settings.COMPANY_EMAIL,
-            'currency_symbol': settings.CURRENCY_SYMBOL,
-            'currency_code': settings.CURRENCY_CODE,
-            'generated_date': timezone.now(),
-        }
-
-        html_string = render_to_string('order/payment_receipt_pdf.html', context)
-        html = HTML(string=html_string)
-        pdf = html.write_pdf()
-
-        filename = settings.PDF_FILENAME_PAYMENT_RECEIPT.format(
-            company=settings.COMPANY_SHORT_NAME,
-            reference=payment.reference
-        )
-
-        # Send email with PDF attachment
-        subject = settings.PAYMENT_RECEIPT_SUBJECT.format(reference=payment.reference)
-        message = f"Payment received! Your receipt is attached."
-
-        send_email_async(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[payment.email],
-            attachments=[(filename, pdf, 'application/pdf')]
-        )
-
-        logger.info(f"Payment receipt PDF generated and sent for payment: {payment.reference}")
-
-    except Exception as e:
-        logger.error(f"Error generating payment receipt PDF for payment_id {payment_id}: {str(e)}")
-
-
-@background(schedule=0)
-def generate_admin_order_report_pdf_task(order_id, recipient_email):
-    """
-    Generate comprehensive order report for admin in background.
-    Includes all order items, measurements, and customer details.
-
-    Args:
-        order_id: UUID of the order
-        recipient_email: Admin email to send the report to
-    """
-    try:
-        from order.models import Order
-        from weasyprint import HTML
-        from django.utils import timezone
-
-        order = Order.objects.select_related('user').prefetch_related(
-            'items__content_type',
-            'items__content_object'
-        ).get(id=order_id)
-
-        context = {
-            'order': order,
-            'company_name': settings.COMPANY_NAME,
-            'company_address': settings.COMPANY_ADDRESS,
-            'company_phone': settings.COMPANY_PHONE,
-            'company_email': settings.COMPANY_EMAIL,
-            'currency_symbol': settings.CURRENCY_SYMBOL,
-            'currency_code': settings.CURRENCY_CODE,
-            'generated_date': timezone.now(),
-        }
-
-        # Use admin report template (could be more detailed)
-        html_string = render_to_string('order/order_confirmation_pdf.html', context)
-        html = HTML(string=html_string)
-        pdf = html.write_pdf()
-
-        filename = f"{settings.COMPANY_SHORT_NAME}_Admin_Report_{order.reference}.pdf"
-
-        # Send to admin
-        subject = f"Admin Order Report - {order.reference}"
-        message = f"Order report for {order.reference} is attached."
-
-        send_email_async(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[recipient_email],
-            attachments=[(filename, pdf, 'application/pdf')]
-        )
-
-        logger.info(f"Admin order report PDF generated for order: {order.reference}")
-
-    except Exception as e:
-        logger.error(f"Error generating admin order report for order_id {order_id}: {str(e)}")

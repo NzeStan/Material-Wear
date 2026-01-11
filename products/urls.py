@@ -1,19 +1,58 @@
-from django.urls import path
-from . import views
+# products/urls.py
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .api_views import (
+    CategoryViewSet, NyscKitViewSet, NyscTourViewSet, 
+    ChurchViewSet, ProductListView
+)
 
 app_name = "products"
 
+# Create API router
+router = DefaultRouter()
+router.register(r'categories', CategoryViewSet, basename='category')
+router.register(r'nysc-kits', NyscKitViewSet, basename='nysc-kit')
+router.register(r'nysc-tours', NyscTourViewSet, basename='nysc-tour')
+router.register(r'churches', ChurchViewSet, basename='church')
+
 urlpatterns = [
-    path("", views.product_list, name="product_list"),
-    path(
-        "category/<slug:category_slug>/",
-        views.product_list,
-        name="product_list_by_category",
-    ),
-    path(
-        "<str:product_type>/<uuid:id>/<slug:slug>/",
-        views.product_detail,
-        name="product_detail",
-    ),
-    path("load-more/", views.load_more_products, name="load_more"),
+    # Combined product list endpoint
+    path('all/', ProductListView.as_view(), name='product-list'),
+    
+    # Router URLs
+    path('', include(router.urls)),
 ]
+
+# ============================================================================
+# AVAILABLE ENDPOINTS
+# ============================================================================
+# GET    /api/products/all/                          # Get all products grouped by type
+# GET    /api/products/all/?category=<slug>          # Filter by category
+# GET    /api/products/all/?limit=<int>              # Limit items per type
+#
+# CATEGORIES:
+# GET    /api/products/categories/                   # List all categories
+# GET    /api/products/categories/<slug>/            # Get specific category
+#
+# NYSC KITS:
+# GET    /api/products/nysc-kits/                    # List all NYSC kits
+# GET    /api/products/nysc-kits/<id>/               # Get specific NYSC kit
+# GET    /api/products/nysc-kits/?type=<type>        # Filter by type (kakhi, vest, cap)
+# GET    /api/products/nysc-kits/?category=<id>      # Filter by category
+# GET    /api/products/nysc-kits/?search=<query>     # Search by name/description
+# GET    /api/products/nysc-kits/?ordering=price     # Order by price, created, name
+#
+# NYSC TOURS:
+# GET    /api/products/nysc-tours/                   # List all NYSC tours
+# GET    /api/products/nysc-tours/<id>/              # Get specific NYSC tour
+# GET    /api/products/nysc-tours/?category=<id>     # Filter by category
+# GET    /api/products/nysc-tours/?search=<query>    # Search by name/description
+# GET    /api/products/nysc-tours/?ordering=price    # Order by price, created, name
+#
+# CHURCHES:
+# GET    /api/products/churches/                     # List all church products
+# GET    /api/products/churches/<id>/                # Get specific church product
+# GET    /api/products/churches/?church=<church>     # Filter by church
+# GET    /api/products/churches/?category=<id>       # Filter by category
+# GET    /api/products/churches/?search=<query>      # Search by name/description
+# GET    /api/products/churches/?ordering=price      # Order by price, created, name

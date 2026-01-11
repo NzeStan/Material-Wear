@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Payment Receipt</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #1F2937;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #FFFBEB;
+            padding: 30px;
+            border-radius: 8px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header img { max-width: 120px; }
+        h1 {
+            color: #064E3B;
+            font-size: 24px;
+            margin: 20px 0 10px 0;
+        }
+        .success-badge {
+            display: inline-block;
+            background-color: #10B981;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .payment-summary {
+            background: linear-gradient(135deg, #064E3B 0%, #10B981 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .payment-summary .amount {
+            font-size: 36px;
+            font-weight: bold;
+            color: #F59E0B;
+        }
+        .message-box {
+            background-color: white;
+            border-left: 4px solid #10B981;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .pdf-info {
+            background-color: #F3F4F6;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .pdf-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        .button {
+            display: inline-block;
+            background-color: #F59E0B;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #e5e7eb;
+            text-align: center;
+            font-size: 14px;
+            color: #6B7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="{{ company_logo }}" alt="{{ company_name }}">
+            <h1>Payment Receipt</h1>
+            <span class="success-badge">✓ PAYMENT SUCCESSFUL</span>
+        </div>
+
+        <div class="payment-summary">
+            <div style="font-size: 14px; opacity: 0.9;">Amount Paid</div>
+            <div class="amount">₦{{ payment.amount|floatformat:2 }}</div>
+            <div style="margin-top: 15px; font-size: 14px;">
+                {{ payment.reference }}
+            </div>
+        </div>
+
+        <div class="message-box">
+            <p><strong>Thank you for your payment!</strong></p>
+            <p>We've successfully received your payment. Your official payment receipt is attached to this email as a PDF document.</p>
+            <p>This receipt contains:</p>
+            <ul>
+                <li>Payment reference and transaction details</li>
+                <li>Complete order information</li>
+                <li>Itemized list of purchased products</li>
+                <li>Total amount paid</li>
+            </ul>
+        </div>
+
+        <div class="pdf-info">
+            <div class="pdf-icon">📄</div>
+            <p><strong>PDF Receipt Attached</strong></p>
+            <p style="font-size: 14px; color: #6B7280;">
+                Payment_Receipt_{{ payment.reference }}.pdf
+            </p>
+            {% if cloudinary_url %}
+            <a href="{{ cloudinary_url }}" class="button">View Online</a>
+            {% endif %}
+        </div>
+
+        <div class="message-box">
+            <p><strong>What's Next?</strong></p>
+            <p>Your order is now confirmed and being processed. We'll keep you updated on its status.</p>
+        </div>
+
+        <div style="margin: 30px 0; padding: 20px; background-color: #F3F4F6; border-radius: 6px;">
+            <p style="margin: 0;"><strong>Questions?</strong></p>
+            <p style="margin: 10px 0 0 0;">
+                📧 {{ company_email }}<br>
+                📞 {{ company_phone }}
+            </p>
+        </div>
+
+        <div class="footer">
+            <p><strong>{{ company_name }}</strong></p>
+            <p>{{ company_address }}</p>
+            <p style="font-size: 12px; margin-top: 15px;">
+                This is your official payment receipt. Please keep this email and the attached PDF for your records.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
