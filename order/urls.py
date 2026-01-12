@@ -38,7 +38,7 @@ urlpatterns = [
 # For NYSC Kit orders (additional fields):
 # {
 #   ...base fields,
-#   "state_code": "AB/22C/1234",
+#   "call_up_number": "AB/22C/1234",  // Your NYSC call-up number
 #   "state": "Abia",
 #   "local_government": "Aba North"
 # }
@@ -54,6 +54,16 @@ urlpatterns = [
 # For NYSC Tour orders:
 # {
 #   ...base fields only
+#   // Note: call_up_number is stored in cart item, not in checkout
 # }
+#
+# ============================================================================
+# IMPORTANT CHANGES
+# ============================================================================
+# - call_up_number is now used as the state_code field for NYSC Kit orders
+# - Format: XX/YYX/ZZZZ (e.g., AB/22C/1234)
+# - This field is required during checkout for NYSC Kit orders
+# - The call_up_number is stored in the order's call_up_number field 
+#   (previously called state_code)
 #
 # Note: The system automatically creates separate orders for each product type in cart

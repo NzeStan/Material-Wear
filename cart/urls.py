@@ -30,21 +30,31 @@ urlpatterns = [
 # ============================================================================
 # ADD TO CART REQUEST FORMAT
 # ============================================================================
+# 
 # For NYSC Kit (Kakhi):
+# NOTE: Kakhi uses user's measurement - user MUST have a measurement profile
 # {
 #   "product_type": "nysc_kit",
 #   "product_id": "uuid-here",
-#   "quantity": 1,
-#   "size": "M",
-#   "call_up_number": "AB/22C/1234"
+#   "quantity": 1
 # }
+# Size is automatically set to "measurement" and measurement_id is retrieved from user's profile
+# Users without measurements will receive an error asking them to create a measurement first
 #
-# For NYSC Kit (Vest/Cap):
+# For NYSC Kit (Cap):
+# {
+#   "product_type": "nysc_kit",
+#   "product_id": "uuid-here",
+#   "quantity": 1
+# }
+# Size is automatically set to "free_size"
+#
+# For NYSC Kit (Vest):
 # {
 #   "product_type": "nysc_kit",
 #   "product_id": "uuid-here",
 #   "quantity": 1,
-#   "size": "L"
+#   "size": "M"  // Required: XS, S, M, L, XL, XXL, XXXL
 # }
 #
 # For NYSC Tour:
@@ -63,3 +73,11 @@ urlpatterns = [
 #   "size": "XL",
 #   "custom_name_text": "PASTOR JOHN"  // Optional
 # }
+#
+# ============================================================================
+# IMPORTANT NOTES
+# ============================================================================
+# - Kakhi products REQUIRE users to have a measurement profile
+# - Cap products use fixed "free_size"
+# - Vest products require size selection from dropdown
+# - Size options: XS, S, M, L, XL, XXL, XXXL

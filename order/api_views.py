@@ -91,7 +91,7 @@ class CheckoutView(views.APIView):
                     # Add product-specific fields
                     if product_type == 'NyscKit':
                         order_data.update({
-                            'state_code': validated_data['state_code'],
+                            'call_up_number': validated_data['call_up_number'],
                             'state': validated_data['state'],
                             'local_government': validated_data['local_government'],
                         })

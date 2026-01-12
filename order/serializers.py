@@ -1,116 +1,59 @@
 # order/serializers.py
 from rest_framework import serializers
 from django.contrib.contenttypes.models import ContentType
-from .models import BaseOrder, NyscKitOrder, NyscTourOrder, ChurchOrder, OrderItem
-from products.models import NyscKit, NyscTour, Church
-from products.serializers import NyscKitSerializer, NyscTourSerializer, ChurchSerializer
 from products.constants import STATES
+from products.models import NyscKit, NyscTour, Church
+from .models import OrderItem, NyscKitOrder, NyscTourOrder, ChurchOrder
 
 
-class OrderItemSerializer(serializers.ModelSerializer):
+class OrderItemSerializer(serializers.Serializer):
     """Serializer for order items"""
-    product = serializers.SerializerMethodField()
-    product_type = serializers.SerializerMethodField()
-    cost = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = OrderItem
-        fields = [
-            'id', 'product_type', 'product', 'price', 'quantity', 
-            'extra_fields', 'cost'
-        ]
-        read_only_fields = ['id']
-    
-    def get_product(self, obj):
-        """Serialize the related product"""
-        product = obj.product
-        if not product:
-            return None
-        
-        serializer_map = {
-            'NyscKit': NyscKitSerializer,
-            'NyscTour': NyscTourSerializer,
-            'Church': ChurchSerializer,
-        }
-        
-        serializer_class = serializer_map.get(product.__class__.__name__)
-        if serializer_class:
-            return serializer_class(product).data
-        return None
+    id = serializers.UUIDField(read_only=True)
+    product_type = serializers.CharField(read_only=True)
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    quantity = serializers.IntegerField()
+    price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    total_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    extra_fields = serializers.DictField(read_only=True)
     
     def get_product_type(self, obj):
-        """Get product type name"""
-        if obj.product:
-            return obj.product.__class__.__name__
-        return None
-    
-    def get_cost(self, obj):
-        """Get total cost for this item"""
-        return obj.get_cost()
+        """Get the product type name"""
+        return obj.content_type.model
 
 
-class BaseOrderSerializer(serializers.ModelSerializer):
+class BaseOrderSerializer(serializers.Serializer):
     """Base serializer for all order types"""
+    id = serializers.UUIDField(read_only=True)
+    serial_number = serializers.IntegerField(read_only=True)
+    order_type = serializers.CharField(read_only=True)
+    first_name = serializers.CharField()
+    middle_name = serializers.CharField(required=False, allow_blank=True)
+    last_name = serializers.CharField()
+    phone_number = serializers.CharField()
+    total_cost = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    paid = serializers.BooleanField(read_only=True)
+    created = serializers.DateTimeField(read_only=True)
+    updated = serializers.DateTimeField(read_only=True)
     items = OrderItemSerializer(many=True, read_only=True)
-    total_cost = serializers.DecimalField(
-        max_digits=10, decimal_places=2, read_only=True
-    )
-    order_type = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = BaseOrder
-        fields = [
-            'id', 'serial_number', 'user', 'email', 'first_name', 
-            'middle_name', 'last_name', 'phone_number', 'paid', 
-            'created', 'updated', 'items', 'total_cost', 'order_type'
-        ]
-        read_only_fields = ['id', 'serial_number', 'user', 'paid', 'created', 'updated']
-    
-    def get_order_type(self, obj):
-        """Get the specific order type"""
-        return obj.__class__.__name__
 
 
 class NyscKitOrderSerializer(BaseOrderSerializer):
-    """Serializer for NYSC Kit orders"""
-    
-    class Meta(BaseOrderSerializer.Meta):
-        model = NyscKitOrder
-        fields = BaseOrderSerializer.Meta.fields + [
-            'state_code', 'state', 'local_government'
-        ]
-    
-    def validate_state_code(self, value):
-        """Ensure state code is uppercase"""
-        return value.upper()
+    """Serializer for NYSC Kit orders - uses call_up_number as state_code"""
+    call_up_number = serializers.CharField(max_length=20, help_text="Your NYSC call-up number (used as state code)")
+    state = serializers.ChoiceField(choices=STATES)
+    local_government = serializers.CharField(max_length=100)
 
 
 class NyscTourOrderSerializer(BaseOrderSerializer):
     """Serializer for NYSC Tour orders"""
-    
-    class Meta(BaseOrderSerializer.Meta):
-        model = NyscTourOrder
-        fields = BaseOrderSerializer.Meta.fields
+    pass  # Only needs base fields
 
 
 class ChurchOrderSerializer(BaseOrderSerializer):
     """Serializer for Church orders"""
-    
-    class Meta(BaseOrderSerializer.Meta):
-        model = ChurchOrder
-        fields = BaseOrderSerializer.Meta.fields + [
-            'pickup_on_camp', 'delivery_state', 'delivery_lga'
-        ]
-    
-    def validate(self, attrs):
-        """Validate delivery details if not picking up on camp"""
-        if not attrs.get('pickup_on_camp', True):
-            if not attrs.get('delivery_state') or not attrs.get('delivery_lga'):
-                raise serializers.ValidationError({
-                    'delivery_state': 'Required when not picking up on camp',
-                    'delivery_lga': 'Required when not picking up on camp'
-                })
-        return attrs
+    pickup_on_camp = serializers.BooleanField(default=True)
+    delivery_state = serializers.ChoiceField(choices=STATES, required=False, allow_blank=True)
+    delivery_lga = serializers.CharField(max_length=100, required=False, allow_blank=True)
 
 
 class CheckoutSerializer(serializers.Serializer):
@@ -121,8 +64,13 @@ class CheckoutSerializer(serializers.Serializer):
     last_name = serializers.CharField(max_length=50)
     phone_number = serializers.CharField(max_length=15)
     
-    # NYSC Kit specific fields
-    state_code = serializers.CharField(max_length=11, required=False, allow_blank=True)
+    # NYSC Kit specific fields - call_up_number replaces state_code
+    call_up_number = serializers.CharField(
+        max_length=20, 
+        required=False, 
+        allow_blank=True,
+        help_text="Your NYSC call-up number (e.g., AB/22C/1234)"
+    )
     state = serializers.ChoiceField(choices=STATES, required=False, allow_blank=True)
     local_government = serializers.CharField(max_length=100, required=False, allow_blank=True)
     
@@ -145,17 +93,17 @@ class CheckoutSerializer(serializers.Serializer):
         
         # Validate NYSC Kit fields
         if 'NyscKit' in product_types:
-            if not attrs.get('state_code'):
+            if not attrs.get('call_up_number'):
                 raise serializers.ValidationError({
-                    'state_code': 'Required for NYSC Kit orders'
+                    'call_up_number': 'Call-up number is required for NYSC Kit orders (e.g., AB/22C/1234)'
                 })
             if not attrs.get('state'):
                 raise serializers.ValidationError({
-                    'state': 'Required for NYSC Kit orders'
+                    'state': 'State is required for NYSC Kit orders'
                 })
             if not attrs.get('local_government'):
                 raise serializers.ValidationError({
-                    'local_government': 'Required for NYSC Kit orders'
+                    'local_government': 'Local government is required for NYSC Kit orders'
                 })
         
         # Validate Church fields

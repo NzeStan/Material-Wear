@@ -2,6 +2,7 @@
 from rest_framework import serializers
 from django.apps import apps
 from products.serializers import NyscKitSerializer, NyscTourSerializer, ChurchSerializer
+from measurement.models import Measurement
 
 
 class CartItemSerializer(serializers.Serializer):
@@ -44,6 +45,8 @@ class AddToCartSerializer(serializers.Serializer):
     
     # NYSC Kit specific fields
     size = serializers.CharField(required=False, allow_blank=True)
+    
+    # NYSC Tour specific fields
     call_up_number = serializers.CharField(required=False, allow_blank=True)
     
     # Church specific fields
@@ -80,19 +83,48 @@ class AddToCartSerializer(serializers.Serializer):
         
         # Handle product-specific validations
         if product_type == 'nysc_kit':
-            if not attrs.get('size'):
-                raise serializers.ValidationError({
-                    'size': 'Size is required for NYSC Kit products'
-                })
-            extra_fields['size'] = attrs['size']
+            # Get the authenticated user from the request context
+            request = self.context.get('request')
             
-            # Kakhi requires call-up number
             if product.type == 'kakhi':
-                if not attrs.get('call_up_number'):
+                # Kakhi must use measurement size - check if user has measurement
+                if not request or not request.user.is_authenticated:
                     raise serializers.ValidationError({
-                        'call_up_number': 'Call-up number is required for Kakhi products'
+                        'user': 'You must be logged in to purchase Kakhi products'
                     })
-                extra_fields['call_up_number'] = attrs['call_up_number']
+                
+                # Check if user has measurement
+                try:
+                    measurement = Measurement.objects.filter(
+                        user=request.user, 
+                        is_deleted=False
+                    ).first()
+                    
+                    if not measurement:
+                        raise serializers.ValidationError({
+                            'measurement': 'You must create a measurement profile before purchasing Kakhi. Please go to your profile to add your measurements.'
+                        })
+                    
+                    # Use measurement as the size
+                    extra_fields['size'] = 'measurement'
+                    extra_fields['measurement_id'] = str(measurement.id)
+                    
+                except Exception as e:
+                    raise serializers.ValidationError({
+                        'measurement': f'Error retrieving measurement: {str(e)}'
+                    })
+                    
+            elif product.type == 'cap':
+                # Cap has fixed "free size"
+                extra_fields['size'] = 'free_size'
+                
+            elif product.type == 'vest':
+                # Vest requires size selection
+                if not attrs.get('size'):
+                    raise serializers.ValidationError({
+                        'size': 'Size is required for Vest products. Please select a size.'
+                    })
+                extra_fields['size'] = attrs['size']
                 
         elif product_type == 'church':
             if not attrs.get('size'):

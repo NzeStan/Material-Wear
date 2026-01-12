@@ -137,7 +137,7 @@ class NyscKitOrderAdmin(BaseOrderAdmin):
     
     fieldsets = BaseOrderAdmin.fieldsets[:2] + (
         ('NYSC Kit Details', {
-            'fields': ('state_code', 'state', 'local_government'),
+            'fields': ('call_up_number', 'state', 'local_government'),
             'classes': ('wide',),
         }),
     ) + BaseOrderAdmin.fieldsets[2:]

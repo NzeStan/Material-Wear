@@ -67,7 +67,10 @@ class BaseOrder(models.Model):
 class NyscKitOrder(BaseOrder):
     """NYSC Kit specific order model"""
 
-    state_code = models.CharField(max_length=11, validators=[validate_state_code])
+    call_up_number = models.CharField(
+        max_length=20, 
+        help_text="NYSC call-up number (e.g., AB/22C/1234)"
+   )
     state = models.CharField(max_length=50)
     local_government = models.CharField(max_length=100)
 
