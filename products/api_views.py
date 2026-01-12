@@ -32,7 +32,7 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     """API endpoint for product categories - Read only"""
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [permissions.AllowAnyOrReadOnly]
+    permission_classes = [permissions.AllowAny]
     lookup_field = 'slug'
     
     @method_decorator(cache_page(60 * 15))  # Cache for 15 minutes

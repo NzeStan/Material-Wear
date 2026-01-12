@@ -5,11 +5,13 @@ from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from  . validators import validate_phone_number, validate_state_code
+from django.contrib.auth import get_user_model
 
+User = get_user_model()
 
 class BaseOrder(models.Model):
     """Base model for all order types"""
-
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     serial_number = models.PositiveIntegerField(
         unique=True, editable=False, db_index=True

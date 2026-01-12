@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
-    callback_url = settings.SOCIAL_AUTH_CALLBACK_URL
     client_class = OAuth2Client
 
     def post(self, request, *args, **kwargs):
@@ -35,7 +34,6 @@ class GoogleLogin(SocialLoginView):
 
 class GithubLogin(SocialLoginView):
     adapter_class = GitHubOAuth2Adapter
-    callback_url = settings.SOCIAL_AUTH_CALLBACK_URL
     client_class = OAuth2Client
 
     def post(self, request, *args, **kwargs):

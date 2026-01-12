@@ -34,9 +34,6 @@ class BaseProductSerializer(serializers.ModelSerializer):
     thumbnail = serializers.SerializerMethodField()
     can_be_purchased = serializers.BooleanField(read_only=True)
     
-    def get_absolute_url(self, obj):
-        """Get the absolute URL for this product"""
-        return obj.get_absolute_url()
     
     def get_thumbnail(self, obj):
         """Get optimized thumbnail URL"""

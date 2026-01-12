@@ -261,11 +261,6 @@ class NyscKit(BaseProduct):
 
     product_type = "nysc_kit"
 
-    def get_absolute_url(self):
-        return reverse(
-            "products:product_detail", args=[self.product_type, self.id, self.slug]
-        )
-
 
 class NyscTour(BaseProduct):
     """NYSC Tour specific model."""
@@ -296,11 +291,6 @@ class NyscTour(BaseProduct):
         super().save(*args, **kwargs)
 
     product_type = "nysc_tour"
-
-    def get_absolute_url(self):
-        return reverse(
-            "products:product_detail", args=[self.product_type, self.id, self.slug]
-        )
 
 
 class Church(BaseProduct):
@@ -333,8 +323,3 @@ class Church(BaseProduct):
         super().save(*args, **kwargs)
 
     product_type = "church"
-
-    def get_absolute_url(self):
-        return reverse(
-            "products:product_detail", args=[self.product_type, self.id, self.slug]
-        )
