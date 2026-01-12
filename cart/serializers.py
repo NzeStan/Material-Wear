@@ -41,7 +41,6 @@ class AddToCartSerializer(serializers.Serializer):
     product_id = serializers.UUIDField()
     quantity = serializers.IntegerField(min_value=1, default=1)
     override = serializers.BooleanField(default=False)
-    extra_fields = serializers.DictField(required=False, default=dict)
     
     # NYSC Kit specific fields
     size = serializers.CharField(required=False, allow_blank=True)
@@ -78,8 +77,8 @@ class AddToCartSerializer(serializers.Serializer):
                 'product_id': 'This product is not available for purchase'
             })
         
-        # Build extra_fields from individual fields
-        extra_fields = attrs.get('extra_fields', {})
+        # Build extra_fields based on product type
+        extra_fields = {}
         
         # Handle product-specific validations
         if product_type == 'nysc_kit':
@@ -109,9 +108,9 @@ class AddToCartSerializer(serializers.Serializer):
                     extra_fields['size'] = 'measurement'
                     extra_fields['measurement_id'] = str(measurement.id)
                     
-                except Exception as e:
+                except Measurement.DoesNotExist:
                     raise serializers.ValidationError({
-                        'measurement': f'Error retrieving measurement: {str(e)}'
+                        'measurement': 'You must create a measurement profile before purchasing Kakhi.'
                     })
                     
             elif product.type == 'cap':
@@ -144,7 +143,7 @@ class AddToCartSerializer(serializers.Serializer):
                 })
             extra_fields['call_up_number'] = attrs['call_up_number']
         
-        # Store processed extra_fields back
+        # Store processed extra_fields
         attrs['extra_fields'] = extra_fields
         attrs['product'] = product  # Store product for later use
         
