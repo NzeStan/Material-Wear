@@ -31,7 +31,7 @@ class CategoryAdmin(admin.ModelAdmin):
 
 class BaseProductAdmin(admin.ModelAdmin):
     """Base admin for all product types with thumbnails"""
-    list_display = ['thumbnail_preview', 'name', 'category', 'price', 'available', 
+    list_display = ['thumbnail_preview', 'id', 'name', 'category', 'price', 'available', 
                     'out_of_stock', 'created']
     list_filter = ['available', 'out_of_stock', 'created', 'updated', 'category']
     list_editable = ['price', 'available', 'out_of_stock']

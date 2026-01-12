@@ -30,7 +30,6 @@ class CategorySerializer(serializers.ModelSerializer):
 class BaseProductSerializer(serializers.ModelSerializer):
     """Base serializer for all product types"""
     category_name = serializers.CharField(source='category.name', read_only=True)
-    absolute_url = serializers.SerializerMethodField()
     thumbnail = serializers.SerializerMethodField()
     can_be_purchased = serializers.BooleanField(read_only=True)
     
@@ -61,7 +60,7 @@ class NyscKitSerializer(BaseProductSerializer):
             'id', 'name', 'slug', 'type', 'type_display', 'category', 
             'category_name', 'description', 'price', 'image', 'image_1', 
             'image_2', 'image_3', 'available', 'out_of_stock', 
-            'created', 'updated', 'absolute_url', 'thumbnail', 'can_be_purchased'
+            'created', 'updated', 'thumbnail', 'can_be_purchased'
         ]
         read_only_fields = ['id', 'slug', 'created', 'updated', 'can_be_purchased']
         
@@ -86,7 +85,7 @@ class NyscTourSerializer(BaseProductSerializer):
         fields = [
             'id', 'name', 'slug', 'category', 'category_name', 'description', 
             'price', 'image', 'image_1', 'image_2', 'image_3', 'available', 
-            'out_of_stock', 'created', 'updated', 'absolute_url', 'thumbnail',
+            'out_of_stock', 'created', 'updated', 'thumbnail',
             'can_be_purchased'
         ]
         read_only_fields = ['id', 'slug', 'created', 'updated', 'can_be_purchased']
@@ -114,7 +113,7 @@ class ChurchSerializer(BaseProductSerializer):
             'id', 'name', 'slug', 'church', 'church_display', 'category', 
             'category_name', 'description', 'price', 'image', 'image_1', 
             'image_2', 'image_3', 'available', 'out_of_stock', 'created', 
-            'updated', 'absolute_url', 'thumbnail', 'can_be_purchased'
+            'updated', 'thumbnail', 'can_be_purchased'
         ]
         read_only_fields = ['id', 'slug', 'created', 'updated', 'can_be_purchased']
         

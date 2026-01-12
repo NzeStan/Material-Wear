@@ -259,13 +259,13 @@ REST_FRAMEWORK = {
 # Add authentication based on environment
 if DEBUG:
     REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = [
-        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.BasicAuthentication',
     ]
 else:
     REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
     ]
 
 # ==============================================================================
