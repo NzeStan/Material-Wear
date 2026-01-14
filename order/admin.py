@@ -1,3 +1,4 @@
+# order/admin.py
 from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
@@ -50,10 +51,10 @@ class BaseOrderAdmin(admin.ModelAdmin):
     """Base admin configuration for all order types"""
     list_display = [
         'serial_number', 'full_name_display', 'email', 
-        'phone', 'order_total', 'paid_status', 'created'
+        'phone_number', 'order_total', 'paid_status', 'created'  # ✅ FIXED: phone → phone_number
     ]
     list_filter = ['paid', 'created']
-    search_fields = ['serial_number', 'email', 'first_name', 'last_name', 'phone']
+    search_fields = ['serial_number', 'email', 'first_name', 'last_name', 'phone_number']  # ✅ FIXED: phone → phone_number
     readonly_fields = [
         'serial_number', 'user', 'created', 'updated',
         'order_total', 'items_count'
@@ -67,7 +68,7 @@ class BaseOrderAdmin(admin.ModelAdmin):
             'classes': ('wide',),
         }),
         ('Personal Information', {
-            'fields': ('first_name', 'middle_name', 'last_name', 'email', 'phone'),
+            'fields': ('first_name', 'middle_name', 'last_name', 'email', 'phone_number'),  # ✅ FIXED: phone → phone_number
             'classes': ('wide',),
         }),
         ('Order Summary', {
