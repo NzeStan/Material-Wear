@@ -1,9 +1,16 @@
-# order/admin.py
 from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
 from django.db.models import Sum, Count
 from .models import BaseOrder, NyscKitOrder, NyscTourOrder, ChurchOrder, OrderItem
+
+# ✅ ADD THIS IMPORT
+from orderitem_generation.admin import (
+    OrderItemGenerationAdminMixin,
+    get_nysc_kit_pdf_context,
+    get_nysc_tour_pdf_context,
+    get_church_pdf_context
+)
 
 
 class OrderItemInline(admin.TabularInline):
@@ -40,98 +47,82 @@ class OrderItemInline(admin.TabularInline):
 
 
 class BaseOrderAdmin(admin.ModelAdmin):
-    """Base admin for all order types"""
+    """Base admin configuration for all order types"""
     list_display = [
-        'order_badge', 'serial_number', 'customer_name', 'email', 
-        'phone_number', 'item_count', 'total_cost_display', 'paid_status', 'created'
+        'serial_number', 'full_name_display', 'email', 
+        'phone', 'order_total', 'paid_status', 'created'
     ]
-    list_filter = ['paid', 'created', 'updated']
-    search_fields = ['serial_number', 'first_name', 'last_name', 'email', 'phone_number']
-    readonly_fields = ['serial_number', 'user', 'created', 'updated', 'total_cost']
+    list_filter = ['paid', 'created']
+    search_fields = ['serial_number', 'email', 'first_name', 'last_name', 'phone']
+    readonly_fields = [
+        'serial_number', 'user', 'created', 'updated',
+        'order_total', 'items_count'
+    ]
     date_hierarchy = 'created'
     inlines = [OrderItemInline]
     
     fieldsets = (
         ('Order Information', {
-            'fields': ('serial_number', 'user', 'paid'),
+            'fields': ('serial_number', 'user', 'paid', 'created', 'updated'),
             'classes': ('wide',),
         }),
-        ('Customer Details', {
-            'fields': ('first_name', 'middle_name', 'last_name', 'email', 'phone_number'),
+        ('Personal Information', {
+            'fields': ('first_name', 'middle_name', 'last_name', 'email', 'phone'),
             'classes': ('wide',),
         }),
         ('Order Summary', {
-            'fields': ('total_cost', 'created', 'updated'),
+            'fields': ('order_total', 'items_count'),
             'classes': ('wide',),
         }),
     )
     
-    def order_badge(self, obj):
-        """Display order type badge"""
-        type_name = obj.__class__.__name__
-        color_map = {
-            'NyscKitOrder': '#064E3B',  # Dark Green
-            'NyscTourOrder': '#F59E0B',  # Gold
-            'ChurchOrder': '#1F2937',    # Dark Gray
-        }
-        color = color_map.get(type_name, '#6B7280')
-        
+    def full_name_display(self, obj):
+        """Display full name with styling"""
+        full_name = f"{obj.first_name} {obj.middle_name} {obj.last_name}".strip()
         return format_html(
-            '<span style="background: {}; color: white; padding: 4px 12px; '
-            'border-radius: 12px; font-size: 11px; font-weight: bold;">{}</span>',
-            color,
-            type_name.replace('Order', '')
+            '<span style="font-weight: bold; color: #064E3B;">{}</span>',
+            full_name
         )
-    order_badge.short_description = 'Type'
-    
-    def customer_name(self, obj):
-        """Display full customer name"""
-        parts = [obj.first_name]
-        if obj.middle_name:
-            parts.append(obj.middle_name)
-        parts.append(obj.last_name)
-        return ' '.join(parts)
-    customer_name.short_description = 'Customer'
-    
-    def item_count(self, obj):
-        """Display number of items in order"""
-        count = obj.items.count()
-        return format_html(
-            '<span style="background: #FFFBEB; color: #F59E0B; padding: 2px 8px; '
-            'border-radius: 8px; font-weight: bold;">{}</span>',
-            count
-        )
-    item_count.short_description = 'Items'
-    
-    def total_cost_display(self, obj):
-        """Display total cost with formatting"""
-        cost = float(obj.total_cost) if obj.total_cost else 0
-        return format_html(
-            '<span style="color: #064E3B; font-weight: bold; font-size: 14px;">₦{}</span>',
-            f"{cost:,.2f}"
-        )
-    total_cost_display.short_description = 'Total'
+    full_name_display.short_description = 'Full Name'
     
     def paid_status(self, obj):
         """Display paid status with color coding"""
         if obj.paid:
             return format_html(
-                '<span style="background: #10B981; color: white; padding: 4px 12px; '
-                'border-radius: 12px; font-size: 11px; font-weight: bold;">PAID</span>'
+                '<span style="color: #10B981; font-weight: bold;">✓ Paid</span>'
             )
         return format_html(
-            '<span style="background: #EF4444; color: white; padding: 4px 12px; '
-            'border-radius: 12px; font-size: 11px; font-weight: bold;">PENDING</span>'
+            '<span style="color: #EF4444; font-weight: bold;">✗ Unpaid</span>'
         )
     paid_status.short_description = 'Status'
+    
+    def order_total(self, obj):
+        """Display order total"""
+        total = obj.get_total_cost()
+        return format_html(
+            '<span style="color: #F59E0B; font-weight: bold;">₦{}</span>',
+            f"{total:,.2f}"
+        )
+    order_total.short_description = 'Total'
+    
+    def items_count(self, obj):
+        """Display number of items"""
+        count = obj.items.count()
+        return format_html(
+            '<span style="background: #064E3B; color: white; padding: 4px 8px; '
+            'border-radius: 4px; font-weight: bold;">{} items</span>',
+            count
+        )
+    items_count.short_description = 'Items'
     
     def get_queryset(self, request):
         """Optimize queryset with prefetch"""
         return super().get_queryset(request).prefetch_related('items')
 
 
+# ✅ UPDATED: Added OrderItemGenerationAdminMixin as first parent
 @admin.register(NyscKitOrder)
-class NyscKitOrderAdmin(BaseOrderAdmin):
+class NyscKitOrderAdmin(OrderItemGenerationAdminMixin, BaseOrderAdmin):
     """Admin for NYSC Kit orders"""
     list_display = BaseOrderAdmin.list_display + ['state', 'local_government']
     list_filter = BaseOrderAdmin.list_filter + ['state']
@@ -142,16 +133,27 @@ class NyscKitOrderAdmin(BaseOrderAdmin):
             'classes': ('wide',),
         }),
     ) + BaseOrderAdmin.fieldsets[2:]
+    
+    # ✅ ADDED: PDF generation context method
+    def get_pdf_context(self, request):
+        """Provide context for PDF generation"""
+        return get_nysc_kit_pdf_context(self, request)
 
 
+# ✅ UPDATED: Added OrderItemGenerationAdminMixin as first parent
 @admin.register(NyscTourOrder)
-class NyscTourOrderAdmin(BaseOrderAdmin):
+class NyscTourOrderAdmin(OrderItemGenerationAdminMixin, BaseOrderAdmin):
     """Admin for NYSC Tour orders"""
-    pass
+    
+    # ✅ ADDED: PDF generation context method
+    def get_pdf_context(self, request):
+        """Provide context for PDF generation"""
+        return get_nysc_tour_pdf_context(self, request)
 
 
+# ✅ UPDATED: Added OrderItemGenerationAdminMixin as first parent
 @admin.register(ChurchOrder)
-class ChurchOrderAdmin(BaseOrderAdmin):
+class ChurchOrderAdmin(OrderItemGenerationAdminMixin, BaseOrderAdmin):
     """Admin for Church orders"""
     list_display = BaseOrderAdmin.list_display + ['pickup_on_camp', 'delivery_location']
     list_filter = BaseOrderAdmin.list_filter + ['pickup_on_camp', 'delivery_state']
@@ -171,6 +173,11 @@ class ChurchOrderAdmin(BaseOrderAdmin):
             )
         return f"{obj.delivery_state}, {obj.delivery_lga}"
     delivery_location.short_description = 'Delivery'
+    
+    # ✅ ADDED: PDF generation context method
+    def get_pdf_context(self, request):
+        """Provide context for PDF generation"""
+        return get_church_pdf_context(self, request)
 
 
 # Unregister BaseOrder from admin (we only want specific order types)

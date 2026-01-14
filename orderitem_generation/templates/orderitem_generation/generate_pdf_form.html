@@ -1,0 +1,144 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <style>
+        .form-container {
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 30px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-container h1 {
+            color: #064E3B;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 25px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .form-group select:focus {
+            outline: none;
+            border-color: #064E3B;
+        }
+        .btn-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+        .btn-primary {
+            background-color: #064E3B;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #053a2b;
+        }
+        .btn-secondary {
+            background-color: #F59E0B;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #d97706;
+        }
+        .help-text {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #FFFBEB;
+            border-left: 4px solid #F59E0B;
+            border-radius: 4px;
+        }
+        .help-text h3 {
+            color: #064E3B;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .help-text ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .help-text li {
+            margin-bottom: 8px;
+            color: #666;
+        }
+    </style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Home</a>
+    &rsaquo; <a href="{% url 'admin:'|add:opts.app_label|add:'_'|add:opts.model_name|add:'_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+    &rsaquo; Generate PDF Report
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h1>{{ title }}</h1>
+    
+    <form method="post" action="">
+        {% csrf_token %}
+        
+        <input type="hidden" name="pdf_type" value="{{ pdf_type }}">
+        
+        <div class="form-group">
+            <label for="filter_value">{{ filter_label }}</label>
+            <select name="filter_value" id="filter_value" required>
+                <option value="">-- Select --</option>
+                {% for value, display in filter_choices %}
+                    <option value="{{ value }}">{{ display }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="btn-container">
+            <button type="submit" class="btn btn-primary">
+                📄 Generate PDF
+            </button>
+            <a href="{% url 'admin:'|add:opts.app_label|add:'_'|add:opts.model_name|add:'_changelist' %}" class="btn btn-secondary">
+                Cancel
+            </a>
+        </div>
+    </form>
+    
+    <div class="help-text">
+        <h3>ℹ️ How it works:</h3>
+        <ul>
+            <li>Select a filter value from the dropdown above</li>
+            <li>Click "Generate PDF" to create the report</li>
+            <li>The PDF will be automatically downloaded to your device</li>
+            <li>The PDF is also uploaded to Cloudinary for backup</li>
+            <li>Only paid orders will be included in the report</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

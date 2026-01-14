@@ -1,80 +1,134 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ state }}</title>
+    <meta charset="utf-8">
+    <title>NYSC Tour Orders - {{ state }}</title>
     <style>
-        @page {
-            size: A4;
-            margin: 1cm;
-        }
+        @page { size: A4; margin: 1cm; }
         body {
             font-family: Arial, sans-serif;
             font-size: 10pt;
-            line-height: 1.3;
-            margin: 0;
-            padding: 0;
+            line-height: 1.4;
         }
-        h1, h2 {
-            color: #333;
-            margin-top: 20px;
-            margin-bottom: 10px;
+        .header {
             text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #064E3B;
+        }
+        .header h1 {
+            color: #064E3B;
+            margin: 5px 0;
+        }
+        .header .subtitle {
+            color: #F59E0B;
+            font-weight: bold;
+            font-size: 12pt;
+        }
+        .summary {
+            background-color: #FFFBEB;
+            border: 2px solid #F59E0B;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+        .summary-item {
+            text-align: center;
+        }
+        .summary-label {
+            color: #064E3B;
+            font-weight: bold;
+            font-size: 9pt;
+            margin-bottom: 5px;
+        }
+        .summary-value {
+            color: #F59E0B;
+            font-size: 20pt;
+            font-weight: bold;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
         }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 4px;
+        table th {
+            background-color: #064E3B;
+            color: white;
+            padding: 10px;
             text-align: left;
-            font-size: 8pt;
+            font-weight: bold;
+        }
+        table td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        table tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 2px solid #064E3B;
             text-align: center;
-        }
-        th {
-            background-color: #f2f2f2;
-            font-weight: bold;
-        }
-        tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-        .summary-footer td {
-            font-weight: bold;
-            background-color: #e6e6e6;
+            font-size: 9pt;
+            color: #666;
         }
     </style>
 </head>
-
 <body>
-    <h1>{{ state|upper }} - Order Details</h1>
+    <div class="header">
+        <h1>NYSC TOUR ORDERS REPORT</h1>
+        <div class="subtitle">State: {{ state }}</div>
+    </div>
+
+    <div class="summary">
+        <div class="summary-item">
+            <div class="summary-label">Total Orders</div>
+            <div class="summary-value">{{ total_orders }}</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-label">Total Participants</div>
+            <div class="summary-value">{{ total_participants }}</div>
+        </div>
+    </div>
 
     <table>
         <thead>
             <tr>
-                <th>S/N</th>
-                <th>Name</th>
-                <th>Call Up Number</th>
+                <th style="width: 5%;">#</th>
+                <th style="width: 25%;">Full Name</th>
+                <th style="width: 15%;">Call-up Number</th>
+                <th style="width: 15%;">LGA</th>
+                <th style="width: 20%;">Tour Package</th>
+                <th style="width: 10%;">Participants</th>
+                <th style="width: 10%;">Amount Paid</th>
             </tr>
         </thead>
         <tbody>
-            {% for order_item in order_items %}
+            {% for item in tour_orders %}
             <tr>
-                <td>{{ forloop.counter }}</td>
-                <td>{{order_item.order.last_name|upper}} {{order_item.order.middle_name|upper}} {{order_item.order.first_name|upper}}</td>
-                <td>{{order_item.extra_fields.call_up_number}}</td>
+                <td>{{ item.sn }}</td>
+                <td>{{ item.full_name }}</td>
+                <td>{{ item.call_up_number }}</td>
+                <td>{{ item.lga }}</td>
+                <td>{{ item.product }}</td>
+                <td style="text-align: center;"><strong>{{ item.quantity }}</strong></td>
+                <td>₦{{ item.amount|floatformat:2 }}</td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="7" style="text-align: center;">No orders available.</td>
+                <td colspan="7" style="text-align: center; color: #999;">No tour orders found for this state</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 
+    <div class="footer">
+        <p><strong>JMW Accessories - NYSC Tour Orders Report</strong></p>
+        <p>Generated: {% now "F d, Y g:i A" %}</p>
+        <p style="margin-top: 5px;"><em>Total Participants = Sum of all quantity values (representing number of people in each tour)</em></p>
+    </div>
 </body>
-
 </html>

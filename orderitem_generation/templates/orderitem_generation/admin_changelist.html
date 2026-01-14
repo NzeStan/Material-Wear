@@ -1,0 +1,10 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+    <li>
+        <a href="{% url opts|lower|add:'_generate_pdf' %}" class="button" style="background-color: #064E3B; color: white;">
+            📄 Generate PDF Report
+        </a>
+    </li>
+{% endblock %}
