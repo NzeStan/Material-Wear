@@ -144,22 +144,25 @@ class NyscTourPDFView(views.APIView):
     )
     def get(self, request):
         state = request.query_params.get('state')
-        
+
         if not state:
             return Response({
                 'error': 'State parameter is required'
             }, status=status.HTTP_400_BAD_REQUEST)
-        
+
         # Get ContentType for NyscTour
         nysc_tour_type = ContentType.objects.get_for_model(NyscTour)
-        
+
+        # Get NyscTour products for this state
+        tour_ids = NyscTour.objects.filter(name=state).values_list('id', flat=True)
+
         # Get order items
         order_items = OrderItem.objects.select_related(
             'order', 'content_type'
         ).filter(
             order__paid=True,
             content_type=nysc_tour_type,
-            product__name=state
+            object_id__in=tour_ids
         ).order_by('order__created')
         
         if not order_items.exists():

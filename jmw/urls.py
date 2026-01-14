@@ -40,7 +40,7 @@ urlpatterns = [
 
     # Local apps (API)
     path("api/products/", include("products.urls", namespace="products")),
-    path("cart/", include("cart.urls", namespace="cart")),
+    path("api/cart/", include("cart.urls", namespace="cart")),
     path("api/measurement/", include("measurement.urls", namespace="measurement")),
     path("api/feed/", include("feed.urls", namespace="feed")),
     path("api/order/", include("order.urls", namespace="order")),

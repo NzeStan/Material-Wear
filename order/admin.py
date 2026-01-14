@@ -31,10 +31,10 @@ class OrderItemInline(admin.TabularInline):
     
     def item_cost(self, obj):
         """Display total cost for this item"""
-        cost = obj.get_cost()
+        cost = float(obj.get_cost()) if obj.get_cost() else 0
         return format_html(
-            '<span style="color: #064E3B; font-weight: bold;">₦{:,.2f}</span>',
-            cost
+            '<span style="color: #064E3B; font-weight: bold;">₦{}</span>',
+            f"{cost:,.2f}"
         )
     item_cost.short_description = 'Total'
 
@@ -105,9 +105,10 @@ class BaseOrderAdmin(admin.ModelAdmin):
     
     def total_cost_display(self, obj):
         """Display total cost with formatting"""
+        cost = float(obj.total_cost) if obj.total_cost else 0
         return format_html(
-            '<span style="color: #064E3B; font-weight: bold; font-size: 14px;">₦{:,.2f}</span>',
-            obj.total_cost if obj.total_cost else 0
+            '<span style="color: #064E3B; font-weight: bold; font-size: 14px;">₦{}</span>',
+            f"{cost:,.2f}"
         )
     total_cost_display.short_description = 'Total'
     

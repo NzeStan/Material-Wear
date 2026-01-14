@@ -117,8 +117,7 @@ def generate_order_confirmation_pdf_task(order_id):
         from order.receipt_utils import generate_and_store_order_confirmation
 
         order = BaseOrder.objects.select_related('user').prefetch_related(
-            'items__content_type',
-            'items__content_object'
+            'items__content_type'
         ).get(id=order_id)
 
         # Generate PDF and store in Cloudinary
@@ -213,8 +212,7 @@ def generate_payment_receipt_pdf_task(payment_id):
 
         payment = PaymentTransaction.objects.prefetch_related(
             'orders',
-            'orders__items__content_type',
-            'orders__items__content_object'
+            'orders__items__content_type'
         ).get(id=payment_id)
 
         # Generate PDF and store in Cloudinary

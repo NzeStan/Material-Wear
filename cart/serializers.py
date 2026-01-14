@@ -166,4 +166,12 @@ class CartSerializer(serializers.Serializer):
     items = CartItemSerializer(many=True, read_only=True)
     total_items = serializers.IntegerField(read_only=True)
     total_cost = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
-    grouped_by_type = serializers.DictField(read_only=True)
+    grouped_by_type = serializers.SerializerMethodField()
+
+    def get_grouped_by_type(self, obj):
+        """Serialize grouped items by product type"""
+        grouped = obj.get('grouped_by_type', {})
+        result = {}
+        for product_type, items in grouped.items():
+            result[product_type] = CartItemSerializer(items, many=True).data
+        return result

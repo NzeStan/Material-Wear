@@ -10,3 +10,4 @@ sent_emails
 logs
 .env
 media/
+cookies.txt

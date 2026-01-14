@@ -1,10 +1,10 @@
 import uuid
 from django.db import models
-from django.core.validators import RegexValidator, MinValueValidator
+from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from  . validators import validate_phone_number, validate_state_code
+from  . validators import validate_phone_number
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -34,7 +34,7 @@ class BaseOrder(models.Model):
         ordering = ["-created"]
 
     def __init__(self, *args, **kwargs):
-        user = kwargs.pop("user", None)
+        user = kwargs.get("user", None)
         super(BaseOrder, self).__init__(*args, **kwargs)
         if user:
             self.email = user.email
@@ -75,7 +75,7 @@ class NyscKitOrder(BaseOrder):
     local_government = models.CharField(max_length=100)
 
     def save(self, *args, **kwargs):
-        self.state_code = self.state_code.upper()
+        self.call_up_number = self.call_up_number.upper()
         super().save(*args, **kwargs)
 
     class Meta:
