@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.http import HttpResponse
 from django.urls import path
 from django.template.response import TemplateResponse
+from django.contrib.contenttypes.models import ContentType
 from products.constants import STATES, CHURCH_CHOICES
 from .api_views import (
     NyscKitPDFView, 
@@ -137,13 +138,25 @@ def get_nysc_tour_pdf_context(admin_instance, request):
     """
     Get context for NYSC Tour PDF generation form
     Use this in NyscTourOrderAdmin.get_pdf_context()
-    """
-    from order.models import NyscTourOrder
     
-    # Get states that have orders
-    states_with_orders = NyscTourOrder.objects.filter(
-        paid=True
-    ).values_list('state', flat=True).distinct().order_by('state')
+    NOTE: NyscTourOrder has NO state field - we get states through products
+    """
+    from order.models import OrderItem
+    from products.models import NyscTour
+    
+    # ✅ FIXED: Get states through product names (NyscTour.name = state)
+    tour_type = ContentType.objects.get_for_model(NyscTour)
+    
+    # Get tour product IDs that have paid orders
+    tour_product_ids = OrderItem.objects.filter(
+        order__paid=True,
+        content_type=tour_type
+    ).values_list('object_id', flat=True).distinct()
+    
+    # Get state names from these products
+    states_with_orders = NyscTour.objects.filter(
+        id__in=tour_product_ids
+    ).values_list('name', flat=True).distinct().order_by('name')
     
     return {
         'title': 'Generate NYSC Tour Orders PDF',
@@ -159,7 +172,6 @@ def get_church_pdf_context(admin_instance, request):
     Get context for Church PDF generation form
     Use this in ChurchOrderAdmin.get_pdf_context()
     """
-    from django.contrib.contenttypes.models import ContentType
     from order.models import OrderItem
     from products.models import Church
     

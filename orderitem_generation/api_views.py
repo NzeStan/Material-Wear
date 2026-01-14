@@ -199,6 +199,7 @@ class NyscKitPDFView(views.APIView):
 class NyscTourPDFView(views.APIView):
     """
     Generate PDF report for NYSC Tour orders by state
+    NOTE: NyscTourOrder has NO state field - state is in product name
     """
     permission_classes = [permissions.IsAdminUser]
     
@@ -229,14 +230,24 @@ class NyscTourPDFView(views.APIView):
         # Get ContentType for NyscTour
         tour_type = ContentType.objects.get_for_model(NyscTour)
         
-        # Get order items
+        # ✅ FIXED: NyscTourOrder has NO state field
+        # State is in the product name (NyscTour.name = state name)
+        # Get tour products for this state
+        tour_products = NyscTour.objects.filter(name=state).values_list('id', flat=True)
+        
+        if not tour_products:
+            return Response({
+                'error': f'No tour products found for {state}'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Get order items for these products
         order_items = OrderItem.objects.select_related(
-            'order', 'content_type', 'order__nysctourorder'
+            'order', 'content_type'
         ).filter(
             order__paid=True,
-            order__nysctourorder__state=state,
-            content_type=tour_type
-        ).order_by('order__nysctourorder__local_government')
+            content_type=tour_type,
+            object_id__in=tour_products
+        ).order_by('order__created')
         
         if not order_items.exists():
             return Response({
@@ -253,15 +264,14 @@ class NyscTourPDFView(views.APIView):
                 continue
                 
             order = order_item.order
-            tour_order = order.nysctourorder
             
             full_name = f"{order.last_name} {order.middle_name} {order.first_name}".strip().upper()
             
             tour_orders.append({
                 'sn': counter,
                 'full_name': full_name,
-                'call_up_number': tour_order.call_up_number,
-                'lga': tour_order.local_government,
+                'email': order.email,
+                'phone': order.phone_number,
                 'product': order_item.product.name,
                 'quantity': order_item.quantity,
                 'amount': order_item.price * order_item.quantity
@@ -479,10 +489,16 @@ class AvailableStatesView(views.APIView):
             paid=True
         ).values_list('state', flat=True).distinct()
         
-        # Get states with NYSC Tour orders
-        nysc_tour_states = NyscTourOrder.objects.filter(
-            paid=True
-        ).values_list('state', flat=True).distinct()
+        # ✅ FIXED: Get states with NYSC Tour orders through product name
+        tour_type = ContentType.objects.get_for_model(NyscTour)
+        nysc_tour_product_ids = OrderItem.objects.filter(
+            order__paid=True,
+            content_type=tour_type
+        ).values_list('object_id', flat=True).distinct()
+        
+        nysc_tour_states = NyscTour.objects.filter(
+            id__in=nysc_tour_product_ids
+        ).values_list('name', flat=True).distinct()
         
         # Get churches with orders
         church_type = ContentType.objects.get_for_model(Church)

@@ -75,6 +75,13 @@
             font-size: 9pt;
             color: #666;
         }
+        .note {
+            background-color: #FEF3C7;
+            border-left: 4px solid #F59E0B;
+            padding: 10px;
+            margin-top: 15px;
+            font-size: 9pt;
+        }
     </style>
 </head>
 <body>
@@ -98,12 +105,11 @@
         <thead>
             <tr>
                 <th style="width: 5%;">#</th>
-                <th style="width: 25%;">Full Name</th>
-                <th style="width: 15%;">Call-up Number</th>
-                <th style="width: 15%;">LGA</th>
-                <th style="width: 20%;">Tour Package</th>
-                <th style="width: 10%;">Participants</th>
-                <th style="width: 10%;">Amount Paid</th>
+                <th style="width: 30%;">Full Name</th>
+                <th style="width: 20%;">Email</th>
+                <th style="width: 15%;">Phone</th>
+                <th style="width: 15%;">Participants</th>
+                <th style="width: 15%;">Amount Paid</th>
             </tr>
         </thead>
         <tbody>
@@ -111,19 +117,23 @@
             <tr>
                 <td>{{ item.sn }}</td>
                 <td>{{ item.full_name }}</td>
-                <td>{{ item.call_up_number }}</td>
-                <td>{{ item.lga }}</td>
-                <td>{{ item.product }}</td>
+                <td>{{ item.email }}</td>
+                <td>{{ item.phone }}</td>
                 <td style="text-align: center;"><strong>{{ item.quantity }}</strong></td>
                 <td>₦{{ item.amount|floatformat:2 }}</td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="7" style="text-align: center; color: #999;">No tour orders found for this state</td>
+                <td colspan="6" style="text-align: center; color: #999;">No tour orders found for this state</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+
+    <div class="note">
+        <strong>Note:</strong> NyscTourOrder stores basic customer information (name, email, phone) inherited from BaseOrder. 
+        Additional details like call-up numbers are stored in the cart items' extra_fields if needed.
+    </div>
 
     <div class="footer">
         <p><strong>JMW Accessories - NYSC Tour Orders Report</strong></p>
