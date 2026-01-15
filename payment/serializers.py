@@ -13,9 +13,9 @@ class PaymentTransactionSerializer(serializers.ModelSerializer):
         model = PaymentTransaction
         fields = [
             'id', 'reference', 'amount', 'email', 'status', 
-            'created', 'updated', 'orders', 'order_count'
+            'created', 'modified', 'orders', 'order_count'  # ✅ FIXED: updated → modified
         ]
-        read_only_fields = ['id', 'reference', 'created', 'updated']
+        read_only_fields = ['id', 'reference', 'created', 'modified']  # ✅ FIXED: updated → modified
     
     def get_order_count(self, obj):
         """Get count of orders in this payment"""

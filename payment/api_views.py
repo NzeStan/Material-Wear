@@ -118,7 +118,7 @@ class VerifyPaymentView(views.APIView):
     Verify payment status
     Called after user completes payment on Paystack
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     
     @extend_schema(
         description="Verify payment status using reference",
