@@ -86,6 +86,7 @@ class CheckoutView(views.APIView):
                         'middle_name': validated_data.get('middle_name', ''),
                         'last_name': validated_data['last_name'],
                         'phone_number': validated_data['phone_number'],
+                        'paid': False,  # ✅ EXPLICITLY SET TO FALSE
                     }
                     
                     # Add product-specific fields
@@ -136,9 +137,10 @@ class CheckoutView(views.APIView):
                 cart.clear()
                 
                 # Send order confirmation emails asynchronously
+                # ✅ PASS THE ACTUAL ORDER TYPE, NOT STRING ID
                 for order in orders_created:
-                    send_order_confirmation_email_async(str(order.id))
-                    generate_order_confirmation_pdf_task(str(order.id))
+                    send_order_confirmation_email_async(str(order.id), order.__class__.__name__)
+                    generate_order_confirmation_pdf_task(str(order.id), order.__class__.__name__)
                 
                 # Return created orders
                 order_ids = [str(order.id) for order in orders_created]
@@ -153,7 +155,8 @@ class CheckoutView(views.APIView):
                             'id': str(order.id),
                             'serial_number': order.serial_number,
                             'type': order.__class__.__name__,
-                            'total_cost': float(order.total_cost)
+                            'total_cost': float(order.total_cost),
+                            'paid': order.paid  # ✅ INCLUDE PAID STATUS
                         }
                         for order in orders_created
                     ]
@@ -179,14 +182,22 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
-        """Get orders for authenticated user with optimization"""
-        # Use select_subclasses to get all order types in single query
-        return BaseOrder.objects.filter(
+        """
+        ✅ FIXED: Get orders for authenticated user with polymorphic type selection
+        Uses select_related to fetch the specific order type (Church/NyscKit/NyscTour)
+        """
+        base_queryset = BaseOrder.objects.filter(
             user=self.request.user
         ).prefetch_related(
             'items',
             'items__content_type'
+        ).select_related(
+            'churchorder',  # ✅ Fetch ChurchOrder relationship
+            'nysckitorder',  # ✅ Fetch NyscKitOrder relationship
+            'nysctourorder'  # ✅ Fetch NyscTourOrder relationship
         ).order_by('-created')
+        
+        return base_queryset
     
     def get_serializer_class(self):
         """Return appropriate serializer based on order type"""
@@ -197,30 +208,65 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         if hasattr(self, 'get_object'):
             try:
                 obj = self.get_object()
-                if isinstance(obj, NyscKitOrder):
+                # ✅ FIXED: Get actual polymorphic type
+                actual_type = self._get_actual_order_type(obj)
+                
+                if actual_type == 'NyscKitOrder':
                     return NyscKitOrderSerializer
-                elif isinstance(obj, NyscTourOrder):
+                elif actual_type == 'NyscTourOrder':
                     return NyscTourOrderSerializer
-                elif isinstance(obj, ChurchOrder):
+                elif actual_type == 'ChurchOrder':
                     return ChurchOrderSerializer
             except:
                 pass
         
         return BaseOrderSerializer
     
+    def _get_actual_order_type(self, order):
+        """
+        ✅ NEW: Helper method to determine the actual polymorphic order type
+        """
+        # Check if this is a specific order type
+        if hasattr(order, 'churchorder'):
+            return 'ChurchOrder'
+        elif hasattr(order, 'nysckitorder'):
+            return 'NyscKitOrder'
+        elif hasattr(order, 'nysctourorder'):
+            return 'NyscTourOrder'
+        return 'BaseOrder'
+    
+    def _get_actual_order_instance(self, order):
+        """
+        ✅ NEW: Helper method to get the actual polymorphic instance
+        """
+        # Return the specific order instance
+        if hasattr(order, 'churchorder'):
+            return order.churchorder
+        elif hasattr(order, 'nysckitorder'):
+            return order.nysckitorder
+        elif hasattr(order, 'nysctourorder'):
+            return order.nysctourorder
+        return order
+    
     def list(self, request, *args, **kwargs):
-        """List orders with lightweight serialization"""
+        """
+        ✅ FIXED: List orders with correct polymorphic types
+        """
         queryset = self.get_queryset()
         
-        # Build lightweight response
+        # Build lightweight response with correct order types
         orders_data = []
         for order in queryset:
+            # Get the actual polymorphic order type
+            order_type = self._get_actual_order_type(order)
+            actual_order = self._get_actual_order_instance(order)
+            
             orders_data.append({
                 'id': str(order.id),
                 'serial_number': order.serial_number,
-                'order_type': order.__class__.__name__,
+                'order_type': order_type,  # ✅ NOW SHOWS CORRECT TYPE
                 'total_cost': float(order.total_cost),
-                'paid': order.paid,
+                'paid': order.paid,  # ✅ SHOWS ACTUAL PAID STATUS
                 'created': order.created,
                 'item_count': order.items.count()
             })
@@ -228,15 +274,30 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = OrderListSerializer(orders_data, many=True)
         return Response(serializer.data)
     
+    def retrieve(self, request, *args, **kwargs):
+        """
+        ✅ FIXED: Retrieve specific order with correct type
+        """
+        instance = self.get_object()
+        
+        # Get the actual polymorphic instance
+        actual_instance = self._get_actual_order_instance(instance)
+        
+        # Get the correct serializer for this order type
+        serializer_class = self.get_serializer_class()
+        serializer = serializer_class(actual_instance, context={'request': request})
+        
+        return Response(serializer.data)
+    
     @action(detail=True, methods=['get'])
     def receipt(self, request, pk=None):
         """Get order receipt/confirmation"""
         order = self.get_object()
+        actual_order = self._get_actual_order_instance(order)
         
-        # Here you would generate and return the receipt
-        # For now, return order details
+        # Get correct serializer
         serializer_class = self.get_serializer_class()
-        serializer = serializer_class(order, context={'request': request})
+        serializer = serializer_class(actual_order, context={'request': request})
         
         return Response({
             'order': serializer.data,
