@@ -1,6 +1,6 @@
 # orderitem_generation/admin.py
 from django.contrib import messages
-from django.http import HttpResponse
+from django.http import HttpResponse, QueryDict  # ✅ ADDED QueryDict import
 from django.urls import path
 from django.template.response import TemplateResponse
 from django.contrib.contenttypes.models import ContentType
@@ -53,20 +53,23 @@ class OrderItemGenerationAdminMixin:
             
             # Call appropriate PDF view based on type
             try:
+                # ✅ FIX: Create mutable QueryDict for GET params
+                query_params = QueryDict('', mutable=True)
+                
                 if pdf_type == 'nysc_kit':
+                    query_params['state'] = filter_value
+                    request.GET = query_params  # ✅ FIX: Replace with mutable version
                     view = NyscKitPDFView.as_view()
-                    request.GET = request.GET.copy()
-                    request.GET['state'] = filter_value
                     
                 elif pdf_type == 'nysc_tour':
+                    query_params['state'] = filter_value
+                    request.GET = query_params  # ✅ FIX: Replace with mutable version
                     view = NyscTourPDFView.as_view()
-                    request.GET = request.GET.copy()
-                    request.GET['state'] = filter_value
                     
                 elif pdf_type == 'church':
+                    query_params['church'] = filter_value
+                    request.GET = query_params  # ✅ FIX: Replace with mutable version
                     view = ChurchPDFView.as_view()
-                    request.GET = request.GET.copy()
-                    request.GET['church'] = filter_value
                     
                 else:
                     messages.error(request, 'Invalid PDF type.')
@@ -83,7 +86,7 @@ class OrderItemGenerationAdminMixin:
                     return self._redirect_to_changelist(request)
                     
             except Exception as e:
-                logger.error(f"Error generating PDF: {str(e)}")
+                logger.error(f"Error generating PDF: {str(e)}", exc_info=True)
                 messages.error(request, f'Error generating PDF: {str(e)}')
                 return self._redirect_to_changelist(request)
         
@@ -177,10 +180,18 @@ def get_church_pdf_context(admin_instance, request):
     
     # Get churches that have orders
     church_type = ContentType.objects.get_for_model(Church)
-    churches_with_orders = OrderItem.objects.filter(
+    
+    # ✅ FIX: Can't use product__church because product is GenericForeignKey
+    # Step 1: Get Church product IDs from OrderItems
+    church_product_ids = OrderItem.objects.filter(
         order__paid=True,
         content_type=church_type
-    ).values_list('product__church', flat=True).distinct().order_by('product__church')
+    ).values_list('object_id', flat=True).distinct()
+    
+    # Step 2: Query Church model directly to get church values
+    churches_with_orders = Church.objects.filter(
+        id__in=church_product_ids
+    ).values_list('church', flat=True).distinct().order_by('church')
     
     # Get church display names
     church_dict = dict(CHURCH_CHOICES)
