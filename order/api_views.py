@@ -52,8 +52,10 @@ class CheckoutView(views.APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
         validated_data = serializer.validated_data
+        orders_created = []
         
         try:
+            # ✅ Transaction block for database operations only
             with transaction.atomic():
                 # Group cart items by product type
                 grouped_items = {}
@@ -70,18 +72,18 @@ class CheckoutView(views.APIView):
                     'Church': ChurchOrder,
                 }
                 
-                orders_created = []
-                
                 # Create separate order for each product type
                 for product_type, items in grouped_items.items():
                     order_model = order_type_map.get(product_type)
+                    
                     if not order_model:
+                        logger.warning(f"Unknown product type: {product_type}")
                         continue
                     
                     # Base order data
                     order_data = {
                         'user': request.user,
-                        'email': request.user.email,
+                        'email': request.user.email,  # ✅ FIX: Get from request.user
                         'first_name': validated_data['first_name'],
                         'middle_name': validated_data.get('middle_name', ''),
                         'last_name': validated_data['last_name'],
@@ -102,6 +104,7 @@ class CheckoutView(views.APIView):
                             'delivery_state': validated_data.get('delivery_state', ''),
                             'delivery_lga': validated_data.get('delivery_lga', ''),
                         })
+                    # NyscTour doesn't need additional fields beyond base order data
                     
                     # Create order
                     order = order_model.objects.create(**order_data)
@@ -135,39 +138,38 @@ class CheckoutView(views.APIView):
                 
                 # Clear cart
                 cart.clear()
-                
-                # Send order confirmation emails asynchronously
-                # ✅ PASS THE ACTUAL ORDER TYPE, NOT STRING ID
-                for order in orders_created:
-                    send_order_confirmation_email_async(str(order.id), order.__class__.__name__)
-                    generate_order_confirmation_pdf_task(str(order.id), order.__class__.__name__)
-                
-                # Return created orders
-                order_ids = [str(order.id) for order in orders_created]
-                total_amount = sum(order.total_cost for order in orders_created)
-                
-                return Response({
-                    'message': f'{len(orders_created)} order(s) created successfully',
-                    'order_ids': order_ids,
-                    'total_amount': float(total_amount),
-                    'orders': [
-                        {
-                            'id': str(order.id),
-                            'serial_number': order.serial_number,
-                            'type': order.__class__.__name__,
-                            'total_cost': float(order.total_cost),
-                            'paid': order.paid  # ✅ INCLUDE PAID STATUS
-                        }
-                        for order in orders_created
-                    ]
-                }, status=status.HTTP_201_CREATED)
-                
+            
+            # ✅ CRITICAL FIX: Send emails AFTER transaction commits
+            # Now the orders definitely exist in the database
+            for order in orders_created:
+                send_order_confirmation_email_async(str(order.id))
+                generate_order_confirmation_pdf_task(str(order.id))
+            
+            # Return created orders
+            order_ids = [str(order.id) for order in orders_created]
+            total_amount = sum(order.total_cost for order in orders_created)
+            
+            return Response({
+                'message': f'{len(orders_created)} order(s) created successfully',
+                'order_ids': order_ids,
+                'total_amount': float(total_amount),
+                'orders': [
+                    {
+                        'id': str(order.id),
+                        'serial_number': order.serial_number,
+                        'type': order.__class__.__name__,
+                        'total_cost': float(order.total_cost),
+                        'paid': order.paid
+                    }
+                    for order in orders_created
+                ]
+            }, status=status.HTTP_201_CREATED)
+            
         except Exception as e:
             logger.exception("Error during checkout")
             return Response({
                 'error': 'An error occurred while processing your order. Please try again.'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 @extend_schema_view(
     list=extend_schema(description="List all orders for authenticated user"),
