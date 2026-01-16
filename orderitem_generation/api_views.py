@@ -1,4 +1,8 @@
 # orderitem_generation/api_views.py
+"""
+API views for generating order PDFs by state/church
+Handles NYSC Kit, NYSC Tour, and Church orders with proper measurement handling
+"""
 from rest_framework import views, status, permissions
 from rest_framework.response import Response
 from django.http import HttpResponse
@@ -13,7 +17,6 @@ from products.models import NyscKit, NyscTour, Church
 from products.constants import STATES, CHURCH_CHOICES
 from collections import defaultdict
 import logging
-import io
 import cloudinary
 import cloudinary.uploader
 from django.utils import timezone
@@ -23,14 +26,14 @@ logger = logging.getLogger(__name__)
 
 def upload_pdf_to_cloudinary(pdf_bytes, filename):
     """
-    Upload PDF to Cloudinary
+    Upload PDF to Cloudinary for backup/storage
     
     Args:
         pdf_bytes: PDF content as bytes
         filename: Desired filename
         
     Returns:
-        str: Cloudinary URL
+        str: Cloudinary URL or None if upload fails
     """
     try:
         result = cloudinary.uploader.upload(
@@ -51,12 +54,13 @@ def upload_pdf_to_cloudinary(pdf_bytes, filename):
 class NyscKitPDFView(views.APIView):
     """
     Generate PDF report for NYSC Kit orders by state
-    Includes measurements for kakhi orders
+    Includes ALL measurement fields for kakhi orders
+    Downloads directly to user's device
     """
     permission_classes = [permissions.IsAdminUser]
     
     @extend_schema(
-        description="Generate PDF report for NYSC Kit orders filtered by state",
+        description="Generate PDF report for NYSC Kit orders filtered by state (downloads to device)",
         parameters=[
             OpenApiParameter(
                 name='state',
@@ -67,7 +71,7 @@ class NyscKitPDFView(views.APIView):
             ),
         ],
         responses={
-            200: {'description': 'PDF file'},
+            200: {'description': 'PDF file downloaded to device'},
             400: {'description': 'Invalid state or no orders found'}
         }
     )
@@ -80,23 +84,20 @@ class NyscKitPDFView(views.APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
         
         # Get ContentType for NyscKit
-        nysc_kit_type = ContentType.objects.get_for_model(NyscKit)
+        kit_type = ContentType.objects.get_for_model(NyscKit)
         
-        # Get all order items for this state
-        order_items = OrderItem.objects.select_related(
-            'order', 'content_type', 'order__nysckitorder'
-        ).filter(
-            order__paid=True,
-            order__nysckitorder__state=state,
-            content_type=nysc_kit_type
-        ).order_by('order__nysckitorder__local_government')
+        # Get all NYSC Kit orders for this state
+        nysc_orders = NyscKitOrder.objects.filter(
+            state=state,
+            paid=True
+        ).select_related('baseorder_ptr').prefetch_related('items')
         
-        if not order_items.exists():
+        if not nysc_orders.exists():
             return Response({
                 'error': f'No paid orders found for {state}'
             }, status=status.HTTP_404_NOT_FOUND)
         
-        # Separate orders by product type
+        # Build data for template - separate by product type
         kakhi_orders = []
         vest_orders = []
         cap_orders = []
@@ -105,57 +106,63 @@ class NyscKitPDFView(views.APIView):
         vest_counter = 1
         cap_counter = 1
         
-        for order_item in order_items:
-            if not order_item.product:
-                continue
+        for nysc_order in nysc_orders:
+            order = nysc_order.baseorder_ptr
+            
+            # Get all order items for this order
+            for order_item in order.items.filter(content_type=kit_type):
+                if not order_item.product:
+                    continue
                 
-            product = order_item.product
-            order = order_item.order
-            nysc_order = order.nysckitorder
-            
-            full_name = f"{order.last_name} {order.middle_name} {order.first_name}".strip().upper()
-            
-            if product.type == 'kakhi':
-                # Get measurement if exists
+                product = order_item.product
+                full_name = f"{order.last_name} {order.middle_name} {order.first_name}".strip().upper()
+                
+                # Get measurement if it exists
+                measurement_id = order_item.extra_fields.get('measurement_id')
                 measurement = None
-                try:
-                    measurement = Measurement.objects.filter(user=order.user).first()
-                except:
-                    pass
                 
-                kakhi_orders.append({
-                    'sn': kakhi_counter,
-                    'full_name': full_name,
-                    'call_up_number': nysc_order.call_up_number,
-                    'lga': nysc_order.local_government,
-                    'quantity': order_item.quantity,
-                    'measurement': measurement
-                })
-                kakhi_counter += 1
+                if measurement_id:
+                    try:
+                        measurement = Measurement.objects.get(id=measurement_id)
+                    except Measurement.DoesNotExist:
+                        logger.warning(f"Measurement {measurement_id} not found for order {order.id}")
                 
-            elif product.type == 'vest':
-                vest_orders.append({
-                    'sn': vest_counter,
-                    'full_name': full_name,
-                    'call_up_number': nysc_order.call_up_number,
-                    'lga': nysc_order.local_government,
-                    'size': order_item.extra_fields.get('size', 'N/A'),
-                    'quantity': order_item.quantity,
-                    'product': product.name
-                })
-                vest_counter += 1
-                
-            elif product.type == 'cap':
-                cap_orders.append({
-                    'sn': cap_counter,
-                    'full_name': full_name,
-                    'call_up_number': nysc_order.call_up_number,
-                    'lga': nysc_order.local_government,
-                    'size': order_item.extra_fields.get('size', 'Free Size'),
-                    'quantity': order_item.quantity,
-                    'product': product.name
-                })
-                cap_counter += 1
+                # Separate by product type
+                if product.type == 'kakhi':
+                    kakhi_orders.append({
+                        'sn': kakhi_counter,
+                        'full_name': full_name,
+                        'call_up_number': nysc_order.call_up_number,
+                        'lga': nysc_order.local_government,
+                        'quantity': order_item.quantity,
+                        'product': product.name,
+                        'measurement': measurement  # Pass entire measurement object
+                    })
+                    kakhi_counter += 1
+                    
+                elif product.type == 'vest':
+                    vest_orders.append({
+                        'sn': vest_counter,
+                        'full_name': full_name,
+                        'call_up_number': nysc_order.call_up_number,
+                        'lga': nysc_order.local_government,
+                        'size': order_item.extra_fields.get('size', 'N/A'),
+                        'quantity': order_item.quantity,
+                        'product': product.name
+                    })
+                    vest_counter += 1
+                    
+                elif product.type == 'cap':
+                    cap_orders.append({
+                        'sn': cap_counter,
+                        'full_name': full_name,
+                        'call_up_number': nysc_order.call_up_number,
+                        'lga': nysc_order.local_government,
+                        'size': order_item.extra_fields.get('size', 'Free Size'),
+                        'quantity': order_item.quantity,
+                        'product': product.name
+                    })
+                    cap_counter += 1
         
         # Render template
         context = {
@@ -180,13 +187,14 @@ class NyscKitPDFView(views.APIView):
         # Create filename
         filename = f"NYSC_Kit_Orders_{state}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         
-        # Upload to Cloudinary
+        # Upload to Cloudinary (backup)
         cloudinary_url = upload_pdf_to_cloudinary(pdf_bytes, filename)
         
-        # Return PDF for instant download
+        # CRITICAL: Return PDF for download to user's device
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         
+        # Add cloudinary URL to response headers (for reference)
         if cloudinary_url:
             response['X-Cloudinary-URL'] = cloudinary_url
         
@@ -199,12 +207,12 @@ class NyscKitPDFView(views.APIView):
 class NyscTourPDFView(views.APIView):
     """
     Generate PDF report for NYSC Tour orders by state
-    NOTE: NyscTourOrder has NO state field - state is in product name
+    Downloads directly to user's device
     """
     permission_classes = [permissions.IsAdminUser]
     
     @extend_schema(
-        description="Generate PDF report for NYSC Tour orders filtered by state",
+        description="Generate PDF report for NYSC Tour orders filtered by state (downloads to device)",
         parameters=[
             OpenApiParameter(
                 name='state',
@@ -215,7 +223,7 @@ class NyscTourPDFView(views.APIView):
             ),
         ],
         responses={
-            200: {'description': 'PDF file'},
+            200: {'description': 'PDF file downloaded to device'},
             404: {'description': 'No orders found'}
         }
     )
@@ -230,9 +238,7 @@ class NyscTourPDFView(views.APIView):
         # Get ContentType for NyscTour
         tour_type = ContentType.objects.get_for_model(NyscTour)
         
-        # ✅ FIXED: NyscTourOrder has NO state field
-        # State is in the product name (NyscTour.name = state name)
-        # Get tour products for this state
+        # Get tour products for this state (state is in product name)
         tour_products = NyscTour.objects.filter(name=state).values_list('id', flat=True)
         
         if not tour_products:
@@ -277,7 +283,6 @@ class NyscTourPDFView(views.APIView):
                 'amount': order_item.price * order_item.quantity
             })
             
-            # Total participants is the sum of quantities (each quantity = number of people)
             total_participants += order_item.quantity
             counter += 1
         
@@ -301,10 +306,10 @@ class NyscTourPDFView(views.APIView):
         # Create filename
         filename = f"NYSC_Tour_Orders_{state}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         
-        # Upload to Cloudinary
+        # Upload to Cloudinary (backup)
         cloudinary_url = upload_pdf_to_cloudinary(pdf_bytes, filename)
         
-        # Return PDF for instant download
+        # CRITICAL: Return PDF for download to user's device
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         
@@ -320,11 +325,12 @@ class NyscTourPDFView(views.APIView):
 class ChurchPDFView(views.APIView):
     """
     Generate PDF report for Church orders by church type
+    Downloads directly to user's device
     """
     permission_classes = [permissions.IsAdminUser]
     
     @extend_schema(
-        description="Generate PDF report for Church orders filtered by church",
+        description="Generate PDF report for Church orders filtered by church (downloads to device)",
         parameters=[
             OpenApiParameter(
                 name='church',
@@ -335,7 +341,7 @@ class ChurchPDFView(views.APIView):
             ),
         ],
         responses={
-            200: {'description': 'PDF file'},
+            200: {'description': 'PDF file downloaded to device'},
             404: {'description': 'No orders found'}
         }
     )
@@ -446,17 +452,17 @@ class ChurchPDFView(views.APIView):
         # Create filename
         filename = f"Church_Orders_{church}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         
-        # Upload to Cloudinary
+        # Upload to Cloudinary (backup)
         cloudinary_url = upload_pdf_to_cloudinary(pdf_bytes, filename)
         
-        # Return PDF for instant download
+        # CRITICAL: Return PDF for download to user's device
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         
         if cloudinary_url:
             response['X-Cloudinary-URL'] = cloudinary_url
         
-        logger.info(f"Generated Church PDF for: {church}, Cloudinary: {cloudinary_url}")
+        logger.info(f"Generated Church PDF for church: {church}, Cloudinary: {cloudinary_url}")
         
         return response
 
@@ -464,53 +470,56 @@ class ChurchPDFView(views.APIView):
 @extend_schema(tags=['Order Generation'])
 class AvailableStatesView(views.APIView):
     """
-    Get list of available states and churches for filtering
+    Get available states/churches that have orders
+    Useful for showing only relevant filters in admin
     """
     permission_classes = [permissions.IsAdminUser]
     
     @extend_schema(
-        description="Get list of states and churches that have orders",
+        description="Get list of states/churches that have paid orders",
         responses={
             200: {
                 'type': 'object',
                 'properties': {
-                    'nysc_kit_states': {'type': 'array', 'items': {'type': 'string'}},
-                    'nysc_tour_states': {'type': 'array', 'items': {'type': 'string'}},
-                    'churches': {'type': 'array', 'items': {'type': 'string'}},
-                    'all_states': {'type': 'array', 'items': {'type': 'string'}},
-                    'all_churches': {'type': 'array', 'items': {'type': 'string'}}
+                    'nysc_kit_states': {'type': 'array'},
+                    'nysc_tour_states': {'type': 'array'},
+                    'churches': {'type': 'array'}
                 }
             }
         }
     )
     def get(self, request):
-        # Get states with NYSC Kit orders
+        """Return states/churches with orders"""
+        
+        # NYSC Kit states
         nysc_kit_states = NyscKitOrder.objects.filter(
             paid=True
-        ).values_list('state', flat=True).distinct()
+        ).values_list('state', flat=True).distinct().order_by('state')
         
-        # ✅ FIXED: Get states with NYSC Tour orders through product name
+        # NYSC Tour states (from product names)
         tour_type = ContentType.objects.get_for_model(NyscTour)
-        nysc_tour_product_ids = OrderItem.objects.filter(
+        tour_product_ids = OrderItem.objects.filter(
             order__paid=True,
             content_type=tour_type
         ).values_list('object_id', flat=True).distinct()
         
-        nysc_tour_states = NyscTour.objects.filter(
-            id__in=nysc_tour_product_ids
-        ).values_list('name', flat=True).distinct()
+        tour_states = NyscTour.objects.filter(
+            id__in=tour_product_ids
+        ).values_list('name', flat=True).distinct().order_by('name')
         
-        # Get churches with orders
+        # Churches
         church_type = ContentType.objects.get_for_model(Church)
-        churches_with_orders = OrderItem.objects.filter(
+        church_product_ids = OrderItem.objects.filter(
             order__paid=True,
             content_type=church_type
-        ).values_list('product__church', flat=True).distinct()
+        ).values_list('object_id', flat=True).distinct()
+        
+        churches = Church.objects.filter(
+            id__in=church_product_ids
+        ).values_list('church', flat=True).distinct().order_by('church')
         
         return Response({
-            'nysc_kit_states': list(set(nysc_kit_states)),
-            'nysc_tour_states': list(set(nysc_tour_states)),
-            'churches': list(set(churches_with_orders)),
-            'all_states': [state[0] for state in STATES],
-            'all_churches': [church[0] for church in CHURCH_CHOICES]
+            'nysc_kit_states': list(nysc_kit_states),
+            'nysc_tour_states': list(tour_states),
+            'churches': list(churches)
         })

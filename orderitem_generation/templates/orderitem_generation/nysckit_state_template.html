@@ -64,7 +64,7 @@
         }
         .measurements-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 5px;
             font-size: 8pt;
         }
@@ -76,63 +76,63 @@
         .measurement-label {
             color: #F59E0B;
             font-weight: bold;
-            display: inline-block;
-            width: 120px;
         }
         .footer {
-            margin-top: 20px;
-            padding-top: 10px;
-            border-top: 2px solid #064E3B;
             text-align: center;
-            font-size: 8pt;
-            color: #666;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 2px solid #064E3B;
+            font-size: 9pt;
+        }
+        .no-data {
+            color: #e74c3c;
+            font-style: italic;
+        }
+        .page-break {
+            page-break-after: always;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>NYSC KIT ORDERS REPORT</h1>
-        <div class="subtitle">State: {{ state }}</div>
-        <div>Total Orders: {{ total_kakhis|add:total_vests|add:total_caps }}</div>
+        <h1>JMW ACCESSORIES</h1>
+        <div class="subtitle">NYSC KIT ORDERS REPORT</div>
+        <div>State: <strong>{{ state }}</strong></div>
+        <div>Generated: {% now "F d, Y g:i A" %}</div>
     </div>
 
+    {% if total_kakhis or total_vests or total_caps %}
     <div class="summary">
-        <h3 style="color: #064E3B; margin-top: 0;">Order Summary</h3>
-        <table style="margin-bottom: 0;">
-            <thead>
-                <tr>
-                    <th>Product Type</th>
-                    <th>Total Orders</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><strong>Kakhi</strong></td>
-                    <td>{{ total_kakhis }}</td>
-                </tr>
-                <tr>
-                    <td><strong>Vest</strong></td>
-                    <td>{{ total_vests }}</td>
-                </tr>
-                <tr>
-                    <td><strong>Cap</strong></td>
-                    <td>{{ total_caps }}</td>
-                </tr>
-            </tbody>
-        </table>
+        <h3 style="margin-top: 0; color: #064E3B;">ORDER SUMMARY</h3>
+        <div style="display: flex; justify-content: space-around;">
+            <div>
+                <strong>Kakhi Orders:</strong> {{ total_kakhis }}
+            </div>
+            <div>
+                <strong>Vest Orders:</strong> {{ total_vests }}
+            </div>
+            <div>
+                <strong>Cap Orders:</strong> {{ total_caps }}
+            </div>
+            <div>
+                <strong>Total Orders:</strong> {{ total_kakhis|add:total_vests|add:total_caps }}
+            </div>
+        </div>
     </div>
+    {% endif %}
 
     {% if kakhi_orders %}
-    <div class="section-header">KAKHI ORDERS WITH MEASUREMENTS</div>
+    <div class="section-header">KAKHI ORDERS (WITH MEASUREMENTS)</div>
     <table>
         <thead>
             <tr>
                 <th style="width: 3%;">#</th>
                 <th style="width: 15%;">Full Name</th>
-                <th style="width: 12%;">Call-up Number</th>
+                <th style="width: 10%;">Call-Up Number</th>
                 <th style="width: 10%;">LGA</th>
+                <th style="width: 8%;">Product</th>
                 <th style="width: 5%;">Qty</th>
-                <th style="width: 55%;">Measurements</th>
+                <th style="width: 49%;">Measurements (inches)</th>
             </tr>
         </thead>
         <tbody>
@@ -142,37 +142,50 @@
                 <td>{{ item.full_name }}</td>
                 <td>{{ item.call_up_number }}</td>
                 <td>{{ item.lga }}</td>
+                <td>{{ item.product }}</td>
                 <td>{{ item.quantity }}</td>
                 <td>
                     {% if item.measurement %}
                     <div class="measurements-grid">
                         <div class="measurement-item">
-                            <span class="measurement-label">Shoulder:</span> {{ item.measurement.shoulder }}
+                            <span class="measurement-label">Chest:</span> {{ item.measurement.chest|default:"N/A" }}
                         </div>
                         <div class="measurement-item">
-                            <span class="measurement-label">Chest:</span> {{ item.measurement.chest }}
+                            <span class="measurement-label">Shoulder:</span> {{ item.measurement.shoulder|default:"N/A" }}
                         </div>
                         <div class="measurement-item">
-                            <span class="measurement-label">Waist:</span> {{ item.measurement.waist }}
+                            <span class="measurement-label">Neck:</span> {{ item.measurement.neck|default:"N/A" }}
                         </div>
                         <div class="measurement-item">
-                            <span class="measurement-label">Hip:</span> {{ item.measurement.hip }}
+                            <span class="measurement-label">Sleeve Length:</span> {{ item.measurement.sleeve_length|default:"N/A" }}
                         </div>
                         <div class="measurement-item">
-                            <span class="measurement-label">Sleeve:</span> {{ item.measurement.sleeve }}
+                            <span class="measurement-label">Sleeve Round:</span> {{ item.measurement.sleeve_round|default:"N/A" }}
                         </div>
                         <div class="measurement-item">
-                            <span class="measurement-label">Shirt Length:</span> {{ item.measurement.shirt_length }}
+                            <span class="measurement-label">Top Length:</span> {{ item.measurement.top_length|default:"N/A" }}
                         </div>
                         <div class="measurement-item">
-                            <span class="measurement-label">Trouser Length:</span> {{ item.measurement.trouser_length }}
+                            <span class="measurement-label">Waist:</span> {{ item.measurement.waist|default:"N/A" }}
                         </div>
                         <div class="measurement-item">
-                            <span class="measurement-label">Thigh:</span> {{ item.measurement.thigh }}
+                            <span class="measurement-label">Thigh:</span> {{ item.measurement.thigh|default:"N/A" }}
+                        </div>
+                        <div class="measurement-item">
+                            <span class="measurement-label">Knee:</span> {{ item.measurement.knee|default:"N/A" }}
+                        </div>
+                        <div class="measurement-item">
+                            <span class="measurement-label">Ankle:</span> {{ item.measurement.ankle|default:"N/A" }}
+                        </div>
+                        <div class="measurement-item">
+                            <span class="measurement-label">Hips:</span> {{ item.measurement.hips|default:"N/A" }}
+                        </div>
+                        <div class="measurement-item">
+                            <span class="measurement-label">Trouser Length:</span> {{ item.measurement.trouser_length|default:"N/A" }}
                         </div>
                     </div>
                     {% else %}
-                    <em style="color: #e74c3c;">No measurements available</em>
+                    <em class="no-data">No measurements available</em>
                     {% endif %}
                 </td>
             </tr>
@@ -188,11 +201,11 @@
             <tr>
                 <th style="width: 5%;">#</th>
                 <th style="width: 25%;">Full Name</th>
-                <th style="width: 15%;">Call-up Number</th>
+                <th style="width: 15%;">Call-Up Number</th>
                 <th style="width: 15%;">LGA</th>
                 <th style="width: 10%;">Size</th>
-                <th style="width: 10%;">Quantity</th>
-                <th style="width: 20%;">Product</th>
+                <th style="width: 8%;">Quantity</th>
+                <th style="width: 22%;">Product</th>
             </tr>
         </thead>
         <tbody>
@@ -202,7 +215,7 @@
                 <td>{{ item.full_name }}</td>
                 <td>{{ item.call_up_number }}</td>
                 <td>{{ item.lga }}</td>
-                <td>{{ item.size }}</td>
+                <td><strong>{{ item.size }}</strong></td>
                 <td>{{ item.quantity }}</td>
                 <td>{{ item.product }}</td>
             </tr>
@@ -218,11 +231,11 @@
             <tr>
                 <th style="width: 5%;">#</th>
                 <th style="width: 25%;">Full Name</th>
-                <th style="width: 15%;">Call-up Number</th>
+                <th style="width: 15%;">Call-Up Number</th>
                 <th style="width: 15%;">LGA</th>
                 <th style="width: 10%;">Size</th>
-                <th style="width: 10%;">Quantity</th>
-                <th style="width: 20%;">Product</th>
+                <th style="width: 8%;">Quantity</th>
+                <th style="width: 22%;">Product</th>
             </tr>
         </thead>
         <tbody>
@@ -232,7 +245,7 @@
                 <td>{{ item.full_name }}</td>
                 <td>{{ item.call_up_number }}</td>
                 <td>{{ item.lga }}</td>
-                <td>{{ item.size }}</td>
+                <td><strong>{{ item.size }}</strong></td>
                 <td>{{ item.quantity }}</td>
                 <td>{{ item.product }}</td>
             </tr>
@@ -243,7 +256,10 @@
 
     <div class="footer">
         <p><strong>JMW Accessories - NYSC Kit Orders Report</strong></p>
-        <p>Generated: {% now "F d, Y g:i A" %}</p>
+        <p>State: {{ state }} | Generated: {% now "F d, Y g:i A" %}</p>
+        <p style="font-size: 8pt; color: #666;">
+            All measurements are in inches | For inquiries, contact JMW Accessories
+        </p>
     </div>
 </body>
 </html>

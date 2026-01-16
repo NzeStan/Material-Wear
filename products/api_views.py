@@ -15,6 +15,10 @@ from .serializers import (
     CategorySerializer, NyscKitSerializer, NyscTourSerializer, 
     ChurchSerializer, ProductListSerializer
 )
+from .constants import (
+    STATES, LGAS, VEST_SIZES, CHURCH_SIZES, CHURCH_CHOICES,
+    get_lgas_for_state, get_all_states_list
+)
 
 
 class ProductPagination(PageNumberPagination):
@@ -222,3 +226,246 @@ class ProductListView(views.APIView):
         }
         
         return Response(data)
+
+@extend_schema(tags=['Dropdowns'])
+class StatesListView(views.APIView):
+    """
+    Get list of all Nigerian states
+    """
+    permission_classes = [permissions.AllowAny]
+    
+    @extend_schema(
+        description="Get list of all Nigerian states",
+        responses={
+            200: {
+                'type': 'object',
+                'properties': {
+                    'states': {
+                        'type': 'array',
+                        'items': {
+                            'type': 'object',
+                            'properties': {
+                                'value': {'type': 'string'},
+                                'display': {'type': 'string'}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    )
+    def get(self, request):
+        """Return all states"""
+        states_data = [
+            {'value': value, 'display': display}
+            for value, display in STATES if value  # Exclude empty option
+        ]
+        return Response({
+            'states': states_data
+        })
+
+
+@extend_schema(tags=['Dropdowns'])
+class LGAsListView(views.APIView):
+    """
+    Get list of LGAs for a specific state
+    """
+    permission_classes = [permissions.AllowAny]
+    
+    @extend_schema(
+        description="Get list of Local Government Areas for a specific state",
+        parameters=[
+            OpenApiParameter(
+                name='state',
+                type=str,
+                location=OpenApiParameter.QUERY,
+                description='State name to get LGAs for',
+                required=True
+            ),
+        ],
+        responses={
+            200: {
+                'type': 'object',
+                'properties': {
+                    'state': {'type': 'string'},
+                    'lgas': {
+                        'type': 'array',
+                        'items': {
+                            'type': 'object',
+                            'properties': {
+                                'value': {'type': 'string'},
+                                'display': {'type': 'string'}
+                            }
+                        }
+                    }
+                }
+            },
+            400: {'description': 'State parameter is required'}
+        }
+    )
+    def get(self, request):
+        """Return LGAs for specified state"""
+        state = request.query_params.get('state')
+        
+        if not state:
+            return Response({
+                'error': 'State parameter is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        lgas = get_lgas_for_state(state)
+        lgas_data = [
+            {'value': value, 'display': display}
+            for value, display in lgas if value  # Exclude empty option
+        ]
+        
+        return Response({
+            'state': state,
+            'lgas': lgas_data
+        })
+
+
+@extend_schema(tags=['Dropdowns'])
+class SizesListView(views.APIView):
+    """
+    Get list of available sizes for products
+    """
+    permission_classes = [permissions.AllowAny]
+    
+    @extend_schema(
+        description="Get list of available sizes (for Vest and Church products)",
+        responses={
+            200: {
+                'type': 'object',
+                'properties': {
+                    'vest_sizes': {
+                        'type': 'array',
+                        'items': {
+                            'type': 'object',
+                            'properties': {
+                                'value': {'type': 'string'},
+                                'display': {'type': 'string'}
+                            }
+                        }
+                    },
+                    'church_sizes': {
+                        'type': 'array',
+                        'items': {
+                            'type': 'object',
+                            'properties': {
+                                'value': {'type': 'string'},
+                                'display': {'type': 'string'}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    )
+    def get(self, request):
+        """Return available sizes"""
+        vest_sizes_data = [
+            {'value': value, 'display': display}
+            for value, display in VEST_SIZES if value  # Exclude empty option
+        ]
+        
+        church_sizes_data = [
+            {'value': value, 'display': display}
+            for value, display in CHURCH_SIZES if value  # Exclude empty option
+        ]
+        
+        return Response({
+            'vest_sizes': vest_sizes_data,
+            'church_sizes': church_sizes_data,
+            'note': 'Vest and Church products use the same size options'
+        })
+
+
+@extend_schema(tags=['Dropdowns'])
+class ChurchesListView(views.APIView):
+    """
+    Get list of available churches
+    """
+    permission_classes = [permissions.AllowAny]
+    
+    @extend_schema(
+        description="Get list of available churches",
+        responses={
+            200: {
+                'type': 'object',
+                'properties': {
+                    'churches': {
+                        'type': 'array',
+                        'items': {
+                            'type': 'object',
+                            'properties': {
+                                'value': {'type': 'string'},
+                                'display': {'type': 'string'}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    )
+    def get(self, request):
+        """Return available churches"""
+        churches_data = [
+            {'value': value, 'display': display}
+            for value, display in CHURCH_CHOICES if value  # Exclude empty option
+        ]
+        
+        return Response({
+            'churches': churches_data
+        })
+
+
+@extend_schema(tags=['Dropdowns'])
+class AllDropdownsView(views.APIView):
+    """
+    Get all dropdown data in one request
+    """
+    permission_classes = [permissions.AllowAny]
+    
+    @extend_schema(
+        description="Get all dropdown data (states, sizes, churches) in a single request",
+        responses={
+            200: {
+                'type': 'object',
+                'properties': {
+                    'states': {'type': 'array'},
+                    'sizes': {'type': 'object'},
+                    'churches': {'type': 'array'},
+                    'note': {'type': 'string'}
+                }
+            }
+        }
+    )
+    def get(self, request):
+        """Return all dropdown data"""
+        states_data = [
+            {'value': value, 'display': display}
+            for value, display in STATES if value
+        ]
+        
+        sizes_data = {
+            'vest_sizes': [
+                {'value': value, 'display': display}
+                for value, display in VEST_SIZES if value
+            ],
+            'church_sizes': [
+                {'value': value, 'display': display}
+                for value, display in CHURCH_SIZES if value
+            ]
+        }
+        
+        churches_data = [
+            {'value': value, 'display': display}
+            for value, display in CHURCH_CHOICES if value
+        ]
+        
+        return Response({
+            'states': states_data,
+            'sizes': sizes_data,
+            'churches': churches_data,
+            'note': 'For LGAs, use the /api/products/lgas/?state=<state_name> endpoint'
+        })
