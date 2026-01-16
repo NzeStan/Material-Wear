@@ -78,11 +78,12 @@
             font-weight: bold;
         }
         .footer {
-            text-align: center;
             margin-top: 30px;
             padding-top: 15px;
             border-top: 2px solid #064E3B;
+            text-align: center;
             font-size: 9pt;
+            color: #666;
         }
         .no-data {
             color: #e74c3c;
@@ -148,40 +149,40 @@
                     {% if item.measurement %}
                     <div class="measurements-grid">
                         <div class="measurement-item">
-                            <span class="measurement-label">Chest:</span> {{ item.measurement.chest|default:"N/A" }}
+                            <span class="measurement-label">Chest:</span> {{ item.measurement.chest|default:"N/A" }}"
                         </div>
                         <div class="measurement-item">
-                            <span class="measurement-label">Shoulder:</span> {{ item.measurement.shoulder|default:"N/A" }}
+                            <span class="measurement-label">Shoulder:</span> {{ item.measurement.shoulder|default:"N/A" }}"
                         </div>
                         <div class="measurement-item">
-                            <span class="measurement-label">Neck:</span> {{ item.measurement.neck|default:"N/A" }}
+                            <span class="measurement-label">Neck:</span> {{ item.measurement.neck|default:"N/A" }}"
                         </div>
                         <div class="measurement-item">
-                            <span class="measurement-label">Sleeve Length:</span> {{ item.measurement.sleeve_length|default:"N/A" }}
+                            <span class="measurement-label">Sleeve Len:</span> {{ item.measurement.sleeve_length|default:"N/A" }}"
                         </div>
                         <div class="measurement-item">
-                            <span class="measurement-label">Sleeve Round:</span> {{ item.measurement.sleeve_round|default:"N/A" }}
+                            <span class="measurement-label">Sleeve Round:</span> {{ item.measurement.sleeve_round|default:"N/A" }}"
                         </div>
                         <div class="measurement-item">
-                            <span class="measurement-label">Top Length:</span> {{ item.measurement.top_length|default:"N/A" }}
+                            <span class="measurement-label">Top Len:</span> {{ item.measurement.top_length|default:"N/A" }}"
                         </div>
                         <div class="measurement-item">
-                            <span class="measurement-label">Waist:</span> {{ item.measurement.waist|default:"N/A" }}
+                            <span class="measurement-label">Waist:</span> {{ item.measurement.waist|default:"N/A" }}"
                         </div>
                         <div class="measurement-item">
-                            <span class="measurement-label">Thigh:</span> {{ item.measurement.thigh|default:"N/A" }}
+                            <span class="measurement-label">Thigh:</span> {{ item.measurement.thigh|default:"N/A" }}"
                         </div>
                         <div class="measurement-item">
-                            <span class="measurement-label">Knee:</span> {{ item.measurement.knee|default:"N/A" }}
+                            <span class="measurement-label">Knee:</span> {{ item.measurement.knee|default:"N/A" }}"
                         </div>
                         <div class="measurement-item">
-                            <span class="measurement-label">Ankle:</span> {{ item.measurement.ankle|default:"N/A" }}
+                            <span class="measurement-label">Ankle:</span> {{ item.measurement.ankle|default:"N/A" }}"
                         </div>
                         <div class="measurement-item">
-                            <span class="measurement-label">Hips:</span> {{ item.measurement.hips|default:"N/A" }}
+                            <span class="measurement-label">Hips:</span> {{ item.measurement.hips|default:"N/A" }}"
                         </div>
                         <div class="measurement-item">
-                            <span class="measurement-label">Trouser Length:</span> {{ item.measurement.trouser_length|default:"N/A" }}
+                            <span class="measurement-label">Trouser Len:</span> {{ item.measurement.trouser_length|default:"N/A" }}"
                         </div>
                     </div>
                     {% else %}

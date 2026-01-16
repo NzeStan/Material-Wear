@@ -59,10 +59,7 @@ def upload_pdf_to_cloudinary(pdf_bytes, filename):
 class NyscKitPDFView(View):
     """
     Generate PDF report for NYSC Kit orders by state
-    Includes ALL measurement fields for kakhi orders
-    Downloads directly to user's device
-    
-    FIXED: Query by NyscKitOrder.state (not NyscKit.state which doesn't exist)
+    Separates orders into Kakhi (with measurements), Vest, and Cap sections
     """
     
     def get(self, request):
@@ -73,8 +70,7 @@ class NyscKitPDFView(View):
                 'error': 'State parameter is required'
             }, status=400)
         
-        # ✅ FIX: Query NyscKitOrder by state, then get OrderItems
-        # NyscKit model doesn't have a 'state' field - it's on the ORDER
+        # Query NyscKitOrder by state
         kit_orders = NyscKitOrder.objects.filter(
             paid=True,
             state=state
@@ -91,18 +87,14 @@ class NyscKitPDFView(View):
         # Get ContentType for NyscKit
         kit_type = ContentType.objects.get_for_model(NyscKit)
         
-        # Build data for template
-        kit_orders_data = []
-        summary_data = defaultdict(lambda: {
-            'product_name': '',
-            'vest_size': '',
-            'cap_size': '',
-            'total_quantity': 0,
-            'with_measurements': 0,
-            'without_measurements': 0
-        })
+        # ✅ SEPARATE LISTS FOR EACH PRODUCT TYPE
+        kakhi_orders = []
+        vest_orders = []
+        cap_orders = []
         
-        counter = 1
+        kakhi_counter = 1
+        vest_counter = 1
+        cap_counter = 1
         
         for kit_order in kit_orders:
             base_order = kit_order.baseorder_ptr
@@ -113,15 +105,26 @@ class NyscKitPDFView(View):
             for order_item in order_items:
                 if not order_item.product:
                     continue
-                    
-                full_name = f"{base_order.last_name} {base_order.middle_name} {base_order.first_name}".strip().upper()
-                product_name = order_item.product.name
-                vest_size = order_item.extra_fields.get('size', 'N/A')
-                cap_size = order_item.extra_fields.get('cap_size', 'N/A')
                 
-                # Get measurements if available
-                measurement = None
-                if 'kakhi' in product_name.lower() or 'khaki' in product_name.lower():
+                # Get product type
+                product = order_item.product
+                product_type = product.type.lower()  # 'kakhi', 'vest', or 'cap'
+                
+                full_name = f"{base_order.last_name} {base_order.middle_name} {base_order.first_name}".strip().upper()
+                
+                # Base order data (common to all types)
+                order_data = {
+                    'full_name': full_name,
+                    'call_up_number': kit_order.call_up_number,
+                    'lga': kit_order.local_government,  # Template uses 'lga'
+                    'product': product.name,
+                    'quantity': order_item.quantity,
+                }
+                
+                # ✅ SEPARATE BY PRODUCT TYPE
+                if product_type == 'kakhi':
+                    # Kakhi has measurements
+                    measurement = None
                     try:
                         measurement = Measurement.objects.get(
                             user=base_order.user,
@@ -129,47 +132,43 @@ class NyscKitPDFView(View):
                         )
                     except Measurement.DoesNotExist:
                         pass
-                
-                # Build order data
-                order_data = {
-                    'sn': counter,
-                    'full_name': full_name,
-                    'call_up_number': kit_order.call_up_number,
-                    'phone': base_order.phone_number,
-                    'email': base_order.email,
-                    'product': product_name,
-                    'quantity': order_item.quantity,
-                    'vest_size': vest_size,
-                    'cap_size': cap_size,
-                    'measurement': measurement,
-                    'amount': order_item.price * order_item.quantity
-                }
-                
-                kit_orders_data.append(order_data)
-                
-                # Update summary
-                key = f"{product_name}_{vest_size}_{cap_size}"
-                summary_data[key]['product_name'] = product_name
-                summary_data[key]['vest_size'] = vest_size
-                summary_data[key]['cap_size'] = cap_size
-                summary_data[key]['total_quantity'] += order_item.quantity
-                
-                if measurement:
-                    summary_data[key]['with_measurements'] += order_item.quantity
-                else:
-                    summary_data[key]['without_measurements'] += order_item.quantity
-                
-                counter += 1
+                    
+                    order_data.update({
+                        'sn': kakhi_counter,
+                        'measurement': measurement,
+                    })
+                    kakhi_orders.append(order_data)
+                    kakhi_counter += 1
+                    
+                elif product_type == 'vest':
+                    # Vest has size
+                    order_data.update({
+                        'sn': vest_counter,
+                        'size': order_item.extra_fields.get('size', 'N/A'),
+                    })
+                    vest_orders.append(order_data)
+                    vest_counter += 1
+                    
+                elif product_type == 'cap':
+                    # Cap has size (usually "free size")
+                    order_data.update({
+                        'sn': cap_counter,
+                        'size': order_item.extra_fields.get('size', 'Free Size'),
+                    })
+                    cap_orders.append(order_data)
+                    cap_counter += 1
         
-        # Render template (use correct template name!)
+        # Render template with separate lists
         context = {
             'state': state,
-            'kit_orders': kit_orders_data,
-            'summary_data': list(summary_data.values()),
-            'total_orders': len(kit_orders_data)
+            'kakhi_orders': kakhi_orders,
+            'vest_orders': vest_orders,
+            'cap_orders': cap_orders,
+            'total_kakhis': len(kakhi_orders),
+            'total_vests': len(vest_orders),
+            'total_caps': len(cap_orders),
         }
         
-        # ✅ FIX: Use correct template name (it's nysckit not kit!)
         html_string = render_to_string(
             'orderitem_generation/nysckit_state_template.html',
             context
@@ -185,17 +184,17 @@ class NyscKitPDFView(View):
         # Upload to Cloudinary (backup)
         cloudinary_url = upload_pdf_to_cloudinary(pdf_bytes, filename)
         
-        # CRITICAL: Return PDF for download to user's device
+        # Return PDF for download
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         
-        # Add cloudinary URL to response headers (for reference)
         if cloudinary_url:
             response['X-Cloudinary-URL'] = cloudinary_url
         
         logger.info(f"Generated NYSC Kit PDF for state: {state}, Cloudinary: {cloudinary_url}")
         
         return response
+
 
 
 @method_decorator(staff_member_required, name='dispatch')
