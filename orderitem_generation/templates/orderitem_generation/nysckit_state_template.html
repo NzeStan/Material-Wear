@@ -66,7 +66,7 @@
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 5px;
-            font-size: 8pt;
+            font-size: 7pt;
         }
         .measurement-item {
             background-color: #f9fafb;
@@ -86,7 +86,7 @@
             color: #666;
         }
         .no-data {
-            color: #e74c3c;
+            color: #999;
             font-style: italic;
         }
         .page-break {
@@ -129,11 +129,11 @@
             <tr>
                 <th style="width: 3%;">#</th>
                 <th style="width: 15%;">Full Name</th>
-                <th style="width: 10%;">Call-Up Number</th>
-                <th style="width: 10%;">LGA</th>
-                <th style="width: 8%;">Product</th>
+                <th style="width: 12%;">Call-Up Number</th>
+                <th style="width: 12%;">LGA</th>
+                <th style="width: 10%;">Product</th>
                 <th style="width: 5%;">Qty</th>
-                <th style="width: 49%;">Measurements (inches)</th>
+                <th style="width: 43%;">Measurements (inches)</th>
             </tr>
         </thead>
         <tbody>
@@ -193,6 +193,7 @@
             {% endfor %}
         </tbody>
     </table>
+    <div class="page-break"></div>
     {% endif %}
 
     {% if vest_orders %}
@@ -223,6 +224,7 @@
             {% endfor %}
         </tbody>
     </table>
+    <div class="page-break"></div>
     {% endif %}
 
     {% if cap_orders %}
