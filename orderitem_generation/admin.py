@@ -1,6 +1,11 @@
 # orderitem_generation/admin.py
+"""
+Admin mixin for PDF generation
+
+FIXED: Directly instantiates view and calls get() method to bypass method routing
+"""
 from django.contrib import messages
-from django.http import HttpResponse, QueryDict  # ✅ ADDED QueryDict import
+from django.http import HttpResponse, QueryDict
 from django.urls import path
 from django.template.response import TemplateResponse
 from django.contrib.contenttypes.models import ContentType
@@ -42,6 +47,8 @@ class OrderItemGenerationAdminMixin:
     def generate_pdf_view(self, request):
         """
         View to handle PDF generation with filter selection
+        
+        FIXED: Directly calls view.get() method to bypass Django's method routing
         """
         if request.method == 'POST':
             filter_value = request.POST.get('filter_value')
@@ -53,30 +60,33 @@ class OrderItemGenerationAdminMixin:
             
             # Call appropriate PDF view based on type
             try:
-                # ✅ FIX: Create mutable QueryDict for GET params
+                # ✅ FIX: Create mutable QueryDict and modify request.GET
                 query_params = QueryDict('', mutable=True)
                 
                 if pdf_type == 'nysc_kit':
                     query_params['state'] = filter_value
-                    request.GET = query_params  # ✅ FIX: Replace with mutable version
-                    view = NyscKitPDFView.as_view()
+                    view_class = NyscKitPDFView
                     
                 elif pdf_type == 'nysc_tour':
                     query_params['state'] = filter_value
-                    request.GET = query_params  # ✅ FIX: Replace with mutable version
-                    view = NyscTourPDFView.as_view()
+                    view_class = NyscTourPDFView
                     
                 elif pdf_type == 'church':
                     query_params['church'] = filter_value
-                    request.GET = query_params  # ✅ FIX: Replace with mutable version
-                    view = ChurchPDFView.as_view()
+                    view_class = ChurchPDFView
                     
                 else:
                     messages.error(request, 'Invalid PDF type.')
                     return self._redirect_to_changelist(request)
                 
-                # Generate and return PDF
-                response = view(request)
+                # ✅ CRITICAL FIX: Set request.GET and directly call view.get()
+                # This bypasses Django's method routing which checks request.method
+                request.GET = query_params
+                
+                # Instantiate view and call get() directly
+                view = view_class()
+                view.setup(request)  # Initialize view with request
+                response = view.get(request)  # Call get() directly, not dispatch()
                 
                 # Check if it's a successful PDF response
                 if isinstance(response, HttpResponse) and response.status_code == 200:
