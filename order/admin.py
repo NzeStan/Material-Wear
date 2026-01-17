@@ -21,18 +21,51 @@ class OrderItemInline(admin.TabularInline):
     can_delete = False
     readonly_fields = ['product_display', 'quantity', 'price', 'item_cost']
     fields = ['product_display', 'quantity', 'price', 'item_cost']
-    
+
     def product_display(self, obj):
-        """Display product with thumbnail"""
-        if obj.product and hasattr(obj.product, 'image') and obj.product.image:
+        """Display product with thumbnail or placeholder"""
+
+        # Handle missing product
+        if not obj.product:
             return format_html(
-                '<img src="{}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; margin-right: 10px;">'
-                '<span style="font-weight: bold;">{}</span>',
-                obj.product.image.url,
+                '<span style="color: #9CA3AF; font-style: italic;">No Product</span>'
+            )
+
+        # Product exists with image
+        image = getattr(obj.product, "image", None)
+        if image:
+            return format_html(
+                '<div style="display: flex; align-items: center; gap: 10px;">'
+                '<img src="{}" style="width: 50px; height: 50px; object-fit: cover; '
+                'border-radius: 4px; border: 2px solid #064E3B;" />'
+                '<span style="font-weight: bold;">{}</span>'
+                '</div>',
+                image.url,
                 obj.product.name
             )
-        return obj.product.name if obj.product else 'N/A'
-    product_display.short_description = 'Product'
+
+        # Product exists but no image - show SVG placeholder
+        return format_html(
+            '<div style="display: flex; align-items: center; gap: 10px;">'
+            '<div style="width: 50px; height: 50px; background: #F9FAFB; '
+            'border-radius: 6px; border: 2px dashed #D1D5DB; '
+            'display: flex; align-items: center; justify-content: center; '
+            'flex-shrink: 0;">'
+            '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" '
+            'viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" '
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+            '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>'
+            '<circle cx="8.5" cy="8.5" r="1.5"/>'
+            '<path d="M21 15l-5-5L5 21"/>'
+            '</svg>'
+            '</div>'
+            '<span style="font-weight: 600;">{}</span>'
+            '</div>',
+            obj.product.name
+        )
+
+    product_display.short_description = "Product"
+
     
     def has_add_permission(self, request, obj=None):
         return False

@@ -162,6 +162,7 @@ class NyscKitPDFView(View):
                         'call_up_number': order.call_up_number,  # ✅ CORRECT: NyscKitOrder field
                         'lga': lga,
                         'product': product_name,
+                        'size': size,
                         'quantity': quantity,
                     })
                     cap_counter += 1
