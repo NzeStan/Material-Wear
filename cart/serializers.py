@@ -2,7 +2,16 @@
 from rest_framework import serializers
 from django.apps import apps
 from products.serializers import NyscKitSerializer, NyscTourSerializer, ChurchSerializer
+from products.constants import (
+    VEST_SIZES, CHURCH_SIZES, CAP_SIZE, MEASUREMENT_SIZE,
+    NYSC_KIT_TYPE_CHOICES, PRODUCT_TYPE_CHOICES
+)
 from measurement.models import Measurement
+
+
+# Extract size values for validation
+VALID_VEST_SIZES = [size[0] for size in VEST_SIZES if size[0]]  # Exclude empty option
+VALID_CHURCH_SIZES = [size[0] for size in CHURCH_SIZES if size[0]]  # Exclude empty option
 
 
 class CartItemSerializer(serializers.Serializer):
@@ -37,7 +46,7 @@ class CartItemSerializer(serializers.Serializer):
 
 class AddToCartSerializer(serializers.Serializer):
     """Serializer for adding items to cart"""
-    product_type = serializers.ChoiceField(choices=['nysc_kit', 'nysc_tour', 'church'])
+    product_type = serializers.ChoiceField(choices=[pt[0] for pt in PRODUCT_TYPE_CHOICES])
     product_id = serializers.UUIDField()
     quantity = serializers.IntegerField(min_value=1, default=1)
     override = serializers.BooleanField(default=False)
@@ -104,8 +113,8 @@ class AddToCartSerializer(serializers.Serializer):
                             'measurement': 'You must create a measurement profile before purchasing Kakhi. Please go to your profile to add your measurements.'
                         })
                     
-                    # Use measurement as the size
-                    extra_fields['size'] = 'measurement'
+                    # Use measurement constants
+                    extra_fields['size'] = MEASUREMENT_SIZE.lower()  # 'measurement'
                     extra_fields['measurement_id'] = str(measurement.id)
                     
                 except Measurement.DoesNotExist:
@@ -114,22 +123,37 @@ class AddToCartSerializer(serializers.Serializer):
                     })
                     
             elif product.type == 'cap':
-                # Cap has fixed "free size"
-                extra_fields['size'] = 'free_size'
+                # Cap has fixed "free size" from constants
+                extra_fields['size'] = CAP_SIZE.lower().replace(' ', '_')  # 'free_size'
                 
             elif product.type == 'vest':
-                # Vest requires size selection
+                # Vest requires size selection - validate against VEST_SIZES constant
                 if not attrs.get('size'):
                     raise serializers.ValidationError({
-                        'size': 'Size is required for Vest products. Please select a size.'
+                        'size': f'Size is required for Vest products. Valid sizes: {", ".join(VALID_VEST_SIZES)}'
                     })
+                
+                # Validate size is in VALID_VEST_SIZES
+                if attrs['size'] not in VALID_VEST_SIZES:
+                    raise serializers.ValidationError({
+                        'size': f'Invalid size. Valid sizes: {", ".join(VALID_VEST_SIZES)}'
+                    })
+                
                 extra_fields['size'] = attrs['size']
                 
         elif product_type == 'church':
+            # Church requires size selection - validate against CHURCH_SIZES constant
             if not attrs.get('size'):
                 raise serializers.ValidationError({
-                    'size': 'Size is required for Church products'
+                    'size': f'Size is required for Church products. Valid sizes: {", ".join(VALID_CHURCH_SIZES)}'
                 })
+            
+            # Validate size is in VALID_CHURCH_SIZES
+            if attrs['size'] not in VALID_CHURCH_SIZES:
+                raise serializers.ValidationError({
+                    'size': f'Invalid size. Valid sizes: {", ".join(VALID_CHURCH_SIZES)}'
+                })
+            
             extra_fields['size'] = attrs['size']
             
             # Custom name is optional

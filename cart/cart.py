@@ -2,6 +2,7 @@
 from decimal import Decimal
 from django.conf import settings
 from django.apps import apps
+from products.constants import VEST_SIZES  # ✅ Import from constants
 import logging
 
 logger = logging.getLogger(__name__)
@@ -28,15 +29,11 @@ class Cart:
 
     @staticmethod
     def get_clothes_sizes():
-        return [
-            ("S", "Small"),
-            ("M", "Medium"),
-            ("L", "Large"),
-            ("XL", "Extra Large"),
-            ("XXL", "2X Large"),
-            ("XXXL", "3X Large"),
-            ("XXXXL", "4X Large"),
-        ]
+        """
+        Get available clothing sizes from constants.
+        ✅ Now pulls from products/constants.py instead of hardcoding
+        """
+        return VEST_SIZES
 
     def __init__(self, request):
         """Initialize the cart."""
