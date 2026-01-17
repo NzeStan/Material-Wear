@@ -46,7 +46,7 @@ def upload_pdf_to_cloudinary(pdf_bytes, filename):
 class NyscKitPDFView(View):
     """
     Generate PDF report for NYSC Kit orders by state
-    Downloads directly to user's device
+    Downloads directly to user's device with comprehensive summaries
     """
     
     def get(self, request):
@@ -77,6 +77,10 @@ class NyscKitPDFView(View):
         vest_counter = 1
         cap_counter = 1
         
+        # For summary calculations
+        lga_summary = defaultdict(lambda: {'count': 0, 'quantity': 0, 'product': '', 'size': '', 'lga': ''})
+        product_summary = defaultdict(lambda: {'count': 0, 'quantity': 0, 'product': '', 'size': ''})
+        
         for order in kit_orders:
             full_name = f"{order.last_name} {order.middle_name} {order.first_name}".strip().upper()
             
@@ -85,6 +89,26 @@ class NyscKitPDFView(View):
                     continue
                 
                 product_type = item.product.type
+                product_name = item.product.name
+                size = item.extra_fields.get('size', 'N/A')
+                lga = order.local_government
+                quantity = item.quantity
+                
+                # Build summary key
+                summary_key = f"{product_name}|{size}"
+                lga_key = f"{product_name}|{size}|{lga}"
+                
+                # Update summaries
+                lga_summary[lga_key]['count'] += 1
+                lga_summary[lga_key]['quantity'] += quantity
+                lga_summary[lga_key]['product'] = product_name
+                lga_summary[lga_key]['size'] = size
+                lga_summary[lga_key]['lga'] = lga
+                
+                product_summary[summary_key]['count'] += 1
+                product_summary[summary_key]['quantity'] += quantity
+                product_summary[summary_key]['product'] = product_name
+                product_summary[summary_key]['size'] = size
                 
                 if product_type == 'kakhi':
                     # Fetch measurement from database
@@ -103,10 +127,10 @@ class NyscKitPDFView(View):
                         'sn': kakhi_counter,
                         'full_name': full_name,
                         'call_up_number': order.call_up_number or 'N/A',
-                        'lga': order.local_government,
-                        'product': item.product.name,
-                        'size': item.extra_fields.get('size', 'N/A'),
-                        'quantity': item.quantity,
+                        'lga': lga,
+                        'product': product_name,
+                        'size': size,
+                        'quantity': quantity,
                         'measurement': measurement
                     }
                     kakhi_orders.append(order_data)
@@ -117,10 +141,10 @@ class NyscKitPDFView(View):
                         'sn': vest_counter,
                         'full_name': full_name,
                         'call_up_number': order.call_up_number or 'N/A',
-                        'lga': order.local_government,
-                        'product': item.product.name,
-                        'size': item.extra_fields.get('size', 'N/A'),
-                        'quantity': item.quantity,
+                        'lga': lga,
+                        'product': product_name,
+                        'size': size,
+                        'quantity': quantity,
                     }
                     vest_orders.append(order_data)
                     vest_counter += 1
@@ -130,15 +154,47 @@ class NyscKitPDFView(View):
                         'sn': cap_counter,
                         'full_name': full_name,
                         'call_up_number': order.call_up_number or 'N/A',
-                        'lga': order.local_government,
-                        'product': item.product.name,
-                        'quantity': item.quantity,
-                        'size': item.extra_fields.get('size', 'Free Size'),
+                        'lga': lga,
+                        'product': product_name,
+                        'quantity': quantity,
+                        'size': size,
                     }
                     cap_orders.append(order_data)
                     cap_counter += 1
         
-        # Render template with separate lists
+        # Convert summaries to sorted lists
+        lga_summary_list = sorted(
+            [
+                {
+                    'product': v['product'],
+                    'size': v['size'],
+                    'lga': v['lga'],
+                    'count': v['count'],
+                    'quantity': v['quantity']
+                }
+                for v in lga_summary.values()
+            ],
+            key=lambda x: (x['product'], x['size'], x['lga'])
+        )
+        
+        product_summary_list = sorted(
+            [
+                {
+                    'product': v['product'],
+                    'size': v['size'],
+                    'count': v['count'],
+                    'quantity': v['quantity']
+                }
+                for v in product_summary.values()
+            ],
+            key=lambda x: (x['product'], x['size'])
+        )
+        
+        # Calculate grand totals
+        grand_total_count = sum(item['count'] for item in product_summary_list)
+        grand_total_quantity = sum(item['quantity'] for item in product_summary_list)
+        
+        # Render template with separate lists and summaries
         context = {
             'state': state,
             'kakhi_orders': kakhi_orders,
@@ -147,6 +203,11 @@ class NyscKitPDFView(View):
             'total_kakhis': len(kakhi_orders),
             'total_vests': len(vest_orders),
             'total_caps': len(cap_orders),
+            # Summary data
+            'lga_summary': lga_summary_list,
+            'product_summary': product_summary_list,
+            'grand_total_count': grand_total_count,
+            'grand_total_quantity': grand_total_quantity,
         }
         
         html_string = render_to_string(

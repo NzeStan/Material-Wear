@@ -65,6 +65,15 @@
         table tr:nth-child(even) {
             background-color: #f9fafb;
         }
+        table tfoot tr {
+            background-color: #FFFBEB;
+            font-weight: bold;
+            border-top: 2px solid #064E3B;
+        }
+        table tfoot td {
+            padding: 10px 5px;
+            border-bottom: none;
+        }
         .footer {
             margin-top: 30px;
             padding-top: 15px;
@@ -79,6 +88,9 @@
         }
         .page-break {
             page-break-after: always;
+        }
+        .summary-table {
+            margin-top: 15px;
         }
     </style>
 </head>
@@ -110,6 +122,77 @@
     </div>
     {% endif %}
 
+    <!-- ORDER SUMMARY BY LGA -->
+    {% if lga_summary %}
+    <div class="section-header">ORDER SUMMARY BY LGA</div>
+    <table class="summary-table">
+        <thead>
+            <tr>
+                <th style="width: 30%;">Product</th>
+                <th style="width: 15%;">Size</th>
+                <th style="width: 25%;">LGA</th>
+                <th style="width: 15%;">Orders</th>
+                <th style="width: 15%;">Total Qty</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in lga_summary %}
+            <tr>
+                <td>{{ item.product }}</td>
+                <td><strong>{{ item.size }}</strong></td>
+                <td>{{ item.lga }}</td>
+                <td>{{ item.count }}</td>
+                <td>{{ item.quantity }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="no-data" style="text-align: center;">No summary available.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div class="page-break"></div>
+    {% endif %}
+
+    <!-- PRODUCT SUMMARY -->
+    {% if product_summary %}
+    <div class="section-header">PRODUCT SUMMARY</div>
+    <table class="summary-table">
+        <thead>
+            <tr>
+                <th style="width: 40%;">Product</th>
+                <th style="width: 20%;">Size</th>
+                <th style="width: 20%;">Total Orders</th>
+                <th style="width: 20%;">Total Quantity</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in product_summary %}
+            <tr>
+                <td>{{ item.product }}</td>
+                <td><strong>{{ item.size }}</strong></td>
+                <td>{{ item.count }}</td>
+                <td>{{ item.quantity }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="no-data" style="text-align: center;">No summary available.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="2" style="text-align: right; color: #064E3B;">
+                    <strong>GRAND TOTAL</strong>
+                </td>
+                <td><strong>{{ grand_total_count }}</strong></td>
+                <td><strong>{{ grand_total_quantity }}</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+    <div class="page-break"></div>
+    {% endif %}
+
     {% if kakhi_orders %}
     <div class="section-header">KAKHI ORDERS</div>
     <table>
@@ -138,6 +221,7 @@
             {% endfor %}
         </tbody>
     </table>
+    <div class="page-break"></div>
 
     <!-- Separate Measurements Table -->
     <div class="section-header">KAKHI MEASUREMENTS (inches)</div>
