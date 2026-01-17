@@ -29,6 +29,25 @@ class BaseOrder(models.Model):
     updated = models.DateTimeField(auto_now=True)
     paid = models.BooleanField(default=False)
     total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    
+    # ✅ NEW: Generation tracking fields
+    items_generated = models.BooleanField(
+        default=False,
+        help_text='Whether order items have been generated/printed'
+    )
+    generated_at = models.DateTimeField(
+        null=True, 
+        blank=True,
+        help_text='When the order items were generated'
+    )
+    generated_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='generated_orders',
+        help_text='Admin user who generated the order items'
+    )
 
     class Meta:
         ordering = ["-created"]
@@ -46,22 +65,18 @@ class BaseOrder(models.Model):
                 self.serial_number = last_serial.serial_number + 1
             else:
                 self.serial_number = 1
-
-        # First save to get the primary key
         super(BaseOrder, self).save(*args, **kwargs)
 
-        # Now update total cost if there are items
-        if hasattr(self, "items"):
-            self.total_cost = sum(item.get_cost() for item in self.items.all())
-            super(BaseOrder, self).save(update_fields=["total_cost"])
+    def get_full_name(self):
+        """Return customer's full name"""
+        return f"{self.first_name} {self.middle_name} {self.last_name}".strip()
+
+    def get_total_items(self):
+        """Return total quantity of items in order"""
+        return sum(item.quantity for item in self.items.all())
 
     def __str__(self):
-        return f"Order #{self.serial_number}"
-
-    def get_total_cost(self):
-        if not self.pk:  # If no primary key yet, return 0
-            return 0
-        return sum(item.get_cost() for item in self.items.all())
+        return f"Order #{self.serial_number} - {self.get_full_name()}"
 
 
 class NyscKitOrder(BaseOrder):

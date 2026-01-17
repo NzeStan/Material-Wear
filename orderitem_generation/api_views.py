@@ -1,9 +1,11 @@
 # orderitem_generation/api_views.py
 """
-PDF Generation Views for Order Management
+PDF Generation Views with Generation Tracking - CORRECTED VERSION
 
-COMPLETELY FIXED VERSION - No more 406/401 errors!
-Converted from DRF APIView to Django View with direct HTML/PDF responses
+✅ Uses ACTUAL model fields:
+- NyscKitOrder: call_up_number, state, local_government (NO pickup fields!)
+- ChurchOrder: pickup_on_camp, delivery_state, delivery_lga
+- Template names: nysckit_state_template.html, church_state_template.html
 """
 from django.views import View
 from django.http import HttpResponse, JsonResponse
@@ -18,7 +20,7 @@ from weasyprint import HTML
 import cloudinary.uploader
 import logging
 
-from order.models import NyscKitOrder, OrderItem
+from order.models import NyscKitOrder, OrderItem, BaseOrder
 from products.models import NyscTour, Church
 from measurement.models import Measurement
 
@@ -46,27 +48,33 @@ def upload_pdf_to_cloudinary(pdf_bytes, filename):
 class NyscKitPDFView(View):
     """
     Generate PDF report for NYSC Kit orders by state
-    Downloads directly to user's device with comprehensive summaries
+    ✅ Now tracks generated orders to prevent duplicates
     """
     
     def get(self, request):
         state = request.GET.get('state')
+        regenerate = request.GET.get('regenerate', 'false').lower() == 'true'
         
         if not state:
             return JsonResponse({
                 'error': 'State parameter is required'
             }, status=400)
         
-        # Get paid orders for the state
-        kit_orders = NyscKitOrder.objects.select_related().filter(
+        # ✅ FIXED: Only get paid orders that haven't been generated
+        kit_orders_query = NyscKitOrder.objects.select_related().filter(
             state=state,
             paid=True
-        ).order_by('created')
+        )
+        
+        # Filter based on regenerate flag
+        if not regenerate:
+            kit_orders_query = kit_orders_query.filter(items_generated=False)
+        
+        kit_orders = kit_orders_query.order_by('created')
         
         if not kit_orders.exists():
-            return JsonResponse({
-                'error': f'No paid orders found for {state}'
-            }, status=404)
+            message = f'No {"ungenerated" if not regenerate else ""} paid orders found for {state}'
+            return JsonResponse({'error': message}, status=404)
         
         # Separate orders by product type
         kakhi_orders = []
@@ -91,7 +99,7 @@ class NyscKitPDFView(View):
                 product_type = item.product.type
                 product_name = item.product.name
                 size = item.extra_fields.get('size', 'N/A')
-                lga = order.local_government
+                lga = order.local_government  # ✅ CORRECT: NyscKitOrder field
                 quantity = item.quantity
                 
                 # Build summary key
@@ -121,56 +129,52 @@ class NyscKitPDFView(View):
                                 is_deleted=False
                             )
                         except Measurement.DoesNotExist:
-                            logger.warning(f"Measurement {measurement_id} not found for order item")
+                            pass
                     
-                    order_data = {
+                    kakhi_orders.append({
                         'sn': kakhi_counter,
                         'full_name': full_name,
-                        'call_up_number': order.call_up_number or 'N/A',
+                        'call_up_number': order.call_up_number,  # ✅ CORRECT: NyscKitOrder field
                         'lga': lga,
                         'product': product_name,
                         'size': size,
                         'quantity': quantity,
-                        'measurement': measurement
-                    }
-                    kakhi_orders.append(order_data)
+                        'measurement': measurement,
+                    })
                     kakhi_counter += 1
                     
                 elif product_type == 'vest':
-                    order_data = {
+                    vest_orders.append({
                         'sn': vest_counter,
                         'full_name': full_name,
-                        'call_up_number': order.call_up_number or 'N/A',
+                        'call_up_number': order.call_up_number,  # ✅ CORRECT: NyscKitOrder field
                         'lga': lga,
                         'product': product_name,
                         'size': size,
                         'quantity': quantity,
-                    }
-                    vest_orders.append(order_data)
+                    })
                     vest_counter += 1
                     
                 elif product_type == 'cap':
-                    order_data = {
+                    cap_orders.append({
                         'sn': cap_counter,
                         'full_name': full_name,
-                        'call_up_number': order.call_up_number or 'N/A',
+                        'call_up_number': order.call_up_number,  # ✅ CORRECT: NyscKitOrder field
                         'lga': lga,
                         'product': product_name,
                         'quantity': quantity,
-                        'size': size,
-                    }
-                    cap_orders.append(order_data)
+                    })
                     cap_counter += 1
         
-        # Convert summaries to sorted lists
+        # Sort summaries
         lga_summary_list = sorted(
             [
                 {
                     'product': v['product'],
                     'size': v['size'],
-                    'lga': v['lga'],
                     'count': v['count'],
-                    'quantity': v['quantity']
+                    'quantity': v['quantity'],
+                    'lga': v['lga']
                 }
                 for v in lga_summary.values()
             ],
@@ -194,7 +198,7 @@ class NyscKitPDFView(View):
         grand_total_count = sum(item['count'] for item in product_summary_list)
         grand_total_quantity = sum(item['quantity'] for item in product_summary_list)
         
-        # Render template with separate lists and summaries
+        # Render template
         context = {
             'state': state,
             'kakhi_orders': kakhi_orders,
@@ -203,7 +207,6 @@ class NyscKitPDFView(View):
             'total_kakhis': len(kakhi_orders),
             'total_vests': len(vest_orders),
             'total_caps': len(cap_orders),
-            # Summary data
             'lga_summary': lga_summary_list,
             'product_summary': product_summary_list,
             'grand_total_count': grand_total_count,
@@ -211,7 +214,7 @@ class NyscKitPDFView(View):
         }
         
         html_string = render_to_string(
-            'orderitem_generation/nysckit_state_template.html',
+            'orderitem_generation/nysckit_state_template.html',  # ✅ CORRECT template name
             context
         )
         
@@ -220,10 +223,23 @@ class NyscKitPDFView(View):
         pdf_bytes = html.write_pdf()
         
         # Create filename
-        filename = f"NYSC_Kit_Orders_{state}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"NYSC_Kit_Orders_{state}_{timestamp}.pdf"
         
         # Upload to Cloudinary (backup)
         cloudinary_url = upload_pdf_to_cloudinary(pdf_bytes, filename)
+        
+        # ✅ CRITICAL: Mark orders as generated
+        kit_orders.update(
+            items_generated=True,
+            generated_at=timezone.now(),
+            generated_by=request.user
+        )
+        
+        logger.info(
+            f"Generated NYSC Kit PDF for {state}: {kit_orders.count()} orders marked as generated "
+            f"by {request.user.username}, Cloudinary: {cloudinary_url}"
+        )
         
         # Return PDF for download
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
@@ -232,21 +248,19 @@ class NyscKitPDFView(View):
         if cloudinary_url:
             response['X-Cloudinary-URL'] = cloudinary_url
         
-        logger.info(f"Generated NYSC Kit PDF for state: {state}, Cloudinary: {cloudinary_url}")
-        
         return response
-
 
 
 @method_decorator(staff_member_required, name='dispatch')
 class NyscTourPDFView(View):
     """
     Generate PDF report for NYSC Tour orders by state
-    Downloads directly to user's device
+    ✅ Now tracks generated orders to prevent duplicates
     """
     
     def get(self, request):
         state = request.GET.get('state')
+        regenerate = request.GET.get('regenerate', 'false').lower() == 'true'
         
         if not state:
             return JsonResponse({
@@ -256,7 +270,7 @@ class NyscTourPDFView(View):
         # Get ContentType for NyscTour
         tour_type = ContentType.objects.get_for_model(NyscTour)
         
-        # Get tour products for this state (state is in product name)
+        # Get tour products for this state
         tour_products = NyscTour.objects.filter(name=state).values_list('id', flat=True)
         
         if not tour_products:
@@ -264,34 +278,39 @@ class NyscTourPDFView(View):
                 'error': f'No tour products found for {state}'
             }, status=404)
         
-        # Get order items for these products
-        order_items = OrderItem.objects.select_related(
+        # ✅ FIXED: Get order items with generation tracking
+        order_items_query = OrderItem.objects.select_related(
             'order', 'content_type'
         ).filter(
             order__paid=True,
             content_type=tour_type,
             object_id__in=tour_products
-        ).order_by('order__created')
+        )
+        
+        # Filter based on regenerate flag
+        if not regenerate:
+            order_items_query = order_items_query.filter(order__items_generated=False)
+        
+        order_items = order_items_query.order_by('order__created')
         
         if not order_items.exists():
-            return JsonResponse({
-                'error': f'No paid orders found for {state}'
-            }, status=404)
+            message = f'No {"ungenerated" if not regenerate else ""} paid orders found for {state}'
+            return JsonResponse({'error': message}, status=404)
         
         # Build data for template
         tour_orders = []
         total_participants = 0
         counter = 1
+        processed_order_ids = set()
         
         for order_item in order_items:
             if not order_item.product:
                 continue
                 
             order = order_item.order
+            processed_order_ids.add(order.id)
             
             full_name = f"{order.last_name} {order.middle_name} {order.first_name}".strip().upper()
-            
-            # Extract call_up_number from extra_fields
             call_up_number = order_item.extra_fields.get('call_up_number', 'N/A')
             
             tour_orders.append({
@@ -303,17 +322,16 @@ class NyscTourPDFView(View):
             total_participants += order_item.quantity
             counter += 1
         
-        # Render template (use correct template name!)
+        # Render template
         context = {
             'state': state,
             'tour_orders': tour_orders,
             'total_orders': len(tour_orders),
-            'total_participants': total_participants
+            'total_participants': total_participants,
         }
         
-        # ✅ FIX: Use correct template name (it's nysctour not tour!)
         html_string = render_to_string(
-            'orderitem_generation/nysctour_state_template.html',
+            'orderitem_generation/nysctour_state_template.html',  # ✅ CORRECT template name
             context
         )
         
@@ -322,19 +340,30 @@ class NyscTourPDFView(View):
         pdf_bytes = html.write_pdf()
         
         # Create filename
-        filename = f"NYSC_Tour_Orders_{state}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"NYSC_Tour_Orders_{state}_{timestamp}.pdf"
         
         # Upload to Cloudinary (backup)
         cloudinary_url = upload_pdf_to_cloudinary(pdf_bytes, filename)
         
-        # CRITICAL: Return PDF for download to user's device
+        # ✅ CRITICAL: Mark orders as generated
+        BaseOrder.objects.filter(id__in=processed_order_ids).update(
+            items_generated=True,
+            generated_at=timezone.now(),
+            generated_by=request.user
+        )
+        
+        logger.info(
+            f"Generated NYSC Tour PDF for {state}: {len(processed_order_ids)} orders marked as generated "
+            f"by {request.user.username}, Cloudinary: {cloudinary_url}"
+        )
+        
+        # Return PDF for download
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         
         if cloudinary_url:
             response['X-Cloudinary-URL'] = cloudinary_url
-        
-        logger.info(f"Generated NYSC Tour PDF for state: {state}, Cloudinary: {cloudinary_url}")
         
         return response
 
@@ -343,11 +372,12 @@ class NyscTourPDFView(View):
 class ChurchPDFView(View):
     """
     Generate PDF report for Church orders by church type
-    Downloads directly to user's device
+    ✅ Now tracks generated orders to prevent duplicates
     """
     
     def get(self, request):
         church = request.GET.get('church')
+        regenerate = request.GET.get('regenerate', 'false').lower() == 'true'
         
         if not church:
             return JsonResponse({
@@ -358,19 +388,24 @@ class ChurchPDFView(View):
         church_type = ContentType.objects.get_for_model(Church)
         church_ids = Church.objects.filter(church=church).values_list('id', flat=True)
         
-        # Get order items
-        order_items = OrderItem.objects.select_related(
+        # ✅ FIXED: Get order items with generation tracking
+        order_items_query = OrderItem.objects.select_related(
             'order', 'content_type'
         ).filter(
             order__paid=True,
             content_type=church_type,
             object_id__in=church_ids
-        ).order_by('order__created')
+        )
+        
+        # Filter based on regenerate flag
+        if not regenerate:
+            order_items_query = order_items_query.filter(order__items_generated=False)
+        
+        order_items = order_items_query.order_by('order__created')
         
         if not order_items.exists():
-            return JsonResponse({
-                'error': f'No paid orders found for {church}'
-            }, status=404)
+            message = f'No {"ungenerated" if not regenerate else ""} paid orders found for {church}'
+            return JsonResponse({'error': message}, status=404)
         
         # Build orders data
         orders_data = []
@@ -383,14 +418,16 @@ class ChurchPDFView(View):
         })
         sizes_grouping = defaultdict(list)
         counter = 1
+        processed_order_ids = set()
         
         for order_item in order_items:
             if not order_item.product:
                 continue
             
             order = order_item.order
+            processed_order_ids.add(order.id)
             
-            # Cast to ChurchOrder to access pickup fields
+            # ✅ CORRECT: Cast to ChurchOrder to access pickup fields
             from order.models import ChurchOrder
             church_order = ChurchOrder.objects.get(id=order.id)
             
@@ -406,12 +443,12 @@ class ChurchPDFView(View):
                 'custom_name': custom_name,
                 'size': size,
                 'quantity': order_item.quantity,
-                'pickup_on_camp': church_order.pickup_on_camp,
-                'delivery_state': church_order.delivery_state or '',
-                'delivery_lga': church_order.delivery_lga or '',
+                'pickup_on_camp': church_order.pickup_on_camp,  # ✅ CORRECT: ChurchOrder field
+                'delivery_state': church_order.delivery_state or '',  # ✅ CORRECT: ChurchOrder field
+                'delivery_lga': church_order.delivery_lga or '',  # ✅ CORRECT: ChurchOrder field
             })
             
-            # Track summary by product + size
+            # Track summary
             key = f"{product_name}_{size}"
             summary_data[key]['product_name'] = product_name
             summary_data[key]['size'] = size
@@ -422,7 +459,7 @@ class ChurchPDFView(View):
             else:
                 summary_data[key]['delivery_count'] += order_item.quantity
             
-            # Group custom names by size if available
+            # Group custom names
             if custom_name:
                 sizes_grouping[size].append({
                     'full_name': full_name,
@@ -433,11 +470,11 @@ class ChurchPDFView(View):
             
             counter += 1
         
-        # Sort custom names by product within each size group
+        # Sort custom names
         for size in sizes_grouping:
             sizes_grouping[size] = sorted(sizes_grouping[size], key=lambda x: x['product'])
         
-        # Prepare context
+        # Render template
         context = {
             'church': church,
             'orders': orders_data,
@@ -446,9 +483,8 @@ class ChurchPDFView(View):
             'total_orders': len(orders_data)
         }
         
-        # ✅ FIX: Use correct template name
         html_string = render_to_string(
-            'orderitem_generation/church_state_template.html',
+            'orderitem_generation/church_state_template.html',  # ✅ CORRECT template name
             context
         )
         
@@ -457,19 +493,30 @@ class ChurchPDFView(View):
         pdf_bytes = html.write_pdf()
         
         # Create filename
-        filename = f"Church_Orders_{church}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"Church_Orders_{church}_{timestamp}.pdf"
         
         # Upload to Cloudinary (backup)
         cloudinary_url = upload_pdf_to_cloudinary(pdf_bytes, filename)
         
-        # CRITICAL: Return PDF for download to user's device
+        # ✅ CRITICAL: Mark orders as generated
+        BaseOrder.objects.filter(id__in=processed_order_ids).update(
+            items_generated=True,
+            generated_at=timezone.now(),
+            generated_by=request.user
+        )
+        
+        logger.info(
+            f"Generated Church PDF for {church}: {len(processed_order_ids)} orders marked as generated "
+            f"by {request.user.username}, Cloudinary: {cloudinary_url}"
+        )
+        
+        # Return PDF for download
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         
         if cloudinary_url:
             response['X-Cloudinary-URL'] = cloudinary_url
-        
-        logger.info(f"Generated Church PDF for {church}, Cloudinary: {cloudinary_url}")
         
         return response
 
@@ -477,22 +524,24 @@ class ChurchPDFView(View):
 @method_decorator(staff_member_required, name='dispatch')
 class AvailableStatesView(View):
     """
-    Get list of states/churches that have orders
+    Get list of states/churches that have UNGENERATED orders
     Returns JSON for dynamic filtering
     """
     
     def get(self, request):
-        """Get available filter options"""
+        """Get available filter options for ungenerated orders"""
         
-        # Get states with NYSC Kit orders
+        # Get states with UNGENERATED NYSC Kit orders
         kit_states = NyscKitOrder.objects.filter(
-            paid=True
+            paid=True,
+            items_generated=False  # ✅ Only ungenerated
         ).values_list('state', flat=True).distinct().order_by('state')
         
-        # Get states with NYSC Tour orders (through products)
+        # Get states with UNGENERATED NYSC Tour orders
         tour_type = ContentType.objects.get_for_model(NyscTour)
         tour_product_ids = OrderItem.objects.filter(
             order__paid=True,
+            order__items_generated=False,  # ✅ Only ungenerated
             content_type=tour_type
         ).values_list('object_id', flat=True).distinct()
         
@@ -500,10 +549,11 @@ class AvailableStatesView(View):
             id__in=tour_product_ids
         ).values_list('name', flat=True).distinct().order_by('name')
         
-        # Get churches with orders
+        # Get churches with UNGENERATED orders
         church_type = ContentType.objects.get_for_model(Church)
         church_product_ids = OrderItem.objects.filter(
             order__paid=True,
+            order__items_generated=False,  # ✅ Only ungenerated
             content_type=church_type
         ).values_list('object_id', flat=True).distinct()
         

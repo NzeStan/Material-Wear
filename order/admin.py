@@ -1,11 +1,11 @@
 # order/admin.py
+"""
+UPDATED: Added generation tracking to admin interface
+"""
 from django.contrib import admin
 from django.utils.html import format_html
-from django.urls import reverse
-from django.db.models import Sum, Count
+from django.utils import timezone
 from .models import BaseOrder, NyscKitOrder, NyscTourOrder, ChurchOrder, OrderItem
-
-# ✅ ADD THIS IMPORT
 from orderitem_generation.admin import (
     OrderItemGenerationAdminMixin,
     get_nysc_kit_pdf_context,
@@ -15,31 +15,31 @@ from orderitem_generation.admin import (
 
 
 class OrderItemInline(admin.TabularInline):
-    """Inline admin for order items with product thumbnails"""
+    """Inline admin for order items"""
     model = OrderItem
     extra = 0
-    readonly_fields = ['product_thumbnail', 'content_type', 'object_id', 'price', 'quantity', 'item_cost']
-    fields = ['product_thumbnail', 'content_type', 'object_id', 'price', 'quantity', 'extra_fields', 'item_cost']
     can_delete = False
+    readonly_fields = ['product_display', 'quantity', 'price', 'item_cost']
+    fields = ['product_display', 'quantity', 'price', 'item_cost']
     
-    def product_thumbnail(self, obj):
-        """Display product image thumbnail"""
+    def product_display(self, obj):
+        """Display product with thumbnail"""
         if obj.product and hasattr(obj.product, 'image') and obj.product.image:
             return format_html(
-                '<img src="{}" style="width: 40px; height: 40px; object-fit: cover; '
-                'border-radius: 4px; border: 2px solid #064E3B;" />',
-                obj.product.image.url
+                '<img src="{}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; margin-right: 10px;">'
+                '<span style="font-weight: bold;">{}</span>',
+                obj.product.image.url,
+                obj.product.name
             )
-        return format_html(
-            '<div style="width: 40px; height: 40px; background: #F3F4F6; '
-            'border-radius: 4px; display: flex; align-items: center; '
-            'justify-content: center; color: #9CA3AF; font-size: 10px;">No Img</div>'
-        )
-    product_thumbnail.short_description = 'Image'
+        return obj.product.name if obj.product else 'N/A'
+    product_display.short_description = 'Product'
+    
+    def has_add_permission(self, request, obj=None):
+        return False
     
     def item_cost(self, obj):
         """Display total cost for this item"""
-        cost = float(obj.get_cost()) if obj.get_cost() else 0
+        cost = obj.get_cost()  # ✅ Use the model's get_cost() method
         return format_html(
             '<span style="color: #064E3B; font-weight: bold;">₦{}</span>',
             f"{cost:,.2f}"
@@ -51,16 +51,20 @@ class BaseOrderAdmin(admin.ModelAdmin):
     """Base admin configuration for all order types"""
     list_display = [
         'serial_number', 'full_name_display', 'email', 
-        'phone_number', 'order_total', 'paid_status', 'created'  # ✅ FIXED: phone → phone_number
+        'phone_number', 'order_total', 'paid_status', 
+        'generation_status', 'created'  # ✅ NEW: Added generation_status
     ]
-    list_filter = ['paid', 'created']
-    search_fields = ['serial_number', 'email', 'first_name', 'last_name', 'phone_number']  # ✅ FIXED: phone → phone_number
+    list_filter = ['paid', 'items_generated', 'created']  # ✅ NEW: Added items_generated filter
+    search_fields = ['serial_number', 'email', 'first_name', 'last_name', 'phone_number']
     readonly_fields = [
         'serial_number', 'user', 'created', 'updated',
-        'order_total', 'items_count'
+        'order_total', 'items_count', 'generated_at', 'generated_by'  # ✅ NEW: Added generation fields
     ]
     date_hierarchy = 'created'
     inlines = [OrderItemInline]
+    
+    # ✅ NEW: Admin action to reset generation status
+    actions = ['reset_generation_status']
     
     fieldsets = (
         ('Order Information', {
@@ -68,12 +72,17 @@ class BaseOrderAdmin(admin.ModelAdmin):
             'classes': ('wide',),
         }),
         ('Personal Information', {
-            'fields': ('first_name', 'middle_name', 'last_name', 'email', 'phone_number'),  # ✅ FIXED: phone → phone_number
+            'fields': ('first_name', 'middle_name', 'last_name', 'email', 'phone_number'),
             'classes': ('wide',),
         }),
         ('Order Summary', {
             'fields': ('order_total', 'items_count'),
             'classes': ('wide',),
+        }),
+        # ✅ NEW: Generation tracking section
+        ('Generation Tracking', {
+            'fields': ('items_generated', 'generated_at', 'generated_by'),
+            'classes': ('collapse',),  # Collapsed by default
         }),
     )
     
@@ -90,69 +99,98 @@ class BaseOrderAdmin(admin.ModelAdmin):
         """Display paid status with color coding"""
         if obj.paid:
             return format_html(
-                '<span style="color: #10B981; font-weight: bold;">✓ Paid</span>'
+                '<span style="background-color: #D1FAE5; color: #065F46; padding: 4px 12px; '
+                'border-radius: 12px; font-weight: bold; font-size: 11px;">PAID</span>'
             )
         return format_html(
-            '<span style="color: #EF4444; font-weight: bold;">✗ Unpaid</span>'
+            '<span style="background-color: #FEE2E2; color: #991B1B; padding: 4px 12px; '
+            'border-radius: 12px; font-weight: bold; font-size: 11px;">UNPAID</span>'
         )
-    paid_status.short_description = 'Status'
+    paid_status.short_description = 'Payment Status'
+    
+    # ✅ NEW: Generation status display
+    def generation_status(self, obj):
+        """Display generation status with color coding"""
+        if obj.items_generated:
+            generated_date = obj.generated_at.strftime('%b %d, %Y') if obj.generated_at else 'Unknown'
+            generated_by = obj.generated_by.username if obj.generated_by else 'Unknown'
+            return format_html(
+                '<span style="background-color: #DBEAFE; color: #1E40AF; padding: 4px 12px; '
+                'border-radius: 12px; font-weight: bold; font-size: 11px;" '
+                'title="Generated on {} by {}">GENERATED ✓</span>',
+                generated_date,
+                generated_by
+            )
+        return format_html(
+            '<span style="background-color: #FEF3C7; color: #92400E; padding: 4px 12px; '
+            'border-radius: 12px; font-weight: bold; font-size: 11px;">PENDING</span>'
+        )
+    generation_status.short_description = 'Generation Status'
     
     def order_total(self, obj):
-        """Display order total"""
-        total = obj.get_total_cost()
+        """Display total cost with currency formatting"""
         return format_html(
-            '<span style="color: #F59E0B; font-weight: bold;">₦{}</span>',
-            f"{total:,.2f}"
+            '<span style="color: #064E3B; font-weight: bold;">₦{}</span>',
+            f"{obj.total_cost:,.2f}"
         )
-    order_total.short_description = 'Total'
+    order_total.short_description = 'Total Cost'
     
     def items_count(self, obj):
-        """Display number of items"""
+        """Display count of items in order"""
         count = obj.items.count()
         return format_html(
-            '<span style="background: #064E3B; color: white; padding: 4px 8px; '
-            'border-radius: 4px; font-weight: bold;">{} items</span>',
+            '<span style="background-color: #F3F4F6; color: #374151; padding: 2px 8px; '
+            'border-radius: 8px; font-weight: bold;">{} items</span>',
             count
         )
     items_count.short_description = 'Items'
     
-    def get_queryset(self, request):
-        """Optimize queryset with prefetch"""
-        return super().get_queryset(request).prefetch_related('items')
+    # ✅ NEW: Admin action to reset generation status
+    @admin.action(description='Reset generation status (allow re-generation)')
+    def reset_generation_status(self, request, queryset):
+        """Reset generation status for selected orders"""
+        updated = queryset.update(
+            items_generated=False,
+            generated_at=None,
+            generated_by=None
+        )
+        self.message_user(
+            request,
+            f'Successfully reset generation status for {updated} order(s). '
+            f'These orders can now be included in new PDF generations.'
+        )
 
 
-# ✅ UPDATED: Added OrderItemGenerationAdminMixin as first parent
+# ✅ UPDATED: NyscKitOrderAdmin with generation tracking
 @admin.register(NyscKitOrder)
 class NyscKitOrderAdmin(OrderItemGenerationAdminMixin, BaseOrderAdmin):
     """Admin for NYSC Kit orders"""
     list_display = BaseOrderAdmin.list_display + ['state', 'local_government']
-    list_filter = BaseOrderAdmin.list_filter + ['state']
+    list_filter = BaseOrderAdmin.list_filter + ['state']  # ✅ FIXED: Use 'state' not 'pickup_on_camp'
     
     fieldsets = BaseOrderAdmin.fieldsets[:2] + (
         ('NYSC Kit Details', {
-            'fields': ('call_up_number', 'state', 'local_government'),
+            'fields': ('call_up_number', 'state', 'local_government'),  # ✅ FIXED: Correct fields
             'classes': ('wide',),
         }),
     ) + BaseOrderAdmin.fieldsets[2:]
     
-    # ✅ ADDED: PDF generation context method
     def get_pdf_context(self, request):
         """Provide context for PDF generation"""
         return get_nysc_kit_pdf_context(self, request)
 
 
-# ✅ UPDATED: Added OrderItemGenerationAdminMixin as first parent
+# ✅ UPDATED: NyscTourOrderAdmin with generation tracking
 @admin.register(NyscTourOrder)
 class NyscTourOrderAdmin(OrderItemGenerationAdminMixin, BaseOrderAdmin):
     """Admin for NYSC Tour orders"""
     
-    # ✅ ADDED: PDF generation context method
     def get_pdf_context(self, request):
         """Provide context for PDF generation"""
         return get_nysc_tour_pdf_context(self, request)
 
 
-# ✅ UPDATED: Added OrderItemGenerationAdminMixin as first parent
+# ✅ UPDATED: ChurchOrderAdmin with generation tracking
 @admin.register(ChurchOrder)
 class ChurchOrderAdmin(OrderItemGenerationAdminMixin, BaseOrderAdmin):
     """Admin for Church orders"""
@@ -175,7 +213,6 @@ class ChurchOrderAdmin(OrderItemGenerationAdminMixin, BaseOrderAdmin):
         return f"{obj.delivery_state}, {obj.delivery_lga}"
     delivery_location.short_description = 'Delivery'
     
-    # ✅ ADDED: PDF generation context method
     def get_pdf_context(self, request):
         """Provide context for PDF generation"""
         return get_church_pdf_context(self, request)
