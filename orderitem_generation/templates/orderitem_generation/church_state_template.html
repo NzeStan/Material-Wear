@@ -4,7 +4,10 @@
     <meta charset="utf-8">
     <title>Church Orders - {{ church }}</title>
     <style>
-        @page { size: A4 landscape; margin: 1cm; }
+        @page { 
+            size: A4 landscape; 
+            margin: 1cm 1cm 3cm 1cm;
+        }
         body {
             font-family: Arial, sans-serif;
             font-size: 9pt;
@@ -58,7 +61,6 @@
             width: 100%;
             border-collapse: collapse;
             font-size: 8pt;
-            margin-bottom: 20px;
         }
         table th {
             background-color: #064E3B;
@@ -74,38 +76,46 @@
         table tr:nth-child(even) {
             background-color: #f9fafb;
         }
+        .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 2px solid #064E3B;
+            text-align: center;
+            font-size: 9pt;
+            color: #666;
+        }
         .size-section {
-            margin-top: 20px;
-            page-break-inside: avoid;
+            margin-bottom: 25px;
         }
         .size-header {
             background-color: #F59E0B;
             color: white;
             padding: 8px;
             font-weight: bold;
-            font-size: 10pt;
             margin-bottom: 10px;
+            border-radius: 4px;
         }
-        .footer {
-            margin-top: 20px;
-            padding-top: 10px;
-            border-top: 2px solid #064E3B;
-            text-align: center;
-            font-size: 8pt;
-            color: #666;
+        .not-applicable {
+            color: #EF4444;
+            font-weight: bold;
+            font-size: 12pt;
+        }
+        .page-break {
+            page-break-after: always;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>CHURCH ORDERS REPORT</h1>
-        <div class="subtitle">{{ church }}</div>
-        <div>Total Orders: {{ total_orders }}</div>
+        <h1>JMW ACCESSORIES</h1>
+        <div class="subtitle">CHURCH ORDERS REPORT</div>
+        <div>Church: <strong>{{ church }}</strong></div>
+        <div>Generated: {% now "F d, Y g:i A" %}</div>
     </div>
 
     {% if summary %}
     <div class="summary">
-        <h3 style="color: #064E3B; margin-top: 0; border: none;">Order Summary by Product & Size</h3>
+        <h3 style="margin-top: 0; color: #064E3B;">ORDER SUMMARY</h3>
         <table>
             <thead>
                 <tr>
@@ -156,12 +166,25 @@
                 <td>{{ order.size }}</td>
                 <td>{{ order.quantity }}</td>
                 <td>{% if order.pickup_on_camp %}✓ Yes{% else %}No{% endif %}</td>
-                <td>{{ order.delivery_state }}</td>
-                <td>{{ order.delivery_lga }}</td>
+                <td>
+                    {% if order.pickup_on_camp %}
+                        <span class="not-applicable">✗</span>
+                    {% else %}
+                        {{ order.delivery_state }}
+                    {% endif %}
+                </td>
+                <td>
+                    {% if order.pickup_on_camp %}
+                        <span class="not-applicable">✗</span>
+                    {% else %}
+                        {{ order.delivery_lga }}
+                    {% endif %}
+                </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    <div class="page-break"></div>
 
     {% if sizes_grouping %}
     <h3>Custom Names Grouped by Size</h3>

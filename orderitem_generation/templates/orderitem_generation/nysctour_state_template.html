@@ -4,7 +4,10 @@
     <meta charset="utf-8">
     <title>NYSC Tour Orders - {{ state }}</title>
     <style>
-        @page { size: A4; margin: 1cm; }
+        @page { 
+            size: A4; 
+            margin: 1cm 1cm 3cm 1cm;
+        }
         body {
             font-family: Arial, sans-serif;
             font-size: 10pt;
@@ -75,12 +78,8 @@
             font-size: 9pt;
             color: #666;
         }
-        .note {
-            background-color: #FEF3C7;
-            border-left: 4px solid #F59E0B;
-            padding: 10px;
-            margin-top: 15px;
-            font-size: 9pt;
+        .page-break {
+            page-break-after: always;
         }
     </style>
 </head>
@@ -95,21 +94,14 @@
             <div class="summary-label">Total Orders</div>
             <div class="summary-value">{{ total_orders }}</div>
         </div>
-        <div class="summary-item">
-            <div class="summary-label">Total Participants</div>
-            <div class="summary-value">{{ total_participants }}</div>
-        </div>
     </div>
 
     <table>
         <thead>
             <tr>
-                <th style="width: 5%;">#</th>
-                <th style="width: 30%;">Full Name</th>
-                <th style="width: 20%;">Email</th>
-                <th style="width: 15%;">Phone</th>
-                <th style="width: 15%;">Participants</th>
-                <th style="width: 15%;">Amount Paid</th>
+                <th style="width: 10%;">#</th>
+                <th style="width: 50%;">Full Name</th>
+                <th style="width: 40%;">Call Up Number</th>
             </tr>
         </thead>
         <tbody>
@@ -117,28 +109,19 @@
             <tr>
                 <td>{{ item.sn }}</td>
                 <td>{{ item.full_name }}</td>
-                <td>{{ item.email }}</td>
-                <td>{{ item.phone }}</td>
-                <td style="text-align: center;"><strong>{{ item.quantity }}</strong></td>
-                <td>₦{{ item.amount|floatformat:2 }}</td>
+                <td>{{ item.call_up_number }}</td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="6" style="text-align: center; color: #999;">No tour orders found for this state</td>
+                <td colspan="3" style="text-align: center; color: #999;">No tour orders found for this state</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 
-    <div class="note">
-        <strong>Note:</strong> NyscTourOrder stores basic customer information (name, email, phone) inherited from BaseOrder. 
-        Additional details like call-up numbers are stored in the cart items' extra_fields if needed.
-    </div>
-
     <div class="footer">
         <p><strong>JMW Accessories - NYSC Tour Orders Report</strong></p>
         <p>Generated: {% now "F d, Y g:i A" %}</p>
-        <p style="margin-top: 5px;"><em>Total Participants = Sum of all quantity values (representing number of people in each tour)</em></p>
     </div>
 </body>
 </html>

@@ -106,6 +106,13 @@ class CheckoutSerializer(serializers.Serializer):
                     'local_government': 'Local government is required for NYSC Kit orders'
                 })
         
+        # Validate NYSC Tour fields
+        if 'NyscTour' in product_types:
+            if not attrs.get('middle_name'):
+                raise serializers.ValidationError({
+                    'middle_name': 'Middle name is required for NYSC Tour orders'
+                })
+        
         # Validate Church fields
         if 'Church' in product_types:
             if not attrs.get('pickup_on_camp', True):

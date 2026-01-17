@@ -30,7 +30,7 @@ urlpatterns = [
 # All orders require base fields:
 # {
 #   "first_name": "John",
-#   "middle_name": "A",      // Optional
+#   "middle_name": "A",      // Optional (REQUIRED for NYSC Tour orders)
 #   "last_name": "Doe",
 #   "phone_number": "08012345678"
 # }

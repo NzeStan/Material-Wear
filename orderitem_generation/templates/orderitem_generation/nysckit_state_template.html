@@ -4,7 +4,10 @@
     <meta charset="utf-8">
     <title>NYSC Kit Orders - {{ state }}</title>
     <style>
-        @page { size: A4 landscape; margin: 1cm; }
+        @page { 
+            size: A4 landscape; 
+            margin: 1cm 1cm 3cm 1cm;
+        }
         body {
             font-family: Arial, sans-serif;
             font-size: 9pt;
@@ -62,21 +65,6 @@
         table tr:nth-child(even) {
             background-color: #f9fafb;
         }
-        .measurements-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 5px;
-            font-size: 7pt;
-        }
-        .measurement-item {
-            background-color: #f9fafb;
-            padding: 3px 5px;
-            border-left: 3px solid #064E3B;
-        }
-        .measurement-label {
-            color: #F59E0B;
-            font-weight: bold;
-        }
         .footer {
             margin-top: 30px;
             padding-top: 15px;
@@ -123,17 +111,17 @@
     {% endif %}
 
     {% if kakhi_orders %}
-    <div class="section-header">KAKHI ORDERS (WITH MEASUREMENTS)</div>
+    <div class="section-header">KAKHI ORDERS</div>
     <table>
         <thead>
             <tr>
-                <th style="width: 3%;">#</th>
-                <th style="width: 15%;">Full Name</th>
-                <th style="width: 12%;">Call-Up Number</th>
-                <th style="width: 12%;">LGA</th>
-                <th style="width: 10%;">Product</th>
-                <th style="width: 5%;">Qty</th>
-                <th style="width: 43%;">Measurements (inches)</th>
+                <th style="width: 5%;">#</th>
+                <th style="width: 25%;">Full Name</th>
+                <th style="width: 15%;">Call-Up Number</th>
+                <th style="width: 15%;">LGA</th>
+                <th style="width: 20%;">Product</th>
+                <th style="width: 10%;">Size</th>
+                <th style="width: 10%;">Qty</th>
             </tr>
         </thead>
         <tbody>
@@ -144,51 +132,53 @@
                 <td>{{ item.call_up_number }}</td>
                 <td>{{ item.lga }}</td>
                 <td>{{ item.product }}</td>
+                <td><strong>{{ item.size }}</strong></td>
                 <td>{{ item.quantity }}</td>
-                <td>
-                    {% if item.measurement %}
-                    <div class="measurements-grid">
-                        <div class="measurement-item">
-                            <span class="measurement-label">Chest:</span> {{ item.measurement.chest|default:"N/A" }}"
-                        </div>
-                        <div class="measurement-item">
-                            <span class="measurement-label">Shoulder:</span> {{ item.measurement.shoulder|default:"N/A" }}"
-                        </div>
-                        <div class="measurement-item">
-                            <span class="measurement-label">Neck:</span> {{ item.measurement.neck|default:"N/A" }}"
-                        </div>
-                        <div class="measurement-item">
-                            <span class="measurement-label">Sleeve Len:</span> {{ item.measurement.sleeve_length|default:"N/A" }}"
-                        </div>
-                        <div class="measurement-item">
-                            <span class="measurement-label">Sleeve Round:</span> {{ item.measurement.sleeve_round|default:"N/A" }}"
-                        </div>
-                        <div class="measurement-item">
-                            <span class="measurement-label">Top Len:</span> {{ item.measurement.top_length|default:"N/A" }}"
-                        </div>
-                        <div class="measurement-item">
-                            <span class="measurement-label">Waist:</span> {{ item.measurement.waist|default:"N/A" }}"
-                        </div>
-                        <div class="measurement-item">
-                            <span class="measurement-label">Thigh:</span> {{ item.measurement.thigh|default:"N/A" }}"
-                        </div>
-                        <div class="measurement-item">
-                            <span class="measurement-label">Knee:</span> {{ item.measurement.knee|default:"N/A" }}"
-                        </div>
-                        <div class="measurement-item">
-                            <span class="measurement-label">Ankle:</span> {{ item.measurement.ankle|default:"N/A" }}"
-                        </div>
-                        <div class="measurement-item">
-                            <span class="measurement-label">Hips:</span> {{ item.measurement.hips|default:"N/A" }}"
-                        </div>
-                        <div class="measurement-item">
-                            <span class="measurement-label">Trouser Len:</span> {{ item.measurement.trouser_length|default:"N/A" }}"
-                        </div>
-                    </div>
-                    {% else %}
-                    <em class="no-data">No measurements available</em>
-                    {% endif %}
-                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Separate Measurements Table -->
+    <div class="section-header">KAKHI MEASUREMENTS (inches)</div>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 3%;">#</th>
+                <th>Chest</th>
+                <th>Shoulder</th>
+                <th>Neck</th>
+                <th>Sleeve Len</th>
+                <th>Sleeve Round</th>
+                <th>Top Len</th>
+                <th>Waist</th>
+                <th>Thigh</th>
+                <th>Knee</th>
+                <th>Ankle</th>
+                <th>Hips</th>
+                <th>Trouser Len</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in kakhi_orders %}
+            <tr>
+                <td>{{ item.sn }}</td>
+                {% if item.measurement %}
+                <td>{{ item.measurement.chest|default:"N/A" }}</td>
+                <td>{{ item.measurement.shoulder|default:"N/A" }}</td>
+                <td>{{ item.measurement.neck|default:"N/A" }}</td>
+                <td>{{ item.measurement.sleeve_length|default:"N/A" }}</td>
+                <td>{{ item.measurement.sleeve_round|default:"N/A" }}</td>
+                <td>{{ item.measurement.top_length|default:"N/A" }}</td>
+                <td>{{ item.measurement.waist|default:"N/A" }}</td>
+                <td>{{ item.measurement.thigh|default:"N/A" }}</td>
+                <td>{{ item.measurement.knee|default:"N/A" }}</td>
+                <td>{{ item.measurement.ankle|default:"N/A" }}</td>
+                <td>{{ item.measurement.hips|default:"N/A" }}</td>
+                <td>{{ item.measurement.trouser_length|default:"N/A" }}</td>
+                {% else %}
+                <td colspan="12" class="no-data">No measurements available</td>
+                {% endif %}
             </tr>
             {% endfor %}
         </tbody>
@@ -261,7 +251,7 @@
         <p><strong>JMW Accessories - NYSC Kit Orders Report</strong></p>
         <p>State: {{ state }} | Generated: {% now "F d, Y g:i A" %}</p>
         <p style="font-size: 8pt; color: #666;">
-            All measurements are in inches | For inquiries, contact JMW Accessories
+            For inquiries, contact JMW Accessories
         </p>
     </div>
 </body>
