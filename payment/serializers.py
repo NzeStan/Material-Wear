@@ -2,6 +2,10 @@
 from rest_framework import serializers
 from .models import PaymentTransaction
 from order.serializers import BaseOrderSerializer
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .models import PaymentTransaction
 
 
 class PaymentTransactionSerializer(serializers.ModelSerializer):
@@ -17,7 +21,7 @@ class PaymentTransactionSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'reference', 'created', 'modified']  # ✅ FIXED: updated → modified
     
-    def get_order_count(self, obj):
+    def get_order_count(self, obj: 'PaymentTransaction') -> int:
         """Get count of orders in this payment"""
         return obj.orders.count()
 
@@ -48,3 +52,8 @@ class PaymentStatusSerializer(serializers.Serializer):
     amount = serializers.DecimalField(max_digits=10, decimal_places=2)
     paid = serializers.BooleanField()
     message = serializers.CharField()
+
+class WebhookSerializer(serializers.Serializer):
+    """Serializer for Paystack webhook endpoint"""
+    event = serializers.CharField(help_text="Event type")
+    data = serializers.DictField(help_text="Event data")

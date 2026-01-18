@@ -6,11 +6,14 @@ from dj_rest_auth.views import (
     LoginView, LogoutView, PasswordChangeView, 
     PasswordResetView, PasswordResetConfirmView, UserDetailsView
 )
+from rest_framework import serializers
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.conf import settings
 import logging
+from .serializers import LogoutSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -56,15 +59,26 @@ class CustomLoginView(LoginView):
             logger.info(f"User logged in successfully: {request.data.get('email')}")
         return response
 
-
 class CustomLogoutView(LogoutView):
-    permission_classes = [IsAuthenticated]
-
+    """
+    Custom logout view with drf-spectacular documentation
+    """
+    serializer_class = LogoutSerializer  # ✅ ADD THIS LINE
+    
+    @extend_schema(  # ✅ ADD THIS DECORATOR
+        tags=['Authentication'],
+        description="Logout the current user and clear session",
+        responses={
+            200: {
+                'type': 'object',
+                'properties': {
+                    'detail': {'type': 'string', 'example': 'Successfully logged out.'}
+                }
+            }
+        }
+    )
     def post(self, request, *args, **kwargs):
-        logger.info(f"User logging out: {request.user.email}")
-        response = super().post(request, *args, **kwargs)
-        # Clear any custom cookies if needed
-        return response
+        return super().post(request, *args, **kwargs)
 
 
 class CustomPasswordResetView(PasswordResetView):

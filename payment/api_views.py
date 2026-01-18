@@ -16,6 +16,9 @@ from order.models import BaseOrder
 from jmw.background_utils import (
     send_payment_receipt_email_async, generate_payment_receipt_pdf_task
 )
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiResponse
+from drf_spectacular.types import OpenApiTypes
+from .serializers import WebhookSerializer
 from jmw.throttling import PaymentRateThrottle
 import uuid
 import json
@@ -211,14 +214,25 @@ class VerifyPaymentView(views.APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
 
-@extend_schema(tags=['Payment'])
+@extend_schema(
+    tags=['Payment'],
+    description="Paystack webhook endpoint for payment notifications (Internal use only)",
+    request=WebhookSerializer,
+    responses={
+        200: OpenApiResponse(description="Webhook processed successfully"),
+        400: OpenApiResponse(description="Invalid JSON payload"),
+        401: OpenApiResponse(description="Invalid signature"),
+        404: OpenApiResponse(description="Payment not found"),
+        500: OpenApiResponse(description="Server error processing webhook")
+    },
+    exclude=True  # Exclude from public API docs as it's for Paystack only
+)
+throttle_classes = [PaymentRateThrottle]
 @csrf_exempt
-@api_view(['POST'])
-@permission_classes([permissions.AllowAny])
 def payment_webhook(request):
     """
-    ✅ SECURED: Webhook endpoint for Paystack payment notifications
-    Now includes signature verification to prevent fraud
+    ✅ SECURED: Webhook handler for Paystack payment notifications
+    Verifies signature before processing
     """
     try:
         # ✅ STEP 1: Verify webhook signature
@@ -293,7 +307,17 @@ def payment_webhook(request):
 
 @extend_schema_view(
     list=extend_schema(description="List all payment transactions for user"),
-    retrieve=extend_schema(description="Get specific payment transaction details"),
+    retrieve=extend_schema(
+        description="Get specific payment transaction details",
+        parameters=[
+            OpenApiParameter(
+                name='id',
+                type=OpenApiTypes.UUID,
+                location=OpenApiParameter.PATH,
+                description='Payment Transaction ID'
+            )
+        ]
+    ),
 )
 @extend_schema(tags=['Payment'])
 class PaymentTransactionViewSet(viewsets.ReadOnlyModelViewSet):
@@ -303,9 +327,15 @@ class PaymentTransactionViewSet(viewsets.ReadOnlyModelViewSet):
     """
     serializer_class = PaymentTransactionSerializer
     permission_classes = [permissions.IsAuthenticated]
+    queryset = PaymentTransaction.objects.none()  # ✅ ADD THIS LINE - Default for schema generation
     
     def get_queryset(self):
         """Get payments for authenticated user"""
+        # ✅ ADD THIS CHECK
+        if getattr(self, 'swagger_fake_view', False):
+            return PaymentTransaction.objects.none()
+        
+        # Regular queryset for authenticated users
         return PaymentTransaction.objects.filter(
             orders__user=self.request.user
         ).prefetch_related(

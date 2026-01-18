@@ -2,6 +2,9 @@ from rest_framework import viewsets, permissions, views, response, status
 from .models import Image
 from .serializers import ImageSerializer
 from .youtube_service import YouTubeService
+from drf_spectacular.utils import extend_schema
+from .serializers import YouTubeVideoSerializer 
+
 
 class ImageViewSet(viewsets.ModelViewSet):
     serializer_class = ImageSerializer
@@ -14,12 +17,35 @@ class ImageViewSet(viewsets.ModelViewSet):
         return Image.objects.filter(active=True)
 
 class YouTubeVideoView(views.APIView):
+    """
+    Get YouTube channel videos
+    """
     permission_classes = [permissions.AllowAny]
+    serializer_class = YouTubeVideoSerializer 
 
+    @extend_schema( 
+        tags=['Feed'],
+        description="Get list of videos from configured YouTube channel",
+        responses={
+            200: YouTubeVideoSerializer(many=True),
+            500: {
+                'type': 'object',
+                'properties': {
+                    'error': {'type': 'string'}
+                }
+            }
+        }
+    )
     def get(self, request):
         try:
             service = YouTubeService()
             videos = service.get_channel_videos()
             return response.Response(videos)
         except Exception as e:
-            return response.Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return response.Response(
+                {"error": str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+

@@ -6,6 +6,7 @@ from products.constants import (
     VEST_SIZES, CHURCH_SIZES, CAP_SIZE, MEASUREMENT_SIZE,
     NYSC_KIT_TYPE_CHOICES, PRODUCT_TYPE_CHOICES
 )
+from typing import Dict, Any, Optional, List
 from measurement.models import Measurement
 
 
@@ -25,7 +26,7 @@ class CartItemSerializer(serializers.Serializer):
     extra_fields = serializers.DictField(read_only=True)
     item_key = serializers.CharField(read_only=True)
     
-    def get_product(self, obj):
+    def get_product(self, obj: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Serialize product based on its type"""
         product = obj.get('product')
         if not product:
@@ -42,6 +43,7 @@ class CartItemSerializer(serializers.Serializer):
         if serializer_class:
             return serializer_class(product).data
         return None
+
 
 
 class AddToCartSerializer(serializers.Serializer):
@@ -192,10 +194,17 @@ class CartSerializer(serializers.Serializer):
     total_cost = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     grouped_by_type = serializers.SerializerMethodField()
 
-    def get_grouped_by_type(self, obj):
-        """Serialize grouped items by product type"""
-        grouped = obj.get('grouped_by_type', {})
-        result = {}
-        for product_type, items in grouped.items():
-            result[product_type] = CartItemSerializer(items, many=True).data
-        return result
+    def get_grouped_by_type(self, obj: Dict[str, Any]) -> Dict[str, List[Dict]]:
+        """Group cart items by product type"""
+        items = obj.get('items', [])
+        grouped = {}
+        for item in items:
+            ptype = item['product'].__class__.__name__
+            if ptype not in grouped:
+                grouped[ptype] = []
+            grouped[ptype].append(item)
+        return grouped
+    
+class ClearCartSerializer(serializers.Serializer):
+    """Serializer for clearing cart - no input required"""
+    pass

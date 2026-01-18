@@ -340,16 +340,87 @@ SIMPLE_JWT = {
 # DRF SPECTACULAR (API DOCUMENTATION)
 # ==============================================================================
 
+# SPECTACULAR_SETTINGS = {
+#     'TITLE': 'JMW Accessories API',
+#     'DESCRIPTION': 'Production-ready API for managing NYSC products, church merchandise, and orders',
+#     'VERSION': '1.0.0',
+#     'SERVE_INCLUDE_SCHEMA': False,
+#     'COMPONENT_SPLIT_REQUEST': True,
+#     'SCHEMA_PATH_PREFIX': '/api/',
+#     'SERVERS': [
+#         {'url': 'https://jumemegawears.com', 'description': 'Production'},
+#         {'url': 'http://localhost:8000', 'description': 'Development'},
+#     ],
+# }
 SPECTACULAR_SETTINGS = {
+    # Basic Info
     'TITLE': 'JMW Accessories API',
-    'DESCRIPTION': 'Production-ready API for managing NYSC products, church merchandise, and orders',
+    'DESCRIPTION': 'API for NYSC Uniforms and Church Merchandise E-commerce Platform',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    
+    # ✅ FIX ENUM NAMING COLLISIONS
+    'ENUM_NAME_OVERRIDES': {
+        # Resolve state enum collision
+        'StateEnum': 'products.constants.STATES',
+        # Rename generic "name" collision
+        'Name44bEnum': 'ProductNameEnum',
+    },
+    
+    # Component Settings
     'COMPONENT_SPLIT_REQUEST': True,
-    'SCHEMA_PATH_PREFIX': '/api/',
-    'SERVERS': [
-        {'url': 'https://jumemegawears.com', 'description': 'Production'},
-        {'url': 'http://localhost:8000', 'description': 'Development'},
+    'SCHEMA_PATH_PREFIX': r'/api/',
+    'DEFAULT_GENERATOR_CLASS': 'drf_spectacular.generators.SchemaGenerator',
+    
+    # ✅ AUTHENTICATION CONFIGURATION
+    'APPEND_COMPONENTS': {
+        'securitySchemes': {
+            'cookieAuth': {
+                'type': 'apiKey',
+                'in': 'cookie',
+                'name': 'sessionid',
+                'description': 'Session-based authentication using Django session cookie'
+            },
+            'tokenAuth': {
+                'type': 'apiKey',
+                'in': 'header',
+                'name': 'Authorization',
+                'description': 'Token-based authentication (if using tokens)'
+            }
+        }
+    },
+    'SECURITY': [
+        {'cookieAuth': []},  # Default to cookie auth
+    ],
+    
+    # ✅ SWAGGER UI CONFIGURATION
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': True,
+        'displayOperationId': True,
+        'filter': True,
+        'defaultModelsExpandDepth': 2,
+        'defaultModelExpandDepth': 2,
+    },
+    
+    # ✅ ADDITIONAL SETTINGS
+    'POSTPROCESSING_HOOKS': [
+        'drf_spectacular.hooks.postprocess_schema_enums',
+    ],
+    'ENUM_ADD_EXPLICIT_BLANK_NULL_CHOICE': False,
+    'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
+    
+    # Tags
+    'TAGS': [
+        {'name': 'Authentication', 'description': 'User authentication and account management'},
+        {'name': 'Products', 'description': 'Product catalog and details'},
+        {'name': 'Cart', 'description': 'Shopping cart operations'},
+        {'name': 'Order', 'description': 'Order management'},
+        {'name': 'Payment', 'description': 'Payment processing'},
+        {'name': 'Measurement', 'description': 'Body measurements management'},
+        {'name': 'Bulk Orders', 'description': 'Bulk order management'},
+        {'name': 'Feed', 'description': 'Images and videos feed'},
+        {'name': 'Dropdowns', 'description': 'Dropdown data (states, LGAs, sizes)'},
     ],
 }
 

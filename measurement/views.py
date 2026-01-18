@@ -30,6 +30,7 @@ class MeasurementPagination(PageNumberPagination):
     partial_update=extend_schema(description="Partially update a measurement set"),
     destroy=extend_schema(description="Delete a measurement set (soft delete)"),
 )
+@extend_schema(tags=['Measurement'])  # ✅ ADD TAGS
 class MeasurementViewSet(viewsets.ModelViewSet):
     """
     API endpoint for managing body measurements.
@@ -54,9 +55,13 @@ class MeasurementViewSet(viewsets.ModelViewSet):
     filterset_fields = ["created_at", "updated_at"]
     ordering_fields = ["created_at", "updated_at"]
     ordering = ["-created_at"]
+    queryset = Measurement.objects.none() 
 
     def get_queryset(self):
         """Return only the authenticated user's measurements with optimized query."""
-        return Measurement.objects.filter(user=self.request.user).select_related(
-            "user"
-        )
+        
+        if getattr(self, 'swagger_fake_view', False):
+            return Measurement.objects.none()
+        
+        # Regular queryset for authenticated users
+        return Measurement.objects.filter(user=self.request.user).select_related("user")

@@ -10,6 +10,8 @@ from .serializers import (
     BaseOrderSerializer, NyscKitOrderSerializer, NyscTourOrderSerializer,
     ChurchOrderSerializer, CheckoutSerializer, OrderListSerializer, OrderItemSerializer
 )
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 from jmw.throttling import CheckoutRateThrottle
 from decimal import Decimal
 from cart.cart import Cart
@@ -198,7 +200,17 @@ class CheckoutView(views.APIView):
 
 @extend_schema_view(
     list=extend_schema(description="List all orders for authenticated user"),
-    retrieve=extend_schema(description="Get specific order details"),
+    retrieve=extend_schema(
+        description="Get specific order details",
+        parameters=[
+            OpenApiParameter(
+                name='id',
+                type=OpenApiTypes.UUID,
+                location=OpenApiParameter.PATH,
+                description='Order ID'
+            )
+        ]
+    ),
 )
 @extend_schema(tags=['Order'])
 class OrderViewSet(viewsets.ReadOnlyModelViewSet):
@@ -207,21 +219,27 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
     Users can only view their own orders
     """
     permission_classes = [permissions.IsAuthenticated]
+    queryset = BaseOrder.objects.none()  # ✅ ADD THIS LINE - Default for schema generation
     
     def get_queryset(self):
         """
         ✅ FIXED: Get orders for authenticated user with polymorphic type selection
         Uses select_related to fetch the specific order type (Church/NyscKit/NyscTour)
         """
+        # ✅ ADD THIS CHECK
+        if getattr(self, 'swagger_fake_view', False):
+            return BaseOrder.objects.none()
+        
+        # Regular queryset for authenticated users
         base_queryset = BaseOrder.objects.filter(
             user=self.request.user
         ).prefetch_related(
             'items',
             'items__content_type'
         ).select_related(
-            'churchorder',  # ✅ Fetch ChurchOrder relationship
-            'nysckitorder',  # ✅ Fetch NyscKitOrder relationship
-            'nysctourorder'  # ✅ Fetch NyscTourOrder relationship
+            'churchorder',  # Fetch ChurchOrder relationship
+            'nysckitorder',  # Fetch NyscKitOrder relationship
+            'nysctourorder'  # Fetch NyscTourOrder relationship
         ).order_by('-created')
         
         return base_queryset

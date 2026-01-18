@@ -9,8 +9,9 @@ from .serializers import (
 )
 from jmw.throttling import CartRateThrottle
 import logging
-
 logger = logging.getLogger(__name__)
+from .serializers import ClearCartSerializer 
+
 
 
 @extend_schema(tags=['Cart'])
@@ -233,10 +234,19 @@ class ClearCartView(views.APIView):
     Clear all items from cart
     """
     permission_classes = [AllowAny]
+    throttle_classes = [CartRateThrottle]
+    serializer_class = ClearCartSerializer  # ✅ ADD THIS LINE
     
     @extend_schema(
-        description="Remove all items from the cart",
-        responses={200: {'description': 'Cart cleared successfully'}}
+        description="Clear all items from the cart",
+        responses={
+            200: {
+                'type': 'object',
+                'properties': {
+                    'message': {'type': 'string', 'example': 'Cart cleared successfully'}
+                }
+            }
+        }
     )
     def post(self, request):
         cart = Cart(request)
@@ -245,9 +255,9 @@ class ClearCartView(views.APIView):
         logger.info("Cart cleared")
         
         return Response({
-            'message': 'Cart cleared successfully',
-            'cart_count': 0
+            'message': 'Cart cleared successfully'
         }, status=status.HTTP_200_OK)
+
 
 
 @extend_schema(tags=['Cart'])

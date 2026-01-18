@@ -3,7 +3,10 @@ from rest_framework import serializers
 from django.contrib.contenttypes.models import ContentType
 from .models import Category, NyscKit, NyscTour, Church
 from django.conf import settings
+from typing import Optional, TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from .models import Category, NyscKit, NyscTour, Church
 
 class CategorySerializer(serializers.ModelSerializer):
     """Serializer for product categories"""
@@ -14,7 +17,7 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'slug', 'product_type', 'description', 'product_count']
         read_only_fields = ['id']
         
-    def get_product_count(self, obj):
+    def get_product_count(self, obj: 'Category') -> int:
         """Get count of available products in this category"""
         model_map = {
             'nysc_kit': NyscKit,
@@ -34,7 +37,7 @@ class BaseProductSerializer(serializers.ModelSerializer):
     can_be_purchased = serializers.BooleanField(read_only=True)
     
     
-    def get_thumbnail(self, obj):
+    def get_thumbnail(self, obj) -> Optional[str]:
         """Get optimized thumbnail URL"""
         if obj.image:
             # For Cloudinary images, use transformation for thumbnail
@@ -53,7 +56,7 @@ class BaseProductSerializer(serializers.ModelSerializer):
 class NyscKitSerializer(BaseProductSerializer):
     """Serializer for NYSC Kit products"""
     type_display = serializers.CharField(source='get_type_display', read_only=True)
-    
+    thumbnail = serializers.SerializerMethodField()
     class Meta:
         model = NyscKit
         fields = [
@@ -75,11 +78,16 @@ class NyscKitSerializer(BaseProductSerializer):
                 representation.pop(field, None)
                 
         return representation
+    
+    def get_thumbnail(self, obj: 'NyscKit') -> Optional[str]:
+        """Get optimized thumbnail URL for NYSC kit product"""
+        return super().get_thumbnail(obj)
 
 
 class NyscTourSerializer(BaseProductSerializer):
     """Serializer for NYSC Tour products"""
     
+    thumbnail = serializers.SerializerMethodField()
     class Meta:
         model = NyscTour
         fields = [
@@ -103,10 +111,15 @@ class NyscTourSerializer(BaseProductSerializer):
         return representation
 
 
+    def get_thumbnail(self, obj: 'NyscTour') -> Optional[str]:
+        """Get optimized thumbnail URL for NYSC tour product"""
+        return super().get_thumbnail(obj)
+
+
 class ChurchSerializer(BaseProductSerializer):
     """Serializer for Church merchandise products"""
     church_display = serializers.CharField(source='get_church_display', read_only=True)
-    
+    thumbnail = serializers.SerializerMethodField()
     class Meta:
         model = Church
         fields = [
@@ -128,6 +141,10 @@ class ChurchSerializer(BaseProductSerializer):
                 representation.pop(field, None)
                 
         return representation
+    
+    def get_thumbnail(self, obj: 'Church') -> Optional[str]:
+        """Get optimized thumbnail URL for church product"""
+        return super().get_thumbnail(obj)
 
 
 class ProductListSerializer(serializers.Serializer):

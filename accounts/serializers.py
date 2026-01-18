@@ -15,6 +15,10 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
+class LogoutSerializer(serializers.Serializer):
+    """Serializer for logout endpoint"""
+    pass
+
 class CustomUserSerializer(UserDetailsSerializer):
     email = serializers.EmailField(read_only=True)
     date_joined = serializers.DateTimeField(read_only=True)

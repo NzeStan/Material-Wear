@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import BulkOrderLink, CouponCode, OrderEntry
+from typing import Any, Optional
 
 class CouponCodeSerializer(serializers.ModelSerializer):
     bulk_order_name = serializers.CharField(source='bulk_order.organization_name', read_only=True)
@@ -27,14 +28,17 @@ class BulkOrderLinkSummarySerializer(serializers.ModelSerializer):
             'shareable_url',
         ]
 
-    def get_is_expired(self, obj):
+    def get_is_expired(self, obj: 'BulkOrderLink') -> bool:
+        """Check if bulk order link has expired"""
         return obj.is_expired()
-
-    def get_shareable_url(self, obj):
+    
+    # ✅ ADD TYPE HINT
+    def get_shareable_url(self, obj: 'BulkOrderLink') -> str:
+        """Get shareable URL for bulk order"""
         request = self.context.get('request')
-        path = obj.get_shareable_url()
-        return request.build_absolute_uri(path) if request else path
-
+        if request:
+            return request.build_absolute_uri(f'/bulk-order/{obj.slug}/')
+        return f'/bulk-order/{obj.slug}/'
 
 class OrderEntrySerializer(serializers.ModelSerializer):
     bulk_order = BulkOrderLinkSummarySerializer(read_only=True)
@@ -134,19 +138,17 @@ class BulkOrderLinkSerializer(serializers.ModelSerializer):
         read_only_fields = ('created_by', 'created_at', 'updated_at', 'slug')
         lookup_field = 'slug'
 
-    def get_paid_count(self, obj):
-        return obj.orders.filter(paid=True).count()
+    def get_paid_count(self, obj: 'BulkOrderLink') -> int:
+        """Get count of paid entries"""
+        return obj.entries.filter(paid=True).count()
     
-    def get_shareable_url(self, obj):
-        """Build absolute URL dynamically from request context"""
+    # ✅ ADD TYPE HINT
+    def get_shareable_url(self, obj: 'BulkOrderLink') -> str:
+        """Get shareable URL for bulk order"""
         request = self.context.get('request')
-        if request and obj.slug:
-            # Get the relative path from model
-            path = obj.get_shareable_url()
-            # Build absolute URI using request
-            return request.build_absolute_uri(path)
-        # Fallback to just the path if no request context
-        return obj.get_shareable_url() if obj.slug else None
+        if request:
+            return request.build_absolute_uri(f'/bulk-order/{obj.slug}/')
+        return f'/bulk-order/{obj.slug}/'
 
     def create(self, validated_data):
         validated_data['created_by'] = self.context['request'].user
