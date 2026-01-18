@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from decimal import Decimal
 from .models import Measurement
 
 
@@ -11,72 +12,96 @@ class MeasurementSerializer(serializers.ModelSerializer):
         read_only_fields = ("user", "created_at", "updated_at", "is_deleted")
         extra_kwargs = {
             "chest": {
+                "min_value": Decimal("20.00"),
+                "max_value": Decimal("70.00"),
                 "error_messages": {
                     "min_value": "Chest measurement must be at least 20 inches.",
                     "max_value": "Chest measurement cannot exceed 70 inches.",
                 }
             },
             "shoulder": {
+                "min_value": Decimal("12.00"),
+                "max_value": Decimal("30.00"),
                 "error_messages": {
                     "min_value": "Shoulder measurement must be at least 12 inches.",
                     "max_value": "Shoulder measurement cannot exceed 30 inches.",
                 }
             },
             "neck": {
+                "min_value": Decimal("10.00"),
+                "max_value": Decimal("30.00"),
                 "error_messages": {
                     "min_value": "Neck measurement must be at least 10 inches.",
                     "max_value": "Neck measurement cannot exceed 30 inches.",
                 }
             },
             "sleeve_length": {
+                "min_value": Decimal("20.00"),
+                "max_value": Decimal("40.00"),
                 "error_messages": {
                     "min_value": "Sleeve length must be at least 20 inches.",
                     "max_value": "Sleeve length cannot exceed 40 inches.",
                 }
             },
             "sleeve_round": {
+                "min_value": Decimal("8.00"),
+                "max_value": Decimal("20.00"),
                 "error_messages": {
                     "min_value": "Sleeve round (bicep) must be at least 8 inches.",
                     "max_value": "Sleeve round (bicep) cannot exceed 20 inches.",
                 }
             },
             "top_length": {
+                "min_value": Decimal("20.00"),
+                "max_value": Decimal("40.00"),
                 "error_messages": {
                     "min_value": "Top length must be at least 20 inches.",
                     "max_value": "Top length cannot exceed 40 inches.",
                 }
             },
             "waist": {
+                "min_value": Decimal("20.00"),
+                "max_value": Decimal("60.00"),
                 "error_messages": {
                     "min_value": "Waist measurement must be at least 20 inches.",
                     "max_value": "Waist measurement cannot exceed 60 inches.",
                 }
             },
             "thigh": {
+                "min_value": Decimal("12.00"),
+                "max_value": Decimal("40.00"),
                 "error_messages": {
                     "min_value": "Thigh measurement must be at least 12 inches.",
                     "max_value": "Thigh measurement cannot exceed 40 inches.",
                 }
             },
             "knee": {
+                "min_value": Decimal("10.00"),
+                "max_value": Decimal("30.00"),
                 "error_messages": {
                     "min_value": "Knee measurement must be at least 10 inches.",
                     "max_value": "Knee measurement cannot exceed 30 inches.",
                 }
             },
             "ankle": {
+                "min_value": Decimal("7.00"),
+                "max_value": Decimal("20.00"),
                 "error_messages": {
                     "min_value": "Ankle measurement must be at least 7 inches.",
                     "max_value": "Ankle measurement cannot exceed 20 inches.",
                 }
             },
             "hips": {
+                "min_value": Decimal("25.00"),
+                "max_value": Decimal("70.00"),
                 "error_messages": {
                     "min_value": "Hip measurement must be at least 25 inches.",
                     "max_value": "Hip measurement cannot exceed 70 inches.",
                 }
             },
             "trouser_length": {
+                "min_value": Decimal("25.00"),
+                "max_value": Decimal("50.00"),
                 "error_messages": {
                     "min_value": "Trouser length must be at least 25 inches.",
                     "max_value": "Trouser length cannot exceed 50 inches.",

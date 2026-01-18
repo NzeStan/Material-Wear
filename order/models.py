@@ -4,10 +4,16 @@ from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from  . validators import validate_phone_number
 from django.contrib.auth import get_user_model
+from decimal import Decimal
+from django.core.validators import RegexValidator
+
 
 User = get_user_model()
+
+validate_phone_number = RegexValidator(
+    regex=r"^\d{11}$", message="Phone number must be 11 digits"
+)
 
 class BaseOrder(models.Model):
     """Base model for all order types"""
@@ -135,7 +141,7 @@ class OrderItem(models.Model):
     object_id = models.UUIDField()
     product = GenericForeignKey("content_type", "object_id")
     price = models.DecimalField(
-        max_digits=10, decimal_places=2, validators=[MinValueValidator(0.01)]
+        max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))]  
     )
     quantity = models.PositiveIntegerField(default=1)
     extra_fields = models.JSONField(default=dict, blank=True)

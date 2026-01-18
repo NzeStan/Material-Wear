@@ -17,6 +17,7 @@ from .constants import (
     NYSC_KIT_PRODUCT_NAME,
     CATEGORY_NAME_CHOICES,
 )
+from decimal import Decimal
 from django.db.models import Avg
 
 
@@ -172,7 +173,7 @@ class BaseProduct(models.Model):
     )
     description = models.TextField(blank=True)
     price = models.DecimalField(
-        max_digits=10, decimal_places=2, validators=[MinValueValidator(0.01)]
+    max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))]  # ✅
     )
     available = models.BooleanField(
         default=True, help_text="Controls whether the product is visible on the site"
