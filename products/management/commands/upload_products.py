@@ -8,12 +8,15 @@ This comprehensive upload utility handles ALL edge cases and validations.
 import csv
 import requests
 import logging
+import re
 from decimal import Decimal, InvalidOperation
 from django.core.management.base import BaseCommand, CommandError
 from django.core.files import File
 from django.core.files.temp import NamedTemporaryFile
 from django.db import transaction
 from django.utils.text import slugify
+from cloudinary.uploader import upload
+from cloudinary import CloudinaryImage
 from products.models import Category, NyscKit, NyscTour, Church
 from products.constants import (
     NYSC_KIT_TYPE_CHOICES,
@@ -188,8 +191,68 @@ class Command(BaseCommand):
         
         return cat
 
+    def _is_cloudinary_url(self, url):
+        """Check if URL is a Cloudinary URL"""
+        if not url:
+            return False
+        return 'cloudinary.com' in url.lower() and '/image/upload/' in url
+
+    def _extract_cloudinary_public_id(self, url):
+        """
+        Extract public_id from Cloudinary URL
+        
+        Cloudinary URL formats:
+        - https://res.cloudinary.com/{cloud_name}/image/upload/v{version}/{public_id}.{format}
+        - https://res.cloudinary.com/{cloud_name}/image/upload/{transformations}/v{version}/{public_id}.{format}
+        - https://res.cloudinary.com/{cloud_name}/image/upload/{public_id}.{format}
+        
+        Returns: public_id with extension (e.g., "products/kakhi.jpg")
+        """
+        try:
+            # Split by /image/upload/
+            parts = url.split('/image/upload/')
+            if len(parts) != 2:
+                return None
+            
+            # Get everything after /image/upload/
+            after_upload = parts[1]
+            
+            # Remove query parameters
+            after_upload = after_upload.split('?')[0]
+            
+            # Split by / to get segments
+            segments = after_upload.split('/')
+            
+            # Remove version (starts with 'v' followed by numbers)
+            segments = [s for s in segments if not re.match(r'^v\d+$', s)]
+            
+            # Remove transformations (contains underscore, comma, or common transform prefixes)
+            transform_patterns = [r'w_', r'h_', r'c_', r'q_', r'f_', r'dpr_', r'ar_']
+            segments = [s for s in segments if not any(pattern in s for pattern in transform_patterns)]
+            
+            # What's left should be the public_id path (could be folder/filename.ext)
+            public_id = '/'.join(segments)
+            
+            return public_id
+            
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f'    Warning: Could not parse Cloudinary URL: {str(e)}'))
+            return None
+
     def _download_image(self, url):
+        """Download image from URL and return File object, or return Cloudinary public_id if it's a Cloudinary URL"""
         if not url or not url.strip(): return None
+        
+        # Check if it's a Cloudinary URL - if so, just return the public_id as a string
+        if self._is_cloudinary_url(url):
+            public_id = self._extract_cloudinary_public_id(url)
+            if public_id:
+                self.stdout.write(self.style.NOTICE(f'    ↻ Using existing Cloudinary image: {public_id}'))
+                return public_id  # Return as string, not File object
+            else:
+                self.stdout.write(self.style.WARNING('    Warning: Invalid Cloudinary URL format, downloading instead'))
+                # Fall through to normal download
+        
         try:
             if len(url.strip()) > 500:
                 self.stdout.write(self.style.WARNING('    URL too long'))
