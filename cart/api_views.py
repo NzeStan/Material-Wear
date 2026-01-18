@@ -7,6 +7,7 @@ from .cart import Cart
 from .serializers import (
     CartSerializer, AddToCartSerializer, UpdateCartItemSerializer, CartItemSerializer
 )
+from jmw.throttling import CartRateThrottle
 import logging
 
 logger = logging.getLogger(__name__)
@@ -79,7 +80,7 @@ class AddToCartView(views.APIView):
     Handles all product types with their specific requirements
     """
     permission_classes = [AllowAny]
-    
+    throttle_classes = [CartRateThrottle]
     @extend_schema(
         description="Add a product to the cart with required fields based on product type",
         request=AddToCartSerializer,
@@ -138,7 +139,7 @@ class UpdateCartItemView(views.APIView):
     Update cart item quantity or remove item
     """
     permission_classes = [AllowAny]
-    
+    throttle_classes = [CartRateThrottle]
     @extend_schema(
         description="Update quantity of a cart item. Set quantity to 0 to remove item.",
         request=UpdateCartItemSerializer,
@@ -192,7 +193,7 @@ class RemoveFromCartView(views.APIView):
     Remove specific item from cart
     """
     permission_classes = [AllowAny]
-    
+    throttle_classes = [CartRateThrottle]
     @extend_schema(
         description="Remove a specific item from the cart by item key",
         responses={

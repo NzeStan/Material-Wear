@@ -16,6 +16,7 @@ import json
 from rest_framework_extensions.cache.decorators import cache_response
 from .models import BulkOrderLink, OrderEntry, CouponCode
 from .serializers import BulkOrderLinkSerializer, OrderEntrySerializer, CouponCodeSerializer
+from payment.security import verify_paystack_signature, sanitize_payment_log_data
 from payment.utils import initialize_payment, verify_payment
 from .utils import (
     generate_coupon_codes,
@@ -416,15 +417,39 @@ class CouponCodeViewSet(viewsets.ModelViewSet):
 @csrf_exempt
 def bulk_order_payment_webhook(request):
     """
-    Webhook handler for Paystack payment notifications for bulk orders
+    ✅ SECURED: Webhook handler for Paystack payment notifications for bulk orders
     Reference format: ORDER-{bulk_order_id}-{order_entry_id}
     """
     if request.method != 'POST':
         return JsonResponse({'status': 'error', 'message': 'Invalid method'}, status=405)
 
     try:
+        # ✅ STEP 1: Verify webhook signature
+        signature = request.META.get('HTTP_X_PAYSTACK_SIGNATURE')
+        
+        if not signature:
+            logger.error("Bulk order webhook received without signature")
+            return JsonResponse(
+                {'status': 'error', 'message': 'Missing signature'}, 
+                status=401
+            )
+        
+        # Verify the signature
+        if not verify_paystack_signature(request.body, signature):
+            logger.error("Bulk order webhook signature verification failed")
+            return JsonResponse(
+                {'status': 'error', 'message': 'Invalid signature'}, 
+                status=401
+            )
+        
+        # ✅ STEP 2: Parse payload (now we know it's from Paystack)
         payload = json.loads(request.body)
-        logger.info(f"Bulk order payment webhook received: {payload}")
+        
+        # ✅ STEP 3: Log sanitized data
+        logger.info(
+            f"Verified bulk order webhook: {payload.get('event')} - "
+            f"Data: {sanitize_payment_log_data(payload)}"
+        )
 
         # Only handle successful charges
         if payload.get('event') != 'charge.success':
@@ -438,20 +463,15 @@ def bulk_order_payment_webhook(request):
 
         try:
             # Format: ORDER-{bulk_order_id}-{order_entry_id}
-            # Since IDs are UUIDs with hyphens, we need to parse carefully
-            parts = reference.split('-', 1)  # Split into ['ORDER', 'rest']
+            parts = reference.split('-', 1)
             if len(parts) != 2:
                 raise ValueError("Invalid format")
 
-            rest = parts[1]  # Everything after 'ORDER-'
-            # Find the last UUID (order_entry_id) - UUIDs have 5 parts separated by hyphens
-            # Format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-            # We need to split this into bulk_order_id and order_entry_id
+            rest = parts[1]
             rest_parts = rest.split('-')
-            if len(rest_parts) < 10:  # 2 UUIDs = 10 parts (5 + 5)
+            if len(rest_parts) < 10:
                 raise ValueError("Invalid UUID format")
 
-            # Last 5 parts are order_entry_id, rest before that is bulk_order_id
             order_entry_id = '-'.join(rest_parts[-5:])
             bulk_order_id = '-'.join(rest_parts[:-5])
         except (ValueError, IndexError):
@@ -505,7 +525,7 @@ def bulk_order_payment_webhook(request):
             return JsonResponse({'status': 'error', 'message': 'Order entry not found'}, status=404)
 
     except json.JSONDecodeError:
-        logger.error("Invalid JSON in webhook payload")
+        logger.error("Invalid JSON in bulk order webhook payload")
         return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
     except Exception as e:
         logger.exception("Error processing bulk order payment webhook")

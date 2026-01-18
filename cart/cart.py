@@ -2,7 +2,7 @@
 from decimal import Decimal
 from django.conf import settings
 from django.apps import apps
-from products.constants import VEST_SIZES  # ✅ Import from constants
+from products.constants import VEST_SIZES
 import logging
 
 logger = logging.getLogger(__name__)
@@ -29,19 +29,40 @@ class Cart:
 
     @staticmethod
     def get_clothes_sizes():
-        """
-        Get available clothing sizes from constants.
-        ✅ Now pulls from products/constants.py instead of hardcoding
-        """
+        """Get available clothing sizes from constants."""
         return VEST_SIZES
 
     def __init__(self, request):
-        """Initialize the cart."""
+        """
+        Initialize the cart.
+        ✅ ENHANCED: Now uses user-specific cart key when authenticated
+        """
         self.session = request.session
-        cart = self.session.get(settings.CART_SESSION_ID)
+        self.user = getattr(request, 'user', None)
+        
+        # ✅ Use user-specific cart key if authenticated
+        if self.user and self.user.is_authenticated:
+            # Authenticated users get user-specific cart
+            cart_key = f"cart_user_{self.user.id}"
+            
+            # ✅ Migrate anonymous cart to user cart on first login
+            anon_cart = self.session.get(settings.CART_SESSION_ID)
+            if anon_cart and cart_key not in self.session:
+                # Copy anonymous cart to user cart
+                self.session[cart_key] = anon_cart
+                # Clear anonymous cart
+                del self.session[settings.CART_SESSION_ID]
+                logger.info(f"Migrated anonymous cart to user {self.user.id}")
+        else:
+            # Anonymous users use default cart key
+            cart_key = settings.CART_SESSION_ID
+        
+        cart = self.session.get(cart_key)
         if not cart:
-            cart = self.session[settings.CART_SESSION_ID] = {}
+            cart = self.session[cart_key] = {}
+        
         self.cart = cart
+        self.cart_key = cart_key  # Store for later use
 
     def __iter__(self):
         """Iterate over items in cart and get the products from the database."""
@@ -75,79 +96,69 @@ class Cart:
 
     def generate_item_key(self, product, extra_fields):
         """Generate a unique key for cart items that includes product variations."""
-        key_parts = [f"{product.product_type}:::{product.id}"]
-
+        product_type = product.product_type
+        product_id = str(product.id)
+        
+        # Create base key with product info
+        base_key = f"{product_type}:::{product_id}"
+        
+        # Add extra fields to make the key unique
         if extra_fields:
-            # Sort the keys to ensure consistent ordering
+            # Sort keys to ensure consistent ordering
             sorted_fields = sorted(extra_fields.items())
-            key_parts.extend(f"{k}:::{v}" for k, v in sorted_fields)
-
-        key = "|||".join(key_parts)
-        logger.debug(f"Generated cart key: {key}")
-        return key
+            fields_str = "|||".join([f"{k}:{v}" for k, v in sorted_fields])
+            return f"{base_key}|||{fields_str}"
+        
+        return base_key
 
     def add(self, product, quantity=1, override_quantity=False, **extra_fields):
-        """Add a product to cart with variation handling."""
-        if not product.can_be_purchased:
-            logger.warning(f"Attempted to add unavailable product {product.id} to cart")
-            return
-
-        # Transform applicable fields to uppercase
-        transformed_fields = {}
-
-        # Get the actual extra fields (might be nested in 'extra_fields' key)
-        fields_to_transform = extra_fields.get('extra_fields', extra_fields)
-
-        for key, value in fields_to_transform.items():
-            if key in ['call_up_number', 'custom_name_text']:
-                transformed_fields[key] = str(value).upper() if value else value
-            else:
-                transformed_fields[key] = value
-
-        item_key = self.generate_item_key(product, transformed_fields)
-
+        """
+        Add a product to the cart or update its quantity.
+        ✅ ENHANCED: Always uses fresh price from database
+        """
+        # Generate unique key for this item
+        item_key = self.generate_item_key(product, extra_fields)
+        
+        # ✅ ALWAYS use fresh price from database
+        current_price = str(product.price)
+        
         if item_key not in self.cart:
+            # New item - create cart entry
             self.cart[item_key] = {
+                'product_id': str(product.id),
+                'product_type': product.product_type,
                 'quantity': 0,
-                'price': str(product.price),
-                'extra_fields': transformed_fields  # Store transformed fields
+                'price': current_price,  # ✅ Fresh from database
+                'extra_fields': extra_fields,
             }
-
+        else:
+            # ✅ Existing item - update price to current database price
+            self.cart[item_key]['price'] = current_price
+        
         if override_quantity:
             self.cart[item_key]['quantity'] = quantity
         else:
             self.cart[item_key]['quantity'] += quantity
-
+        
         self.save()
-
-        logger.debug(f"Added item to cart. Key: {item_key}, Item: {self.cart[item_key]}")
+        
+        logger.debug(f"Cart after add - Key: {item_key}, Item: {self.cart[item_key]}")
 
     def remove(self, product, extra_fields=None):
-        """
-        Remove a specific item from the cart.
-
-        We need to find the exact item using both product info and extra fields,
-        since the same product might be in the cart multiple times with different options.
-        """
-        # Find the matching item key
+        """Remove a specific item from the cart."""
         for item_key in list(self.cart.keys()):
             key_parts = item_key.split("|||")
             product_info = key_parts[0]
             current_type, current_id = product_info.split(":::")
 
-            # Check if this is the product we want to remove
-            if current_type == product.product_type and str(current_id) == str(
-                product.id
-            ):
-                # If extra_fields were provided, check they match
+            if current_type == product.product_type and str(current_id) == str(product.id):
                 if extra_fields:
-                    item_extra_fields = self.cart[item_key].get("extra_fields", {})
+                    item_extra_fields = self.cart[item_key].get('extra_fields', {})
                     if item_extra_fields == extra_fields:
                         del self.cart[item_key]
                         self.save()
                         break
                 else:
-                    # If no extra_fields provided, just remove the item
                     del self.cart[item_key]
                     self.save()
                     break
@@ -163,12 +174,13 @@ class Cart:
         )
 
     def clear(self):
-        """Remove cart from session."""
-        # Clear the cart dictionary first
+        """
+        Remove cart from session.
+        ✅ ENHANCED: Uses correct cart key
+        """
         self.cart = {}
-        # Delete the cart key from session
-        if settings.CART_SESSION_ID in self.session:
-            del self.session[settings.CART_SESSION_ID]
+        if self.cart_key in self.session:
+            del self.session[self.cart_key]
         self.save()
 
     def save(self):
@@ -182,7 +194,6 @@ class Cart:
         """
         removed_items = {"deleted": [], "out_of_stock": []}
 
-        # Create a list of keys to avoid modification during iteration
         cart_keys = list(self.cart.keys())
 
         for item_key in cart_keys:
@@ -196,17 +207,14 @@ class Cart:
                 )
 
                 if not exists or not available:
-                    # Store item info before removing
                     item_info = {
                         "product_type": product_type,
                         "product_id": product_id,
                         "quantity": self.cart[item_key]["quantity"],
                     }
 
-                    # Remove the item
                     del self.cart[item_key]
 
-                    # Track removal reason
                     if not exists:
                         removed_items["deleted"].append(item_info)
                     else:
@@ -215,7 +223,6 @@ class Cart:
                     self.save()
 
             except (ValueError, KeyError) as e:
-                # Log invalid cart item
                 logger.error(f"Invalid cart item found during cleanup: {e}")
                 del self.cart[item_key]
                 self.save()

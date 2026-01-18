@@ -10,6 +10,8 @@ from .serializers import (
     BaseOrderSerializer, NyscKitOrderSerializer, NyscTourOrderSerializer,
     ChurchOrderSerializer, CheckoutSerializer, OrderListSerializer, OrderItemSerializer
 )
+from jmw.throttling import CheckoutRateThrottle
+from decimal import Decimal
 from cart.cart import Cart
 from jmw.background_utils import send_order_confirmation_email_async, generate_order_confirmation_pdf_task
 import logging
@@ -24,7 +26,8 @@ class CheckoutView(views.APIView):
     Creates separate orders for each product type in cart
     """
     permission_classes = [permissions.IsAuthenticated]
-    
+    throttle_classes = [CheckoutRateThrottle]
+
     @extend_schema(
         description="Create orders from cart items. Returns list of created order IDs.",
         request=CheckoutSerializer,
@@ -40,6 +43,33 @@ class CheckoutView(views.APIView):
         if not cart or len(cart) == 0:
             return Response({
                 'error': 'Cart is empty'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # ✅ NEW: Validate cart prices before checkout
+        price_validation_errors = []
+        for item in cart:
+            product = item['product']
+            cart_price = Decimal(str(item['price']))
+            actual_price = product.price
+            
+            if cart_price != actual_price:
+                price_validation_errors.append({
+                    'product': product.name,
+                    'cart_price': float(cart_price),
+                    'actual_price': float(actual_price)
+                })
+                logger.warning(
+                    f"Price mismatch detected - Product: {product.name}, "
+                    f"Cart: {cart_price}, Actual: {actual_price}, "
+                    f"User: {request.user.id}"
+                )
+        
+        if price_validation_errors:
+            # Clear cart to force re-add with correct prices
+            cart.clear()
+            return Response({
+                'error': 'Price mismatch detected. Your cart has been cleared. Please add items again.',
+                'details': price_validation_errors
             }, status=status.HTTP_400_BAD_REQUEST)
         
         # Validate request data with cart context
@@ -83,12 +113,12 @@ class CheckoutView(views.APIView):
                     # Base order data
                     order_data = {
                         'user': request.user,
-                        'email': request.user.email,  # ✅ FIX: Get from request.user
+                        'email': request.user.email,
                         'first_name': validated_data['first_name'],
                         'middle_name': validated_data.get('middle_name', ''),
                         'last_name': validated_data['last_name'],
                         'phone_number': validated_data['phone_number'],
-                        'paid': False,  # ✅ EXPLICITLY SET TO FALSE
+                        'paid': False,
                     }
                     
                     # Add product-specific fields
@@ -104,30 +134,26 @@ class CheckoutView(views.APIView):
                             'delivery_state': validated_data.get('delivery_state', ''),
                             'delivery_lga': validated_data.get('delivery_lga', ''),
                         })
-                    # NyscTour doesn't need additional fields beyond base order data
                     
-                    # Create order
+                    # Create the order
                     order = order_model.objects.create(**order_data)
                     
-                    # Create order items
+                    # Create order items with FRESH prices from database
                     for item in items:
+                        product = item['product']
+                        
+                        # ✅ CRITICAL: Always use fresh price from database
+                        actual_price = product.price
+                        
                         OrderItem.objects.create(
-                            order=order,
-                            content_type=ContentType.objects.get_for_model(item['product']),
-                            object_id=item['product'].id,
-                            price=item['price'],
+                            content_object=order,
+                            product=product,
+                            price=actual_price,  # ✅ Use database price, not cart price
                             quantity=item['quantity'],
-                            extra_fields=item.get('extra_fields', {}),
+                            extra_fields=item.get('extra_fields', {})
                         )
                     
-                    # Update order total cost
-                    order.total_cost = sum(
-                        order_item.get_cost() for order_item in order.items.all()
-                    )
-                    order.save(update_fields=['total_cost'])
-                    
                     orders_created.append(order)
-                    
                     logger.info(
                         f"Order created: {order.serial_number} - "
                         f"Type: {product_type} - User: {request.user.email}"
@@ -139,8 +165,7 @@ class CheckoutView(views.APIView):
                 # Clear cart
                 cart.clear()
             
-            # ✅ CRITICAL FIX: Send emails AFTER transaction commits
-            # Now the orders definitely exist in the database
+            # ✅ Send emails AFTER transaction commits
             for order in orders_created:
                 send_order_confirmation_email_async(str(order.id))
                 generate_order_confirmation_pdf_task(str(order.id))
@@ -166,7 +191,7 @@ class CheckoutView(views.APIView):
             }, status=status.HTTP_201_CREATED)
             
         except Exception as e:
-            logger.exception("Error during checkout")
+            logger.exception(f"Error during checkout for user {request.user.id}")
             return Response({
                 'error': 'An error occurred while processing your order. Please try again.'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

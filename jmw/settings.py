@@ -221,7 +221,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # ==============================================================================
-# SESSIONS & COOKIES
+# SESSION & COOKIE SECURITY
 # ==============================================================================
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
@@ -229,44 +229,100 @@ SESSION_COOKIE_AGE = 1209600  # 2 weeks
 SESSION_SAVE_EVERY_REQUEST = False
 CART_SESSION_ID = 'cart'
 
+# ✅ PRODUCTION SECURITY SETTINGS
+if not DEBUG:
+    # Secure cookies in production
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    
+    # SameSite cookie settings
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    CSRF_COOKIE_SAMESITE = 'Lax'
+    
+    # Only send cookies over HTTPS
+    SESSION_COOKIE_HTTPONLY = True
+    CSRF_COOKIE_HTTPONLY = True
+else:
+    # Development settings
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SECURE_SSL_REDIRECT = False
+
 # ==============================================================================
 # REST FRAMEWORK
 # ==============================================================================
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+        'rest_framework.permissions.IsAuthenticated',
     ],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
-    'DEFAULT_FILTER_BACKENDS': [
-        'django_filters.rest_framework.DjangoFilterBackend',
-        'rest_framework.filters.SearchFilter',
-        'rest_framework.filters.OrderingFilter',
-    ],
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    
+    # ✅ ADD THROTTLING CONFIGURATION
     'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle'
+        'jmw.throttling.BurstUserRateThrottle',
+        'jmw.throttling.SustainedUserRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/hour',
-        'user': '1000/hour'
+        'user': '1000/hour',
+        'checkout': '10/hour',
+        'payment': '10/hour',
+        'cart': '100/hour',
+        'anon_strict': '50/hour',
+        'burst': '20/minute',
+        'sustained': '500/hour',
     },
-    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
+    
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+    
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+    ],
+    
+    # ✅ SECURITY SETTINGS
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+    
+    # Only allow browsable API in debug mode
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+        'rest_framework.parsers.FormParser',
+        'rest_framework.parsers.MultiPartParser',
+    ],
 }
 
-# Add authentication based on environment
+# Add browsable API only in DEBUG mode
 if DEBUG:
-    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = [
-        'rest_framework.authentication.TokenAuthentication',
-        'rest_framework.authentication.BasicAuthentication',
-    ]
-else:
-    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.TokenAuthentication',
-    ]
+    REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'].append(
+        'rest_framework.renderers.BrowsableAPIRenderer'
+    )
+
+# Add authentication based on environment
+# if DEBUG:
+#     REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = [
+#         'rest_framework.authentication.TokenAuthentication',
+#         'rest_framework.authentication.BasicAuthentication',
+#     ]
+# else:
+#     REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = [
+#         'rest_framework_simplejwt.authentication.JWTAuthentication',
+#         'rest_framework.authentication.TokenAuthentication',
+#     ]
 
 # ==============================================================================
 # JWT CONFIGURATION
@@ -324,18 +380,55 @@ ACCOUNT_AUTHENTICATION_METHOD = 'email'
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory' if not DEBUG else 'optional'
 
 # ==============================================================================
-# CORS
+# CORS CONFIGURATION
 # ==============================================================================
 
+# ✅ SECURE CORS CONFIGURATION
 if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = True
-else:
+    # Development - allow localhost
     CORS_ALLOWED_ORIGINS = [
-        "https://jumemegawears.com",
-        "https://www.jumemegawears.com",
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8000",
     ]
-    
+else:
+    # Production - ONLY allow your actual domains
+    CORS_ALLOWED_ORIGINS = [
+        "https://yourdomain.com",
+        "https://www.yourdomain.com",
+        # Add your actual production domains here
+    ]
+
+# ✅ CRITICAL: NEVER set this to True in production
+CORS_ALLOW_ALL_ORIGINS = False
+
+# Allow credentials (cookies, sessions)
 CORS_ALLOW_CREDENTIALS = True
+
+# Allowed HTTP methods
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# Allowed headers
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
 
 # ==============================================================================
 # STATIC & MEDIA FILES

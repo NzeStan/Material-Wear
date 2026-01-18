@@ -11,10 +11,12 @@ from .serializers import (
     PaymentResponseSerializer, VerifyPaymentSerializer, PaymentStatusSerializer
 )
 from .utils import initialize_payment, verify_payment
+from .security import verify_paystack_signature, sanitize_payment_log_data  # ✅ NEW
 from order.models import BaseOrder
 from jmw.background_utils import (
     send_payment_receipt_email_async, generate_payment_receipt_pdf_task
 )
+from jmw.throttling import PaymentRateThrottle
 import uuid
 import json
 import logging
@@ -29,7 +31,7 @@ class InitiatePaymentView(views.APIView):
     Uses order IDs stored in session from checkout
     """
     permission_classes = [permissions.IsAuthenticated]
-    
+    throttle_classes = [PaymentRateThrottle]
     @extend_schema(
         description="Initialize payment for orders in session. Returns Paystack authorization URL.",
         request=InitiatePaymentSerializer,
@@ -55,8 +57,21 @@ class InitiatePaymentView(views.APIView):
             )
             
             if not orders.exists():
+                # Clear invalid session
+                request.session.pop('pending_orders', None)
                 return Response({
                     'error': 'Orders not found or do not belong to you.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # ✅ NEW: Validate order count matches session
+            if orders.count() != len(order_ids):
+                logger.warning(
+                    f"Order count mismatch for user {request.user.id}. "
+                    f"Requested: {len(order_ids)}, Found: {orders.count()}"
+                )
+                request.session.pop('pending_orders', None)
+                return Response({
+                    'error': 'Invalid order session. Please checkout again.'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             # Get first order for email
@@ -92,7 +107,7 @@ class InitiatePaymentView(views.APIView):
             )
             
             if not response or not response.get('status'):
-                logger.error(f"Payment initialization failed: {response}")
+                logger.error(f"Payment initialization failed for user {request.user.id}")
                 return Response({
                     'error': 'Could not initialize payment. Please try again.'
                 }, status=status.HTTP_400_BAD_REQUEST)
@@ -106,7 +121,7 @@ class InitiatePaymentView(views.APIView):
             }, status=status.HTTP_200_OK)
             
         except Exception as e:
-            logger.exception("Error initializing payment")
+            logger.exception(f"Error initializing payment for user {request.user.id}")
             return Response({
                 'error': 'An error occurred while processing payment. Please try again.'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -202,12 +217,30 @@ class VerifyPaymentView(views.APIView):
 @permission_classes([permissions.AllowAny])
 def payment_webhook(request):
     """
-    Webhook endpoint for Paystack payment notifications
-    Handles payment success events
+    ✅ SECURED: Webhook endpoint for Paystack payment notifications
+    Now includes signature verification to prevent fraud
     """
     try:
+        # ✅ STEP 1: Verify webhook signature
+        signature = request.META.get('HTTP_X_PAYSTACK_SIGNATURE')
+        
+        if not signature:
+            logger.error("Webhook received without signature")
+            return HttpResponse(status=400)
+        
+        # Verify the signature
+        if not verify_paystack_signature(request.body, signature):
+            logger.error("Webhook signature verification failed")
+            return HttpResponse(status=401)  # Unauthorized
+        
+        # ✅ STEP 2: Parse payload (now we know it's from Paystack)
         payload = json.loads(request.body)
-        logger.info(f"Payment webhook received: {payload.get('event')}")
+        
+        # ✅ STEP 3: Log sanitized data
+        logger.info(
+            f"Verified webhook received: {payload.get('event')} - "
+            f"Data: {sanitize_payment_log_data(payload)}"
+        )
         
         # Only process successful charges
         if payload.get('event') != 'charge.success':
