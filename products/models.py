@@ -218,7 +218,7 @@ class BaseProduct(models.Model):
 
 class NyscKit(BaseProduct):
     """NYSC Kit specific model with specialized size handling."""
-
+    
     name = models.CharField(
         max_length=100, choices=NYSC_KIT_PRODUCT_NAME, verbose_name="Product Name"
     )
@@ -237,19 +237,6 @@ class NyscKit(BaseProduct):
         ]
         verbose_name = "nysckit"
         verbose_name_plural = "nysckits"
-
-    def __str__(self):
-        return self.name
-
-    def save(self, *args, **kwargs):
-        """Handles slug generation."""
-        if not self.slug:
-            self.slug = slugify(self.name)
-            if NyscKit.objects.filter(slug=self.slug).exists():
-                self.slug = f"{self.slug}-{uuid.uuid4().hex[:8]}"
-        super().save(*args, **kwargs)
-
-    class Meta:
         ordering = [
             Case(
                 When(type="kakhi", then=0),
@@ -261,6 +248,17 @@ class NyscKit(BaseProduct):
         ]
 
     product_type = "nysc_kit"
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        """Handles slug generation."""
+        if not self.slug:
+            self.slug = slugify(self.name)
+            if NyscKit.objects.filter(slug=self.slug).exists():
+                self.slug = f"{self.slug}-{uuid.uuid4().hex[:8]}"
+        super().save(*args, **kwargs)
 
 
 class NyscTour(BaseProduct):
