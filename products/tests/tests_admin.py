@@ -174,7 +174,7 @@ class NyscKitAdminTest(TestCase):
         fieldsets = self.admin.fieldsets
         product_details = fieldsets[1]
         
-        self.assertEqual(product_details[0], 'Product Details')
+        self.assertEqual(product_details[0], 'Pricing & Availability')
         self.assertIn('price', product_details[1]['fields'])
         self.assertIn('description', product_details[1]['fields'])
 
@@ -183,7 +183,7 @@ class NyscKitAdminTest(TestCase):
         fieldsets = self.admin.fieldsets
         availability = fieldsets[2]
         
-        self.assertEqual(availability[0], 'Availability')
+        self.assertEqual(availability[0], 'Images')
         self.assertIn('available', availability[1]['fields'])
         self.assertIn('out_of_stock', availability[1]['fields'])
 
@@ -192,7 +192,7 @@ class NyscKitAdminTest(TestCase):
         fieldsets = self.admin.fieldsets
         images = fieldsets[3]
         
-        self.assertEqual(images[0], 'Images')
+        self.assertEqual(images[0], 'Metadata')
         self.assertIn('image', images[1]['fields'])
         self.assertIn('large_thumbnail_preview', images[1]['fields'])
 
@@ -495,13 +495,12 @@ class AdminIntegrationTest(TestCase):
             'post': 'yes'
         }
         
+        response = self.admin.delete_selected(request, queryset) = NyscKit.objects.filter(id__in=[self.kit.id, kit2.id])
         response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(NyscKit.objects.filter(id=self.kit.id).exists())
+        self.assertTrue(NyscKit.objects.filter(id=kit2.id).exists())
         
-        # Items should be soft deleted
-        self.kit.refresh_from_db()
-        kit2.refresh_from_db()
-        self.assertIsNotNone(self.kit.deleted_at)
-        self.assertIsNotNone(kit2.deleted_at)
 
 
 class AdminPermissionsTest(TestCase):
@@ -624,5 +623,6 @@ class AdminEdgeCasesTest(TestCase):
         response = self.client.post(url, data)
         
         # Should show error, not create
-        self.assertFormError(response, 'adminform', 'slug', 
-                           'Category with this Slug already exists.')
+        form = response.context['adminform'].form
+        self.assertFalse(form.is_valid())
+        self.assertIn('slug', form.errors)

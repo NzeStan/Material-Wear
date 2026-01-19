@@ -379,28 +379,28 @@ class NyscTourModelTest(TestCase):
     def test_nysc_tour_auto_slug_generation(self):
         """Test automatic slug generation"""
         tour = NyscTour.objects.create(
-            name='Abuja',
+            name='FCT',
             category=self.category,
             price=Decimal('12000.00')
         )
-        self.assertEqual(tour.slug, 'abuja')
+        self.assertEqual(tour.slug, 'fct')
 
     def test_nysc_tour_duplicate_slug_handling(self):
         """Test unique slug generation for duplicates"""
         tour1 = NyscTour.objects.create(
-            name='Abuja',
+            name='FCT',
             category=self.category,
             price=Decimal('12000.00')
         )
         tour2 = NyscTour.objects.create(
-            name='Abuja',
+            name='FCT',
             category=self.category,
             price=Decimal('13000.00')
         )
         
         self.assertNotEqual(tour1.slug, tour2.slug)
-        self.assertTrue(tour1.slug.startswith('abuja'))
-        self.assertTrue(tour2.slug.startswith('abuja'))
+        self.assertTrue(tour1.slug.startswith('fct'))
+        self.assertTrue(tour2.slug.startswith('fct'))
 
     def test_nysc_tour_product_type_attribute(self):
         """Test product_type class attribute"""
@@ -415,7 +415,7 @@ class NyscTourModelTest(TestCase):
 
     def test_nysc_tour_multiple_states(self):
         """Test creating tours for multiple states"""
-        states_to_create = ['Abuja', 'Kano', 'Rivers']
+        states_to_create = ['FCT', 'Kano', 'Rivers']
         for state in states_to_create:
             NyscTour.objects.create(
                 name=state,

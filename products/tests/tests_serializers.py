@@ -341,7 +341,7 @@ class NyscTourSerializerTest(TestCase):
     def test_nysc_tour_serializer_validation(self):
         """Test serializer validation"""
         data = {
-            'name': 'Abuja',
+            'name': 'FCT',
             'category': self.category.id,
             'price': '12000.00',
             'description': 'Tour to Abuja'
@@ -354,7 +354,7 @@ class NyscTourSerializerTest(TestCase):
 
     def test_nysc_tour_multiple_states(self):
         """Test serializer for multiple state tours"""
-        states = ['Abuja', 'Kano', 'Rivers']
+        states = ['FCT', 'Kano', 'Rivers']
         
         for state in states:
             tour = NyscTour.objects.create(
