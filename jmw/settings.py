@@ -340,37 +340,29 @@ SIMPLE_JWT = {
 # DRF SPECTACULAR (API DOCUMENTATION)
 # ==============================================================================
 
-# SPECTACULAR_SETTINGS = {
-#     'TITLE': 'JMW Accessories API',
-#     'DESCRIPTION': 'Production-ready API for managing NYSC products, church merchandise, and orders',
-#     'VERSION': '1.0.0',
-#     'SERVE_INCLUDE_SCHEMA': False,
-#     'COMPONENT_SPLIT_REQUEST': True,
-#     'SCHEMA_PATH_PREFIX': '/api/',
-#     'SERVERS': [
-#         {'url': 'https://jumemegawears.com', 'description': 'Production'},
-#         {'url': 'http://localhost:8000', 'description': 'Development'},
-#     ],
-# }
 SPECTACULAR_SETTINGS = {
     # Basic Info
     'TITLE': 'JMW Accessories API',
-    'DESCRIPTION': 'API for NYSC Uniforms and Church Merchandise E-commerce Platform',
+    'DESCRIPTION': 'Production-ready API for managing NYSC products, church merchandise, and orders',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     
-    # ✅ FIX ENUM NAMING COLLISIONS
-    'ENUM_NAME_OVERRIDES': {
-        # Resolve state enum collision
-        'StateEnum': 'products.constants.STATES',
-        # Rename generic "name" collision
-        'Name44bEnum': 'ProductNameEnum',
-    },
+    # Server Configuration
+    'SERVERS': [
+        {'url': 'https://jumemegawears.com', 'description': 'Production'},
+        {'url': 'http://localhost:8000', 'description': 'Development'},
+    ],
     
-    # Component Settings
+    # Schema Generation
     'COMPONENT_SPLIT_REQUEST': True,
     'SCHEMA_PATH_PREFIX': r'/api/',
     'DEFAULT_GENERATOR_CLASS': 'drf_spectacular.generators.SchemaGenerator',
+    
+    # ✅ FIX ENUM NAMING COLLISIONS
+    'ENUM_NAME_OVERRIDES': {
+        'StateEnum': 'products.constants.STATES',
+        'Name44bEnum': 'ProductNameEnum',
+    },
     
     # ✅ AUTHENTICATION CONFIGURATION
     'APPEND_COMPONENTS': {
@@ -403,14 +395,14 @@ SPECTACULAR_SETTINGS = {
         'defaultModelExpandDepth': 2,
     },
     
-    # ✅ ADDITIONAL SETTINGS
+    # Additional Settings
     'POSTPROCESSING_HOOKS': [
         'drf_spectacular.hooks.postprocess_schema_enums',
     ],
     'ENUM_ADD_EXPLICIT_BLANK_NULL_CHOICE': False,
     'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
     
-    # Tags
+    # API Tags
     'TAGS': [
         {'name': 'Authentication', 'description': 'User authentication and account management'},
         {'name': 'Products', 'description': 'Product catalog and details'},

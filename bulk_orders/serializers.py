@@ -153,3 +153,11 @@ class BulkOrderLinkSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data['created_by'] = self.context['request'].user
         return super().create(validated_data)
+    
+class WebhookSerializer(serializers.Serializer):
+    """Serializer for webhook payload documentation"""
+    event = serializers.CharField()
+    data = serializers.JSONField()
+    
+    class Meta:
+        fields = ['event', 'data']

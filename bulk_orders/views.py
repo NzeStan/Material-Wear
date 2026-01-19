@@ -1,5 +1,5 @@
 from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, throttle_classes as apply_throttle_classes
 from rest_framework.response import Response
 from django.http import HttpResponse
 from django.shortcuts import render
@@ -10,12 +10,12 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from datetime import timedelta
-from django_ratelimit.decorators import ratelimit
 from django.views.decorators.cache import cache_page
 import json
 from rest_framework_extensions.cache.decorators import cache_response
+from drf_spectacular.utils import extend_schema, OpenApiResponse
 from .models import BulkOrderLink, OrderEntry, CouponCode
-from .serializers import BulkOrderLinkSerializer, OrderEntrySerializer, CouponCodeSerializer
+from .serializers import BulkOrderLinkSerializer, OrderEntrySerializer, CouponCodeSerializer, WebhookSerializer
 from payment.security import verify_paystack_signature, sanitize_payment_log_data
 from payment.utils import initialize_payment, verify_payment
 from .utils import (
@@ -25,6 +25,7 @@ from .utils import (
     generate_bulk_order_excel,
 )
 from jmw.background_utils import send_payment_receipt_email, generate_payment_receipt_pdf_task
+from jmw.throttling import BulkOrderWebhookThrottle
 import logging
 
 logger = logging.getLogger(__name__)
@@ -413,12 +414,26 @@ class CouponCodeViewSet(viewsets.ModelViewSet):
 
 
 # ✅ Payment webhook handler for bulk orders
-@ratelimit(key='ip', rate='100/h', method='POST')
+@extend_schema(
+    tags=['Payment'],
+    description="Paystack webhook endpoint for bulk order payment notifications (Internal use only)",
+    request=WebhookSerializer,
+    responses={
+        200: OpenApiResponse(description="Webhook processed successfully"),
+        400: OpenApiResponse(description="Invalid JSON payload"),
+        401: OpenApiResponse(description="Invalid signature"),
+        404: OpenApiResponse(description="Order entry not found"),
+        500: OpenApiResponse(description="Server error processing webhook")
+    },
+    exclude=True  # Exclude from public API docs as it's for Paystack only
+)
+@apply_throttle_classes([BulkOrderWebhookThrottle])
 @csrf_exempt
 def bulk_order_payment_webhook(request):
     """
     ✅ SECURED: Webhook handler for Paystack payment notifications for bulk orders
     Reference format: ORDER-{bulk_order_id}-{order_entry_id}
+    Verifies signature before processing
     """
     if request.method != 'POST':
         return JsonResponse({'status': 'error', 'message': 'Invalid method'}, status=405)
@@ -450,46 +465,28 @@ def bulk_order_payment_webhook(request):
             f"Verified bulk order webhook: {payload.get('event')} - "
             f"Data: {sanitize_payment_log_data(payload)}"
         )
-
-        # Only handle successful charges
+        
+        # Only process successful charges
         if payload.get('event') != 'charge.success':
-            return JsonResponse({'status': 'ignored', 'message': 'Not a charge.success event'})
-
+            return JsonResponse({'status': 'success', 'message': 'Event ignored'}, status=200)
+        
         data = payload.get('data', {})
         reference = data.get('reference')
-
-        if not reference or not reference.startswith('ORDER-'):
-            return JsonResponse({'status': 'error', 'message': 'Invalid reference format'})
-
+        
+        if not reference:
+            logger.error("Bulk order webhook: No reference in payload")
+            return JsonResponse({'status': 'error', 'message': 'Missing reference'}, status=400)
+        
+        # Parse reference: ORDER-{bulk_order_id}-{order_entry_id}
         try:
-            # Format: ORDER-{bulk_order_id}-{order_entry_id}
-            parts = reference.split('-', 1)
-            if len(parts) != 2:
-                raise ValueError("Invalid format")
-
-            rest = parts[1]
-            rest_parts = rest.split('-')
-            if len(rest_parts) < 10:
-                raise ValueError("Invalid UUID format")
-
-            order_entry_id = '-'.join(rest_parts[-5:])
-            bulk_order_id = '-'.join(rest_parts[:-5])
-        except (ValueError, IndexError):
-            logger.error(f"Invalid reference format: {reference}")
-            return JsonResponse({'status': 'error', 'message': 'Invalid reference format'})
-
-        # Verify payment with Paystack API
-        verification_result = verify_payment(reference)
-
-        if not (
-            verification_result
-            and verification_result.get('status')
-            and verification_result['data']['status'] == 'success'
-        ):
-            logger.warning(f"Payment verification failed for reference: {reference}")
-            return JsonResponse({'status': 'error', 'message': 'Payment verification failed'}, status=400)
-
-        try:
+            parts = reference.split('-')
+            if len(parts) != 3 or parts[0] != 'ORDER':
+                logger.error(f"Invalid bulk order reference format: {reference}")
+                return JsonResponse({'status': 'error', 'message': 'Invalid reference format'}, status=400)
+            
+            bulk_order_id = parts[1]
+            order_entry_id = parts[2]
+            
             order_entry = OrderEntry.objects.get(
                 id=order_entry_id,
                 bulk_order__id=bulk_order_id

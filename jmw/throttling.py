@@ -14,13 +14,22 @@ class CheckoutRateThrottle(UserRateThrottle):
     scope = 'checkout'
 
 
-class PaymentRateThrottle(UserRateThrottle):
+class PaymentRateThrottle(AnonRateThrottle):
     """
-    Rate limit for payment initiation
+    Rate limit for payment webhooks
     Prevents payment spam
     """
     rate = '10/hour'
     scope = 'payment'
+
+
+class BulkOrderWebhookThrottle(AnonRateThrottle):
+    """
+    Rate limit for bulk order payment webhooks
+    Prevents webhook spam attacks
+    """
+    rate = '100/hour'
+    scope = 'bulk_webhook'
 
 
 class CartRateThrottle(AnonRateThrottle):

@@ -10,6 +10,7 @@ from .serializers import (
     PaymentTransactionSerializer, InitiatePaymentSerializer,
     PaymentResponseSerializer, VerifyPaymentSerializer, PaymentStatusSerializer
 )
+from rest_framework.decorators import throttle_classes as apply_throttle_classes
 from .utils import initialize_payment, verify_payment
 from .security import verify_paystack_signature, sanitize_payment_log_data  # ✅ NEW
 from order.models import BaseOrder
@@ -214,6 +215,7 @@ class VerifyPaymentView(views.APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
 
+
 @extend_schema(
     tags=['Payment'],
     description="Paystack webhook endpoint for payment notifications (Internal use only)",
@@ -227,7 +229,7 @@ class VerifyPaymentView(views.APIView):
     },
     exclude=True  # Exclude from public API docs as it's for Paystack only
 )
-throttle_classes = [PaymentRateThrottle]
+@apply_throttle_classes([PaymentRateThrottle])
 @csrf_exempt
 def payment_webhook(request):
     """
