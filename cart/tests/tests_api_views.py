@@ -230,7 +230,6 @@ class AddToCartViewTest(APITestCase):
             shirt_length=Decimal('30.0'),
             sleeve=Decimal('24.0'),
             neck=Decimal('16.0'),
-            cap=Decimal('22.5'),
             thigh=Decimal('24.0'),
             knee=Decimal('15.0')
         )

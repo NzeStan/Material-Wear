@@ -18,13 +18,18 @@ class Cart:
         """
         try:
             model = apps.get_model("products", self.MODEL_MAPPING[product_type])
+        except (KeyError, LookupError):
+            # Invalid product_type or model not found
+            return False, False, "no longer exists"
+        
+        try:
             product = model.objects.get(id=product_id)
             if not product.available:
                 return True, False, "no longer available"
             if product.out_of_stock:
                 return True, False, "out of stock"
             return True, True, None
-        except (model.DoesNotExist, LookupError):
+        except model.DoesNotExist:
             return False, False, "no longer exists"
 
     @staticmethod
