@@ -358,11 +358,26 @@ SPECTACULAR_SETTINGS = {
     'SCHEMA_PATH_PREFIX': r'/api/',
     'DEFAULT_GENERATOR_CLASS': 'drf_spectacular.generators.SchemaGenerator',
     
-    # ✅ FIX ENUM NAMING COLLISIONS
     'ENUM_NAME_OVERRIDES': {
+        # State choices
         'StateEnum': 'products.constants.STATES',
-        'Name44bEnum': 'ProductNameEnum',
+        
+        # Size choices - if you have multiple size fields
+        'VestSizeEnum': 'products.constants.VEST_SIZES',
+        'ChurchSizeEnum': 'products.constants.CHURCH_SIZES',
+        
+        # Church choices
+        'ChurchDenominationEnum': 'products.constants.CHURCH_CHOICES',
+        
+        # Product type choices (if needed)
+        'ProductTypeEnum': 'products.constants.PRODUCT_TYPE_CHOICES',
     },
+    
+    # ✅ ADD THIS to suppress unnecessary blank/null enums
+    'ENUM_ADD_EXPLICIT_BLANK_NULL_CHOICE': False,
+    
+    # ✅ ADD THIS to generate name from label
+    'ENUM_GENERATE_CHOICE_DESCRIPTION': False,
     
     # ✅ AUTHENTICATION CONFIGURATION
     'APPEND_COMPONENTS': {

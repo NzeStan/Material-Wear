@@ -140,6 +140,7 @@ class ChurchViewSet(viewsets.ReadOnlyModelViewSet):
 
 @extend_schema(
     description="Get all products grouped by type with optional category filtering",
+    responses={200: ProductListSerializer}, 
     parameters=[
         OpenApiParameter(
             name='category',
@@ -163,7 +164,7 @@ class ProductListView(views.APIView):
     Optimized for storefront display
     """
     permission_classes = [permissions.AllowAny]
-    
+    serializer_class = ProductListSerializer 
     @method_decorator(cache_page(60 * 10))
     @method_decorator(vary_on_cookie)
     def get(self, request):

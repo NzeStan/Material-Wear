@@ -32,7 +32,6 @@ class BulkOrderLinkSummarySerializer(serializers.ModelSerializer):
         """Check if bulk order link has expired"""
         return obj.is_expired()
     
-    # ✅ ADD TYPE HINT
     def get_shareable_url(self, obj: 'BulkOrderLink') -> str:
         """Get shareable URL for bulk order"""
         request = self.context.get('request')
