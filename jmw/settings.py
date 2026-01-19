@@ -359,18 +359,20 @@ SPECTACULAR_SETTINGS = {
     'DEFAULT_GENERATOR_CLASS': 'drf_spectacular.generators.SchemaGenerator',
     
     'ENUM_NAME_OVERRIDES': {
-        # State choices
-        'StateEnum': 'products.constants.STATES',
-        
-        # Size choices - if you have multiple size fields
-        'VestSizeEnum': 'products.constants.VEST_SIZES',
-        'ChurchSizeEnum': 'products.constants.CHURCH_SIZES',
-        
-        # Church choices
-        'ChurchDenominationEnum': 'products.constants.CHURCH_CHOICES',
-        
-        # Product type choices (if needed)
-        'ProductTypeEnum': 'products.constants.PRODUCT_TYPE_CHOICES',
+    # State choices
+    'StateEnum': 'products.constants.STATES',
+    
+    # Size choices - unified since VEST_SIZES and CHURCH_SIZES are identical
+    'ProductSizeEnum': 'products.constants.VEST_SIZES',
+    
+    # Church choices
+    'ChurchDenominationEnum': 'products.constants.CHURCH_CHOICES',
+    
+    # Product type choices
+    'ProductTypeEnum': 'products.constants.PRODUCT_TYPE_CHOICES',
+    
+    # NYSC Kit type choices
+    'NyscKitTypeEnum': 'products.constants.NYSC_KIT_TYPE_CHOICES',
     },
     
     # ✅ ADD THIS to suppress unnecessary blank/null enums
