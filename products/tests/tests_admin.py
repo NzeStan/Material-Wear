@@ -495,12 +495,13 @@ class AdminIntegrationTest(TestCase):
             'post': 'yes'
         }
         
-        response = self.admin.delete_selected(request, queryset) = NyscKit.objects.filter(id__in=[self.kit.id, kit2.id])
-        response = self.client.post(url, data)
-        self.assertEqual(response.status_code, 302)
-        self.assertTrue(NyscKit.objects.filter(id=self.kit.id).exists())
-        self.assertTrue(NyscKit.objects.filter(id=kit2.id).exists())
+        response = self.admin.delete_selected(request, queryset)
         
+        # Items should be soft deleted
+        self.kit.refresh_from_db()
+        kit2.refresh_from_db()
+        self.assertIsNotNone(self.kit.deleted_at)
+        self.assertIsNotNone(kit2.deleted_at)
 
 
 class AdminPermissionsTest(TestCase):
