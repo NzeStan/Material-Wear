@@ -503,20 +503,12 @@ class AdminIntegrationTest(TestCase):
             'post': 'yes'
         }
         
-        # Use the client to post the form, not calling admin method directly
         response = self.client.post(url, data, follow=True)
-        
-        # Check response is successful
         self.assertEqual(response.status_code, 200)
         
-        # Verify items still exist (soft delete) or are deleted (hard delete)
-        # Depending on your implementation
-        # If soft delete:
-        self.kit.refresh_from_db()
-        kit2.refresh_from_db()
-        # If you have soft delete, check deleted_at
-        # self.assertIsNotNone(self.kit.deleted_at)
-        # self.assertIsNotNone(kit2.deleted_at)
+        # Verify items were deleted
+        self.assertFalse(NyscKit.objects.filter(id=self.kit.id).exists())
+        self.assertFalse(NyscKit.objects.filter(id=kit2.id).exists())
 
 
 class AdminPermissionsTest(TestCase):

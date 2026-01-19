@@ -554,11 +554,6 @@ class DropdownAPIViewsTest(APITestCase):
         # The API requires a state parameter, so it should return 400 without it
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('error', response.data)
-        
-        # OR test with a valid state parameter instead:
-        # url = f"{reverse('products:lgas-list')}?state=Lagos"
-        # response = self.client.get(url)
-        # self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_lgas_dropdown_with_state_parameter(self):
         """Test LGAs endpoint with state parameter"""
@@ -575,13 +570,9 @@ class DropdownAPIViewsTest(APITestCase):
         url = f"{reverse('products:lgas-list')}?state=InvalidState"
         response = self.client.get(url)
 
-        # The API should return 404 or 400 for invalid state
-        # Currently it returns 200 with empty LGAs, which is acceptable
-        # Update test to accept this behavior:
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Verify it returns empty or minimal LGAs for invalid state
-        lgas_data = [lga for lga in response.data.get('lgas', []) if lga['value']]
-        self.assertEqual(len(lgas_data), 0, "Should return no LGAs for invalid state")
+        # Should return 404 for invalid state
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertIn('error', response.data)
         
     def test_sizes_dropdown_endpoint(self):
         """Test GET /api/products/sizes/"""
