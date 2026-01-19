@@ -301,17 +301,25 @@ class LGAsListView(views.APIView):
                     }
                 }
             },
-            400: {'description': 'State parameter is required'}
+            400: {'description': 'State parameter is required'},
+            404: {'description': 'Invalid state name'}
         }
     )
     def get(self, request):
-        """Return LGAs for specified state"""
+        """Return LGAs for specified state with validation"""
         state = request.query_params.get('state')
         
         if not state:
             return Response({
                 'error': 'State parameter is required'
             }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validate that state exists
+        valid_states = [s[0] for s in STATES if s[0]]  # Get all state codes/names
+        if state not in valid_states:
+            return Response({
+                'error': f'Invalid state: {state}'
+            }, status=status.HTTP_404_NOT_FOUND)
         
         lgas = get_lgas_for_state(state)
         lgas_data = [
@@ -323,6 +331,9 @@ class LGAsListView(views.APIView):
             'state': state,
             'lgas': lgas_data
         })
+
+
+
 
 
 @extend_schema(tags=['Dropdowns'])
