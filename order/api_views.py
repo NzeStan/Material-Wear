@@ -147,9 +147,14 @@ class CheckoutView(views.APIView):
                         # ✅ CRITICAL: Always use fresh price from database
                         actual_price = product.price
                         
+                        # Get ContentType for the product
+                        product_ct = ContentType.objects.get_for_model(product)
+                        
+                        # Create OrderItem with correct GenericForeignKey setup
                         OrderItem.objects.create(
-                            content_object=order,
-                            product=product,
+                            order=order,  # ✅ ForeignKey to the order
+                            content_type=product_ct,  # ✅ ContentType for GenericForeignKey
+                            object_id=product.id,  # ✅ Object ID for GenericForeignKey
                             price=actual_price,  # ✅ Use database price, not cart price
                             quantity=item['quantity'],
                             extra_fields=item.get('extra_fields', {})
