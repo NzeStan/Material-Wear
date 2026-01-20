@@ -222,9 +222,6 @@ class Measurement(models.Model):
         """Return a string representation of the measurement."""
         return f"Measurements for {self.user.username} ({self.created_at.date()})"
 
-    def get_absolute_url(self):
-        """Return the URL to access a detail view of this measurement."""
-        return reverse("update_measurement", args=[str(self.id)])
 
     def clean(self):
         """Ensure at least one measurement field is provided."""
