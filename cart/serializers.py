@@ -202,7 +202,10 @@ class CartSerializer(serializers.Serializer):
             ptype = item['product'].__class__.__name__
             if ptype not in grouped:
                 grouped[ptype] = []
-            grouped[ptype].append(item)
+            
+            # Serialize the item properly using CartItemSerializer
+            serialized_item = CartItemSerializer(item).data  # ✅ Serialized!
+            grouped[ptype].append(serialized_item)
         return grouped
     
 class ClearCartSerializer(serializers.Serializer):
