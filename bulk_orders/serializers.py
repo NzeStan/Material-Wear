@@ -138,8 +138,9 @@ class BulkOrderLinkSerializer(serializers.ModelSerializer):
         lookup_field = 'slug'
 
     def get_paid_count(self, obj: 'BulkOrderLink') -> int:
-        """Get count of paid entries"""
-        return obj.entries.filter(paid=True).count()
+        """Get count of paid orders"""
+        return obj.orders.filter(paid=True).count()
+
     
     # ✅ ADD TYPE HINT
     def get_shareable_url(self, obj: 'BulkOrderLink') -> str:
