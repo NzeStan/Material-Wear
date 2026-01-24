@@ -27,21 +27,45 @@ from measurement.models import Measurement
 logger = logging.getLogger(__name__)
 
 
-def upload_pdf_to_cloudinary(pdf_bytes, filename):
-    """Upload PDF to Cloudinary and return URL"""
+def upload_pdf_to_cloudinary(pdf_bytes, filename, pdf_category='general'):
+    """
+    Upload PDF to Cloudinary in organized directories
+    
+    Args:
+        pdf_bytes: PDF binary content
+        filename: Name of the file
+        pdf_category: Category of PDF - 'nysc_kit', 'nysc_tour', 'church', or 'general'
+        
+    Returns:
+        str: Cloudinary secure URL or None on failure
+    """
     try:
+        # ✅ FIXED: Organize PDFs into subdirectories based on category
+        folder_map = {
+            'nysc_kit': 'order_pdfs/nysc_kit',
+            'nysc_tour': 'order_pdfs/nysc_tour',
+            'church': 'order_pdfs/church',
+            'general': 'order_pdfs/general'
+        }
+        
+        folder = folder_map.get(pdf_category, 'order_pdfs/general')
+        
         upload_result = cloudinary.uploader.upload(
             pdf_bytes,
             resource_type="raw",
-            folder="order_pdfs",
+            folder=folder,  # ✅ FIXED: Organized subdirectories
             public_id=filename.replace('.pdf', ''),
             format="pdf",
             overwrite=True
         )
+        
+        logger.info(f"PDF uploaded to Cloudinary ({pdf_category}): {upload_result.get('secure_url')}")
         return upload_result.get('secure_url')
+        
     except Exception as e:
-        logger.error(f"Failed to upload PDF to Cloudinary: {e}")
+        logger.error(f"Failed to upload PDF to Cloudinary ({pdf_category}): {e}")
         return None
+
 
 
 @method_decorator(staff_member_required, name='dispatch')

@@ -1,34 +1,136 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #4CAF50; color: white; padding: 10px; text-align: center; }
-        .content { padding: 20px; }
-        .button { background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #1F2937;
+            margin: 0;
+            padding: 0;
+            background-color: #F3F4F6;
+        }
+        .container { 
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .email-wrapper {
+            background-color: #FFFBEB;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header { 
+            background-color: #064E3B;
+            color: #FFFBEB;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .header .tagline {
+            margin-top: 8px;
+            font-size: 14px;
+            color: #F59E0B;
+            font-weight: 500;
+        }
+        .content { 
+            padding: 30px 25px;
+            background-color: #FFFBEB;
+        }
+        .content p {
+            margin: 15px 0;
+            color: #1F2937;
+        }
+        .content ul {
+            margin: 20px 0;
+            padding-left: 25px;
+        }
+        .content li {
+            margin: 10px 0;
+            color: #1F2937;
+        }
+        .content li::marker {
+            color: #F59E0B;
+        }
+        .button-wrapper {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .button { 
+            display: inline-block;
+            background-color: #F59E0B;
+            color: white;
+            padding: 14px 32px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #D97706;
+        }
+        .footer {
+            background-color: #064E3B;
+            color: #FFFBEB;
+            padding: 20px 25px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .footer p {
+            margin: 5px 0;
+        }
+        .footer a {
+            color: #F59E0B;
+            text-decoration: none;
+        }
+        .highlight {
+            color: #064E3B;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>Welcome to JUME MEGA WEARS!</h1>
-        </div>
-        <div class="content">
-            <p>Hello {{ user.first_name|default:"there" }},</p>
-            <p>Thank you for creating an account with JUME MEGA WEARS & ACCESSORIES.</p>
-            <p>You can now:</p>
-            <ul>
-                <li>Browse our latest collections</li>
-                <li>Save your measurements for quick ordering</li>
-                <li>Track your orders</li>
-                <li>Receive exclusive offers</li>
-            </ul>
-            <p>
-                <a href="{{ login_url }}" class="button">Start Shopping</a>
-            </p>
-            <p>If you have any questions, feel free to contact our support team.</p>
-            <p>Best regards,<br>The JMW Team</p>
+        <div class="email-wrapper">
+            <div class="header">
+                <h1>Welcome to JUME MEGA WEARS!</h1>
+                <div class="tagline">Quality Fashion & Accessories</div>
+            </div>
+            
+            <div class="content">
+                <p>Hello <span class="highlight">{{ user.first_name|default:"there" }}</span>,</p>
+                
+                <p>Thank you for creating an account with <strong>JUME MEGA WEARS & ACCESSORIES</strong>. We're excited to have you join our community!</p>
+                
+                <p>You can now:</p>
+                <ul>
+                    <li>Browse our latest collections of NYSC uniforms and church merchandise</li>
+                    <li>Save your measurements for quick and accurate ordering</li>
+                    <li>Track your orders from placement to delivery</li>
+                    <li>Receive exclusive offers and early access to new products</li>
+                </ul>
+                
+                <div class="button-wrapper">
+                    <a href="{{ login_url }}" class="button">Start Shopping</a>
+                </div>
+                
+                <p>If you have any questions or need assistance, our support team is here to help. Feel free to reach out to us anytime.</p>
+                
+                <p>Best regards,<br><span class="highlight">The JMW Team</span></p>
+            </div>
+            
+            <div class="footer">
+                <p>&copy; 2025 JUME MEGA WEARS & ACCESSORIES</p>
+                <p>Your trusted source for quality NYSC and church merchandise</p>
+            </div>
         </div>
     </div>
 </body>

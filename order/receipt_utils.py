@@ -44,24 +44,45 @@ def sanitize_text_for_pdf(text):
     return text
 
 
-def upload_pdf_to_cloudinary(pdf_content, filename):
-    """Upload PDF to Cloudinary and return URL"""
+def upload_pdf_to_cloudinary(pdf_content, filename, pdf_type='general'):
+    """
+    Upload PDF to Cloudinary in organized directories
+    
+    Args:
+        pdf_content: PDF binary content
+        filename: Name of the file
+        pdf_type: Type of PDF - 'order_confirmation', 'payment_receipt', or 'general'
+        
+    Returns:
+        str: Cloudinary secure URL or None on failure
+    """
     try:
+        # ✅ FIXED: Organize PDFs into subdirectories based on type
+        folder_map = {
+            'order_confirmation': 'jmw_receipts/orders',
+            'payment_receipt': 'jmw_receipts/payments',
+            'general': 'jmw_receipts/general'
+        }
+        
+        folder = folder_map.get(pdf_type, 'jmw_receipts/general')
+        
         result = cloudinary.uploader.upload(
             pdf_content,
             resource_type='raw',
-            public_id=f'receipts/{filename}',
-            folder='jmw_receipts',
+            public_id=filename.replace('.pdf', ''),  # ✅ FIXED: No redundant path prefix
+            folder=folder,  # ✅ FIXED: Organized subdirectories
+            format='pdf',
             overwrite=True,
             invalidate=True
         )
         
-        logger.info(f"PDF uploaded to Cloudinary: {result['secure_url']}")
+        logger.info(f"PDF uploaded to Cloudinary ({pdf_type}): {result['secure_url']}")
         return result['secure_url']
         
     except Exception as e:
         logger.error(f"Failed to upload PDF to Cloudinary: {str(e)}")
         return None
+
 
 
 def generate_order_confirmation_pdf(order):
@@ -184,8 +205,12 @@ def generate_and_store_order_confirmation(order):
         # Create filename
         filename = f"order_confirmation_{order.serial_number}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         
-        # Upload to Cloudinary
-        cloudinary_url = upload_pdf_to_cloudinary(pdf_bytes, filename)
+        # ✅ FIXED: Upload to Cloudinary with pdf_type parameter
+        cloudinary_url = upload_pdf_to_cloudinary(
+            pdf_bytes, 
+            filename, 
+            pdf_type='order_confirmation'  # ✅ NEW: Specify PDF type
+        )
         
         return (pdf_bytes, cloudinary_url)
         
@@ -212,8 +237,12 @@ def generate_and_store_payment_receipt(payment):
         # Create filename
         filename = f"payment_receipt_{payment.reference}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         
-        # Upload to Cloudinary
-        cloudinary_url = upload_pdf_to_cloudinary(pdf_bytes, filename)
+        # ✅ FIXED: Upload to Cloudinary with pdf_type parameter
+        cloudinary_url = upload_pdf_to_cloudinary(
+            pdf_bytes, 
+            filename, 
+            pdf_type='payment_receipt'  # ✅ NEW: Specify PDF type
+        )
         
         return (pdf_bytes, cloudinary_url)
         

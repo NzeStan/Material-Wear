@@ -164,14 +164,56 @@ class UploadPDFToCloudinaryTests(TestCase):
         pdf_content = b'test'
         filename = 'test.pdf'
         
-        upload_pdf_to_cloudinary(pdf_content, filename)
+        # ✅ UPDATED: Pass pdf_type parameter
+        upload_pdf_to_cloudinary(pdf_content, filename, pdf_type='order_confirmation')
         
         # Verify correct parameters
         call_args = mock_upload.call_args
         self.assertEqual(call_args[1]['resource_type'], 'raw')
-        self.assertEqual(call_args[1]['public_id'], 'receipts/test.pdf')
-        self.assertEqual(call_args[1]['folder'], 'jmw_receipts')
+        self.assertEqual(call_args[1]['public_id'], 'test')  # ✅ UPDATED: No .pdf extension, no receipts/ prefix
+        self.assertEqual(call_args[1]['folder'], 'jmw_receipts/orders')  # ✅ UPDATED: Subdirectory
+        self.assertEqual(call_args[1]['format'], 'pdf')  # ✅ NEW: Explicit format
         self.assertTrue(call_args[1]['overwrite'])
+
+    @patch('order.receipt_utils.cloudinary.uploader.upload')
+    def test_upload_order_confirmation_to_correct_folder(self, mock_upload):
+        """Test order confirmations go to orders folder"""
+        mock_upload.return_value = {'secure_url': 'https://test.url'}
+        
+        upload_pdf_to_cloudinary(b'test', 'order.pdf', pdf_type='order_confirmation')
+        
+        call_args = mock_upload.call_args
+        self.assertEqual(call_args[1]['folder'], 'jmw_receipts/orders')
+
+    @patch('order.receipt_utils.cloudinary.uploader.upload')
+    def test_upload_payment_receipt_to_correct_folder(self, mock_upload):
+        """Test payment receipts go to payments folder"""
+        mock_upload.return_value = {'secure_url': 'https://test.url'}
+        
+        upload_pdf_to_cloudinary(b'test', 'payment.pdf', pdf_type='payment_receipt')
+        
+        call_args = mock_upload.call_args
+        self.assertEqual(call_args[1]['folder'], 'jmw_receipts/payments')
+
+    @patch('order.receipt_utils.cloudinary.uploader.upload')
+    def test_upload_general_pdf_to_correct_folder(self, mock_upload):
+        """Test general PDFs go to general folder"""
+        mock_upload.return_value = {'secure_url': 'https://test.url'}
+        
+        upload_pdf_to_cloudinary(b'test', 'general.pdf', pdf_type='general')
+        
+        call_args = mock_upload.call_args
+        self.assertEqual(call_args[1]['folder'], 'jmw_receipts/general')
+
+    @patch('order.receipt_utils.cloudinary.uploader.upload')
+    def test_upload_unknown_type_defaults_to_general(self, mock_upload):
+        """Test unknown PDF types default to general folder"""
+        mock_upload.return_value = {'secure_url': 'https://test.url'}
+        
+        upload_pdf_to_cloudinary(b'test', 'unknown.pdf', pdf_type='unknown_type')
+        
+        call_args = mock_upload.call_args
+        self.assertEqual(call_args[1]['folder'], 'jmw_receipts/general')
 
 
 class GenerateOrderConfirmationPDFTests(TestCase):
