@@ -1,3 +1,4 @@
+# accounts/serializers.py
 from rest_framework import serializers
 from dj_rest_auth.serializers import (
     UserDetailsSerializer, 
@@ -9,6 +10,7 @@ from dj_rest_auth.registration.serializers import RegisterSerializer
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.conf import settings  # ✅ ADDED: Missing import
 import logging
 
 User = get_user_model()
@@ -16,26 +18,57 @@ logger = logging.getLogger(__name__)
 
 
 class LogoutSerializer(serializers.Serializer):
-    """Serializer for logout endpoint"""
+    """Serializer for logout endpoint - empty but required for drf-spectacular"""
     pass
 
+
+class UserStatusSerializer(serializers.Serializer):
+    """Serializer for user authentication status"""
+    is_authenticated = serializers.BooleanField()
+    user = serializers.SerializerMethodField()
+    
+    def get_user(self, obj):
+        if obj.get('is_authenticated') and obj.get('user'):
+            user = obj['user']
+            return {
+                'id': str(user.id),
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'full_name': f"{user.first_name} {user.last_name}".strip() or user.email,
+            }
+        return None
+
+
 class CustomUserSerializer(UserDetailsSerializer):
+    """
+    Custom user serializer with read-only sensitive fields
+    and computed full_name field
+    """
     email = serializers.EmailField(read_only=True)
     date_joined = serializers.DateTimeField(read_only=True)
     last_login = serializers.DateTimeField(read_only=True)
+    full_name = serializers.SerializerMethodField()
     
     class Meta(UserDetailsSerializer.Meta):
         model = User
-        fields = ('id', 'email', 'first_name', 'last_name', 'is_active', 
-                 'date_joined', 'last_login')
+        fields = ('id', 'email', 'first_name', 'last_name', 'full_name', 
+                 'is_active', 'date_joined', 'last_login')
         read_only_fields = ('id', 'email', 'is_active', 'date_joined', 'last_login')
+    
+    def get_full_name(self, obj):
+        """Return full name or email if names not provided"""
+        full_name = f"{obj.first_name} {obj.last_name}".strip()
+        return full_name if full_name else obj.email
 
 
 class CustomRegisterSerializer(RegisterSerializer):
-    first_name = serializers.CharField(max_length=150, required=False)
-    last_name = serializers.CharField(max_length=150, required=False)
+    """Custom registration serializer with optional first/last names"""
+    first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
     
     def validate_password1(self, password):
+        """Validate password strength"""
         try:
             validate_password(password, self.instance)
         except DjangoValidationError as e:
@@ -43,6 +76,7 @@ class CustomRegisterSerializer(RegisterSerializer):
         return password
     
     def get_cleaned_data(self):
+        """Get cleaned registration data"""
         data = super().get_cleaned_data()
         data.update({
             'first_name': self.validated_data.get('first_name', ''),
@@ -51,27 +85,32 @@ class CustomRegisterSerializer(RegisterSerializer):
         return data
     
     def save(self, request):
+        """Save new user and log registration"""
         user = super().save(request)
         logger.info(f"New user registered: {user.email}")
         return user
 
 
 class CustomLoginSerializer(LoginSerializer):
+    """Custom login serializer using email instead of username"""
     email = serializers.EmailField(required=True)
-    username = None
+    username = None  # Remove username field
     
     def validate(self, attrs):
+        """Validate login credentials"""
         attrs = super().validate(attrs)
-        # Add custom validation if needed
         return attrs
 
 
 class CustomPasswordResetSerializer(PasswordResetSerializer):
+    """Custom password reset serializer with enhanced email sending"""
+    
     def save(self):
+        """Send password reset email"""
         request = self.context.get('request')
         opts = {
             'use_https': request.is_secure(),
-            'from_email': getattr(settings, 'DEFAULT_FROM_EMAIL'),
+            'from_email': getattr(settings, 'DEFAULT_FROM_EMAIL'),  # ✅ FIXED: Now imports settings
             'request': request,
             'html_email_template_name': 'registration/password_reset_email.html',
         }
@@ -80,8 +119,12 @@ class CustomPasswordResetSerializer(PasswordResetSerializer):
 
 
 class CustomPasswordResetConfirmSerializer(PasswordResetConfirmSerializer):
+    """Custom password reset confirm serializer with password validation"""
+    
     def validate(self, attrs):
+        """Validate password reset data"""
         attrs = super().validate(attrs)
+        
         # Add password strength validation
         password = attrs['new_password1']
         try:
@@ -91,6 +134,7 @@ class CustomPasswordResetConfirmSerializer(PasswordResetConfirmSerializer):
         return attrs
     
     def save(self):
+        """Save new password and log action"""
         self.user.set_password(self.validated_data['new_password1'])
         self.user.save()
         logger.info(f"Password reset successful for user: {self.user.email}")
@@ -98,20 +142,24 @@ class CustomPasswordResetConfirmSerializer(PasswordResetConfirmSerializer):
 
 
 class ChangePasswordSerializer(serializers.Serializer):
-    old_password = serializers.CharField(required=True)
-    new_password1 = serializers.CharField(required=True)
-    new_password2 = serializers.CharField(required=True)
+    """Serializer for changing password for authenticated users"""
+    old_password = serializers.CharField(required=True, write_only=True)
+    new_password1 = serializers.CharField(required=True, write_only=True)
+    new_password2 = serializers.CharField(required=True, write_only=True)
     
     def validate_old_password(self, value):
+        """Validate that old password is correct"""
         user = self.context['request'].user
         if not user.check_password(value):
             raise serializers.ValidationError("Old password is incorrect")
         return value
     
     def validate(self, data):
+        """Validate that new passwords match and meet requirements"""
         if data['new_password1'] != data['new_password2']:
             raise serializers.ValidationError({"new_password2": "Passwords don't match"})
         
+        # Validate password strength
         try:
             validate_password(data['new_password1'], self.context['request'].user)
         except DjangoValidationError as e:
@@ -120,6 +168,7 @@ class ChangePasswordSerializer(serializers.Serializer):
         return data
     
     def save(self):
+        """Save new password and log action"""
         user = self.context['request'].user
         user.set_password(self.validated_data['new_password1'])
         user.save()
