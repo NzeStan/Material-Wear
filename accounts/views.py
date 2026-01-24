@@ -12,13 +12,14 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
-from drf_spectacular.utils import extend_schema, OpenApiResponse
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 from django.conf import settings
 import logging
 
 from .serializers import (
     LogoutSerializer, 
     UserStatusSerializer,
+    UserStatusBasicSerializer,
     CustomUserSerializer,
     ChangePasswordSerializer
 )
@@ -27,65 +28,98 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================================
-# USER STATUS ENDPOINT
+# USER STATUS ENDPOINTS
 # ============================================================================
 
 class UserStatusView(APIView):
     """
-    Check if the current user is authenticated and return basic user info.
-    This is useful for frontend to determine auth state without fetching full user details.
+    Get comprehensive authentication status with roles and permissions.
+    
+    Returns:
+    - Authentication state
+    - User basic info
+    - Role flags (is_superuser, is_staff, is_admin)
+    - Permission groups
+    - Access control flags for frontend routing
     """
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle, UserRateThrottle]
     
     @extend_schema(
         tags=['Authentication'],
-        summary="Check authentication status",
+        summary="Get comprehensive user status",
         description="""
-        Returns the authentication status of the current request.
+        Returns comprehensive authentication status with complete role and permission information.
         
-        - If authenticated: returns user basic info
-        - If not authenticated: returns is_authenticated=false
+        **Use this endpoint for:**
+        - Checking if user is authenticated
+        - Getting user role (superuser, staff/admin, regular user)
+        - Frontend access control (route guards, conditional UI)
+        - Permission-based feature toggling
         
-        This endpoint is useful for:
-        - Checking if user is logged in
-        - Getting basic user info without full details
-        - Frontend auth state management
+        **Response includes:**
+        - is_authenticated: Boolean indicating auth status
+        - user: Basic user info (id, email, name, role flags)
+        - permissions: Detailed permission info (groups, roles, access flags)
+        
+        **No authentication required** - works for both authenticated and anonymous users.
         """,
         responses={
             200: UserStatusSerializer,
         },
-        examples=[
-            {
-                'name': 'Authenticated Response',
-                'value': {
-                    'is_authenticated': True,
-                    'user': {
-                        'id': '123e4567-e89b-12d3-a456-426614174000',
-                        'email': 'user@example.com',
-                        'first_name': 'John',
-                        'last_name': 'Doe',
-                        'full_name': 'John Doe'
-                    }
-                }
-            },
-            {
-                'name': 'Unauthenticated Response',
-                'value': {
-                    'is_authenticated': False,
-                    'user': None
-                }
-            }
-        ]
     )
     def get(self, request):
-        """Get authentication status"""
+        """Get comprehensive authentication status with permissions"""
         if request.user.is_authenticated:
             data = {
                 'is_authenticated': True,
                 'user': request.user
             }
             serializer = UserStatusSerializer(data)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        return Response({
+            'is_authenticated': False,
+            'user': None,
+            'permissions': None
+        }, status=status.HTTP_200_OK)
+
+
+class UserStatusBasicView(APIView):
+    """
+    Get basic authentication status (lightweight, for high-frequency checks).
+    
+    Use this for polling or when you only need minimal info.
+    For complete role/permission data, use /api/auth/status/ instead.
+    """
+    permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
+    
+    @extend_schema(
+        tags=['Authentication'],
+        summary="Get basic user status (lightweight)",
+        description="""
+        Returns minimal authentication status without permission lookups.
+        
+        **Use this endpoint for:**
+        - High-frequency polling (checking auth state every few seconds)
+        - When you only need to know if user is logged in
+        - Minimal bandwidth/performance requirements
+        
+        **For complete role/permission data, use `/api/auth/status/` instead.**
+        """,
+        responses={
+            200: UserStatusBasicSerializer,
+        },
+    )
+    def get(self, request):
+        """Get basic authentication status"""
+        if request.user.is_authenticated:
+            data = {
+                'is_authenticated': True,
+                'user': request.user
+            }
+            serializer = UserStatusBasicSerializer(data)
             return Response(serializer.data, status=status.HTTP_200_OK)
         
         return Response({
@@ -380,7 +414,7 @@ class CustomUserDetailsView(UserDetailsView):
         - last_name
         
         Read-only fields:
-        - id, email, is_active, date_joined, last_login
+        - id, email, username, is_active, is_staff, is_superuser, date_joined, last_login
         """,
         responses={
             200: CustomUserSerializer,

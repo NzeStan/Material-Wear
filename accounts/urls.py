@@ -9,7 +9,10 @@ from .views import (
     # Authentication
     CustomLoginView, 
     CustomLogoutView,
+    
+    # User Status (NEW)
     UserStatusView,
+    UserStatusBasicView,
     
     # Password Management
     CustomPasswordResetView, 
@@ -29,7 +32,15 @@ urlpatterns = [
     path('register/', RegisterView.as_view(), name='rest_register'),
     path('login/', CustomLoginView.as_view(), name='rest_login'),
     path('logout/', CustomLogoutView.as_view(), name='rest_logout'),
-    path('status/', UserStatusView.as_view(), name='user_status'),  # ✅ NEW
+    
+    # ========================================================================
+    # USER STATUS ENDPOINTS (NEW)
+    # ========================================================================
+    # Comprehensive status with roles, permissions, and access control
+    path('status/', UserStatusView.as_view(), name='user_status'),
+    
+    # Lightweight status for high-frequency checks
+    path('status/basic/', UserStatusBasicView.as_view(), name='user_status_basic'),
     
     # ========================================================================
     # PASSWORD MANAGEMENT

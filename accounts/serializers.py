@@ -10,7 +10,7 @@ from dj_rest_auth.registration.serializers import RegisterSerializer
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.conf import settings  # ✅ ADDED: Missing import
+from django.conf import settings
 import logging
 
 User = get_user_model()
@@ -23,19 +23,119 @@ class LogoutSerializer(serializers.Serializer):
 
 
 class UserStatusSerializer(serializers.Serializer):
-    """Serializer for user authentication status"""
+    """
+    Comprehensive user authentication status serializer
+    
+    Returns authentication state and complete user role/permission information
+    for frontend access control and conditional UI rendering.
+    """
     is_authenticated = serializers.BooleanField()
     user = serializers.SerializerMethodField()
+    permissions = serializers.SerializerMethodField()
     
     def get_user(self, obj):
+        """Get basic user information"""
         if obj.get('is_authenticated') and obj.get('user'):
             user = obj['user']
             return {
                 'id': str(user.id),
                 'email': user.email,
+                'username': user.username,
                 'first_name': user.first_name,
                 'last_name': user.last_name,
                 'full_name': f"{user.first_name} {user.last_name}".strip() or user.email,
+                
+                # Account status
+                'is_active': user.is_active,
+                
+                # Role/Permission flags
+                'is_superuser': user.is_superuser,
+                'is_staff': user.is_staff,  # Admin access
+                
+                # Timestamps
+                'date_joined': user.date_joined,
+                'last_login': user.last_login,
+            }
+        return None
+    
+    def get_permissions(self, obj):
+        """
+        Get user permissions and groups
+        
+        Returns detailed permission information for frontend access control:
+        - User groups
+        - Specific permissions
+        - Quick role checks
+        """
+        if not obj.get('is_authenticated') or not obj.get('user'):
+            return None
+        
+        user = obj['user']
+        
+        # Get user groups
+        groups = list(user.groups.values_list('name', flat=True))
+        
+        # Get specific permissions (if you need granular control)
+        # Format: 'app_label.codename'
+        user_permissions = []
+        if user.is_superuser:
+            # Superusers have all permissions
+            user_permissions = ['all']
+        else:
+            # Get actual permissions
+            permissions = user.user_permissions.select_related('content_type').all()
+            user_permissions = [
+                f"{perm.content_type.app_label}.{perm.codename}" 
+                for perm in permissions
+            ]
+        
+        return {
+            'groups': groups,
+            'permissions': user_permissions,
+            
+            # Quick role checks for common access patterns
+            'roles': {
+                'is_admin': user.is_staff or user.is_superuser,
+                'is_superuser': user.is_superuser,
+                'is_staff': user.is_staff,
+                'can_access_admin': user.is_staff or user.is_superuser,
+                'can_manage_users': user.is_superuser,
+                'can_manage_orders': user.is_staff or user.is_superuser,
+                'can_manage_products': user.is_staff or user.is_superuser,
+                'can_view_reports': user.is_staff or user.is_superuser,
+            },
+            
+            # Permission helpers (customize based on your needs)
+            'can': {
+                'create_bulk_orders': user.is_authenticated,
+                'view_all_orders': user.is_staff or user.is_superuser,
+                'edit_products': user.is_staff or user.is_superuser,
+                'manage_measurements': user.is_authenticated,
+                'access_admin_panel': user.is_staff or user.is_superuser,
+            }
+        }
+
+
+class UserStatusBasicSerializer(serializers.Serializer):
+    """
+    Lightweight user status serializer (for high-frequency checks)
+    
+    Returns minimal authentication state without permission lookups.
+    Use this for frequent polling or when you only need to know if user is logged in.
+    """
+    is_authenticated = serializers.BooleanField()
+    user = serializers.SerializerMethodField()
+    
+    def get_user(self, obj):
+        """Get minimal user information"""
+        if obj.get('is_authenticated') and obj.get('user'):
+            user = obj['user']
+            return {
+                'id': str(user.id),
+                'email': user.email,
+                'full_name': f"{user.first_name} {user.last_name}".strip() or user.email,
+                'is_staff': user.is_staff,
+                'is_superuser': user.is_superuser,
             }
         return None
 
@@ -49,12 +149,15 @@ class CustomUserSerializer(UserDetailsSerializer):
     date_joined = serializers.DateTimeField(read_only=True)
     last_login = serializers.DateTimeField(read_only=True)
     full_name = serializers.SerializerMethodField()
+    is_superuser = serializers.BooleanField(read_only=True)
+    is_staff = serializers.BooleanField(read_only=True)
     
     class Meta(UserDetailsSerializer.Meta):
         model = User
-        fields = ('id', 'email', 'first_name', 'last_name', 'full_name', 
-                 'is_active', 'date_joined', 'last_login')
-        read_only_fields = ('id', 'email', 'is_active', 'date_joined', 'last_login')
+        fields = ('id', 'email', 'username', 'first_name', 'last_name', 'full_name', 
+                 'is_active', 'is_staff', 'is_superuser', 'date_joined', 'last_login')
+        read_only_fields = ('id', 'email', 'username', 'is_active', 'is_staff', 
+                           'is_superuser', 'date_joined', 'last_login')
     
     def get_full_name(self, obj):
         """Return full name or email if names not provided"""
@@ -110,7 +213,7 @@ class CustomPasswordResetSerializer(PasswordResetSerializer):
         request = self.context.get('request')
         opts = {
             'use_https': request.is_secure(),
-            'from_email': getattr(settings, 'DEFAULT_FROM_EMAIL'),  # ✅ FIXED: Now imports settings
+            'from_email': getattr(settings, 'DEFAULT_FROM_EMAIL'),
             'request': request,
             'html_email_template_name': 'registration/password_reset_email.html',
         }
