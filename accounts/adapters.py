@@ -1,3 +1,10 @@
+# FIXED accounts/adapters.py
+# 
+# BUG FOUND: The condition `if not user.pk` doesn't work with UUID primary keys
+# because UUIDs are auto-generated on object creation (before save)
+#
+# FIX: Use `user._state.adding` to check if user is unsaved
+
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from django.contrib.auth import get_user_model
@@ -93,8 +100,9 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
                 logger.info(f"Social account linked to existing user: {user.email}")
                 return
         
-        # Generate username if missing
-        if not user.pk and not user.username:
+        # ✅ FIX: Check if user is new (not yet saved) instead of checking pk
+        # Works with UUID primary keys that auto-generate
+        if user._state.adding and not user.username:
             base_username = slugify(user.email.split("@")[0])
             new_username = base_username
             count = 1
