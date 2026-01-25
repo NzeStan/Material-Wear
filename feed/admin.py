@@ -1,8 +1,10 @@
+# feed/admin.py
 from django.contrib import admin
 from django.urls import path
 from django.shortcuts import redirect
 from django.contrib import messages
 from django.template.response import TemplateResponse
+from django.utils.html import format_html
 from .models import Image, YouTubeCache
 from .youtube_service import YouTubeService
 from .cache_utils import VideoCache
@@ -10,8 +12,52 @@ from .cache_utils import VideoCache
 
 @admin.register(Image)
 class ImageAdmin(admin.ModelAdmin):
-    list_display = ("url", "upload_date", "active")
+    list_display = ("thumbnail_preview", "id", "upload_date", "active")
+    list_filter = ("active", "upload_date")
+    list_editable = ("active",)
     ordering = ("-upload_date",)
+    readonly_fields = ("upload_date", "large_thumbnail_preview")
+    
+    fieldsets = (
+        ('Image', {
+            'fields': ('large_thumbnail_preview', 'url', 'active'),
+            'classes': ('wide',),
+        }),
+        ('Metadata', {
+            'fields': ('upload_date',),
+            'classes': ('collapse',),
+        }),
+    )
+    
+    def thumbnail_preview(self, obj):
+        """Display thumbnail in list view"""
+        if obj.url:
+            return format_html(
+                '<img src="{}" style="width: 50px; height: 50px; object-fit: cover; '
+                'border-radius: 4px; border: 2px solid #064E3B;" />',
+                obj.url.url
+            )
+        return format_html(
+            '<div style="width: 50px; height: 50px; background: #F3F4F6; '
+            'border-radius: 4px; display: flex; align-items: center; '
+            'justify-content: center; color: #9CA3AF;">No Image</div>'
+        )
+    thumbnail_preview.short_description = 'Preview'
+    
+    def large_thumbnail_preview(self, obj):
+        """Display larger thumbnail in detail view"""
+        if obj.url:
+            return format_html(
+                '<img src="{}" style="max-width: 400px; height: auto; '
+                'border-radius: 8px; border: 3px solid #064E3B;" />',
+                obj.url.url
+            )
+        return format_html(
+            '<div style="width: 400px; height: 300px; background: #F3F4F6; '
+            'border-radius: 8px; display: flex; align-items: center; '
+            'justify-content: center; color: #9CA3AF; font-size: 18px;">No Image Available</div>'
+        )
+    large_thumbnail_preview.short_description = 'Current Image'
 
 
 @admin.register(YouTubeCache)
@@ -35,14 +81,17 @@ class YouTubeCacheAdmin(admin.ModelAdmin):
         last_updated = cache.get_last_updated()
         videos = cache.get_cached_videos() or []
 
-        # Get the first few video titles for display
+        # Get the first few videos with thumbnails for display
         video_examples = []
         if videos:
-            for video in videos[:5]:
+            for video in videos[:8]:  # Show 8 videos instead of 5
                 video_examples.append(
                     {
                         "id": video.get("id", "Unknown"),
                         "title": video.get("title", "Untitled"),
+                        "thumbnail": video.get("thumbnail", ""),
+                        "published_at": video.get("published_at", ""),
+                        "url": video.get("url", ""),
                     }
                 )
 
