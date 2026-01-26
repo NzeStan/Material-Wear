@@ -10,6 +10,7 @@ class ImageViewSet(viewsets.ModelViewSet):
     serializer_class = ImageSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     queryset = Image.objects.filter(active=True)
+    
 
     def get_queryset(self):
         if self.request.user.is_staff:
