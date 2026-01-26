@@ -554,6 +554,12 @@ PAYSTACK_SECRET_KEY = env("PAYSTACK_SECRET_KEY")
 PAYSTACK_WEBHOOK_SECRET = env("PAYSTACK_WEBHOOK_SECRET", default="")
 
 # ==============================================================================
+# YOUITUBE KEYS
+# ==============================================================================
+YOUTUBE_API_KEY = env("YOUTUBE_API_KEY")
+YOUTUBE_CHANNEL_ID = env("YOUTUBE_CHANNEL_ID")
+
+# ==============================================================================
 # LOGGING
 # ==============================================================================
 
