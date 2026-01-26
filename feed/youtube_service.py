@@ -57,17 +57,31 @@ class YouTubeService:
 
                 # Process videos from current page
                 for item in response["items"]:
+                    snippet = item["snippet"]
+                    video_id = item["id"]["videoId"]
+                    
                     upload_date = datetime.strptime(
-                        item["snippet"]["publishedAt"], "%Y-%m-%dT%H:%M:%SZ"
+                        snippet["publishedAt"], "%Y-%m-%dT%H:%M:%SZ"
                     )
                     upload_date = upload_date.replace(tzinfo=pytz.UTC)
 
+                    # Get thumbnail URL (high quality preferred)
+                    thumbnails = snippet.get("thumbnails", {})
+                    thumbnail_url = (
+                        thumbnails.get("high", {}).get("url") or
+                        thumbnails.get("medium", {}).get("url") or
+                        thumbnails.get("default", {}).get("url") or
+                        ""
+                    )
+
                     video = {
-                        "id": item["id"]["videoId"],
-                        "title": item["snippet"][
-                            "title"
-                        ],  # Adding title for better logging
+                        "id": video_id,
+                        "title": snippet["title"],
+                        "description": snippet.get("description", ""),
+                        "thumbnail": thumbnail_url,  # ✅ THIS WAS MISSING!
+                        "published_at": upload_date.isoformat(),
                         "upload_date": upload_date.isoformat(),
+                        "url": f"https://www.youtube.com/watch?v={video_id}",
                         "type": "video",
                     }
                     videos.append(video)
