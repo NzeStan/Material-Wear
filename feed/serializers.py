@@ -1,3 +1,4 @@
+# feed/serializers.py
 from rest_framework import serializers
 from .models import Image
 from typing import Optional
@@ -12,16 +13,16 @@ class ImageSerializer(serializers.ModelSerializer):
 
     def get_optimized_url(self, obj: 'Image') -> Optional[str]:
         """Get optimized Cloudinary URL"""
-        if obj.image:
-            if hasattr(obj.image, 'build_url'):
-                return obj.image.build_url(
+        if obj.url:  # ✅ FIXED
+            if hasattr(obj.url, 'build_url'):  # ✅ FIXED
+                return obj.url.build_url(  # ✅ FIXED
                     width=800,
                     height=600,
                     crop='limit',
                     quality='auto',
                     fetch_format='auto'
                 )
-            return obj.image.url
+            return obj.url.url  # ✅ FIXED
         return None
 
 
