@@ -1,3 +1,4 @@
+# feed/youtube_service.py
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from django.conf import settings
@@ -12,10 +13,13 @@ logger = logging.getLogger(__name__)
 
 class YouTubeService:
     def __init__(self):
+        # FIX #1: Always initialize cache first, even if build() fails
+        # This ensures service.cache is always available for tests
+        self.cache = VideoCache()
+        self.channel_id = getattr(settings, 'YOUTUBE_CHANNEL_ID', None)
+        
         try:
             self.youtube = build("youtube", "v3", developerKey=settings.YOUTUBE_API_KEY)
-            self.channel_id = settings.YOUTUBE_CHANNEL_ID
-            self.cache = VideoCache()
         except Exception as e:
             logger.error(f"Failed to initialize YouTube service: {str(e)}")
             self.youtube = None
@@ -74,13 +78,15 @@ class YouTubeService:
                         ""
                     )
 
+                    # FIX #3: Use strftime with 'Z' suffix instead of isoformat() 
+                    # which produces '+00:00' format
                     video = {
                         "id": video_id,
                         "title": snippet["title"],
                         "description": snippet.get("description", ""),
-                        "thumbnail": thumbnail_url,  # ✅ THIS WAS MISSING!
-                        "published_at": upload_date.isoformat(),
-                        "upload_date": upload_date.isoformat(),
+                        "thumbnail": thumbnail_url,
+                        "published_at": upload_date.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                        "upload_date": upload_date.strftime('%Y-%m-%dT%H:%M:%SZ'),
                         "url": f"https://www.youtube.com/watch?v={video_id}",
                         "type": "video",
                     }
@@ -120,11 +126,16 @@ class YouTubeService:
             force_refresh (bool): If True, bypass cache and fetch fresh from API
         """
         if not force_refresh:
-            # Try cache first
-            cached_videos = self.cache.get_cached_videos()
-            if cached_videos:
-                logger.info(f"Returning {len(cached_videos)} videos from cache")
-                return cached_videos
+            # FIX #2: Add exception handling around cache operations
+            # If cache throws an error, fall back to API gracefully
+            try:
+                cached_videos = self.cache.get_cached_videos()
+                if cached_videos:
+                    logger.info(f"Returning {len(cached_videos)} videos from cache")
+                    return cached_videos
+            except Exception as e:
+                # Cache error - log it but don't crash, fall through to API
+                logger.warning(f"Cache error, falling back to API: {str(e)}")
 
         # Fetch from API
         logger.info("Fetching fresh videos from YouTube API")

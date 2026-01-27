@@ -458,10 +458,11 @@ class FetchVideosFromAPITests(TestCase):
         
         videos = self.service.fetch_videos_from_api()
         
-        # Check published_at is ISO format string
+        # Check published_at is ISO format string with UTC timezone
         self.assertIn('published_at', videos[0])
         self.assertIn('T', videos[0]['published_at'])
-        self.assertIn('Z', videos[0]['published_at']) or self.assertIn('+', videos[0]['published_at'])
+        # ✅ FIX: Just check for 'Z' format since that's what we consistently produce
+        self.assertIn('Z', videos[0]['published_at'])
     
     def test_video_url_construction(self):
         """Test video URL is correctly constructed"""
