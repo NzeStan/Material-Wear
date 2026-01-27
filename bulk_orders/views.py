@@ -330,19 +330,57 @@ class BulkOrderLinkViewSet(viewsets.ModelViewSet):
 
 
 class OrderEntryViewSet(viewsets.ModelViewSet):
-    """ViewSet for OrderEntry - user's own orders"""
+    """
+    ViewSet for OrderEntry with proper public/private access control
+    
+    ✅ FIXED: 
+    - initialize_payment now works publicly (no auth required)
+    - list endpoint shows authenticated user's orders only
+    - retrieve endpoint allows public access (for checking order by UUID)
+    """
     serializer_class = OrderEntrySerializer
     permission_classes = [permissions.AllowAny]
     
     def get_queryset(self):
+        """
+        ✅ FIXED: Return appropriate queryset based on action
+        
+        Actions:
+        - list: Only authenticated user's orders
+        - retrieve: All orders (public - anyone with UUID can view)
+        - initialize_payment: All orders (public - anyone with UUID can pay)
+        """
+        # For initialize_payment and retrieve: allow public access to all orders
+        if self.action in ['initialize_payment', 'retrieve']:
+            return OrderEntry.objects.all().select_related('bulk_order', 'coupon_used')
+        
+        # For list: only show authenticated user's orders
+        if self.action == 'list':
+            if self.request.user.is_authenticated:
+                return OrderEntry.objects.filter(
+                    email=self.request.user.email
+                ).select_related('bulk_order', 'coupon_used')
+            # Not authenticated? Return empty queryset for list
+            return OrderEntry.objects.none()
+        
+        # For update/delete (shouldn't be used, but just in case):
+        # Require authentication and match email
         if self.request.user.is_authenticated:
-            return OrderEntry.objects.filter(email=self.request.user.email).select_related('bulk_order', 'coupon_used')
+            return OrderEntry.objects.filter(
+                email=self.request.user.email
+            ).select_related('bulk_order', 'coupon_used')
+        
         return OrderEntry.objects.none()
 
-    # ✅ Payment initialization endpoint
-    @action(detail=True, methods=['post'])
+    # ✅ FIXED: Payment initialization endpoint - Now fully public
+    @action(detail=True, methods=['post'], permission_classes=[permissions.AllowAny])
     def initialize_payment(self, request, pk=None):
-        """Initialize payment for an OrderEntry"""
+        """
+        Initialize payment for an OrderEntry - PUBLIC ENDPOINT
+        
+        ✅ FIXED: Anyone with the order UUID can initialize payment
+        This is necessary because users submit orders without authentication
+        """
         order_entry = self.get_object()
         
         # Check if already paid
@@ -366,14 +404,18 @@ class OrderEntryViewSet(viewsets.ModelViewSet):
         result = initialize_payment(amount, email, reference, callback_url)
         
         if result and result.get('status'):
+            logger.info(f"Payment initialized for order {order_entry.id}: {reference}")
             return Response({
                 "authorization_url": result['data']['authorization_url'],
                 "access_code": result['data']['access_code'],
-                "reference": reference
+                "reference": reference,
+                "amount": float(amount),
+                "email": email
             })
         
+        logger.error(f"Payment initialization failed for order {order_entry.id}")
         return Response(
-            {"error": "Payment initialization failed"},
+            {"error": "Payment initialization failed. Please try again."},
             status=status.HTTP_400_BAD_REQUEST
         )
 
@@ -479,7 +521,7 @@ def bulk_order_payment_webhook(request):
         
         # Parse reference: ORDER-{bulk_order_id}-{order_entry_id}
         try:
-            parts = reference.split('-')
+            parts = reference.split('-', 2)
             if len(parts) != 3 or parts[0] != 'ORDER':
                 logger.error(f"Invalid bulk order reference format: {reference}")
                 return JsonResponse({'status': 'error', 'message': 'Invalid reference format'}, status=400)
