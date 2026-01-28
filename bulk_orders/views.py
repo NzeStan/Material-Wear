@@ -473,10 +473,21 @@ class CouponCodeViewSet(viewsets.ModelViewSet):
 @csrf_exempt
 def bulk_order_payment_webhook(request):
     """
-    ✅ SECURED: Webhook handler for Paystack payment notifications for bulk orders
-    Reference format: ORDER-{bulk_order_id}-{order_entry_id}
-    Verifies signature before processing
+    Handle both webhook (POST) and user redirect (GET)
     """
+    # Handle GET redirect from Paystack
+    if request.method == 'GET':
+        return HttpResponse("""
+            <html>
+            <head><title>Payment Received</title></head>
+            <body style="font-family: Arial; text-align: center; padding: 50px;">
+                <h1>✓ Payment Received</h1>
+                <p>Your payment is being processed.</p>
+                <p>You will receive a confirmation email shortly.</p>
+            </body>
+            </html>
+        """)
+    
     if request.method != 'POST':
         return JsonResponse({'status': 'error', 'message': 'Invalid method'}, status=405)
 
@@ -499,7 +510,7 @@ def bulk_order_payment_webhook(request):
                 status=401
             )
         
-        # ✅ STEP 2: Parse payload (now we know it's from Paystack)
+        # ✅ STEP 2: Parse payload
         payload = json.loads(request.body)
         
         # ✅ STEP 3: Log sanitized data
@@ -519,22 +530,27 @@ def bulk_order_payment_webhook(request):
             logger.error("Bulk order webhook: No reference in payload")
             return JsonResponse({'status': 'error', 'message': 'Missing reference'}, status=400)
         
-        # Parse reference: ORDER-{bulk_order_id}-{order_entry_id}
+        # ✅ FIXED: Parse reference: ORDER-{bulk_order_id}-{order_entry_id}
+        # UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (5 segments)
         try:
-            parts = reference.split('-', 2)
-            if len(parts) != 3 or parts[0] != 'ORDER':
+            parts = reference.split('-')
+            
+            # Reference should have 11 parts: 'ORDER' + 5 UUID parts + 5 UUID parts
+            if len(parts) != 11 or parts[0] != 'ORDER':
                 logger.error(f"Invalid bulk order reference format: {reference}")
                 return JsonResponse({'status': 'error', 'message': 'Invalid reference format'}, status=400)
             
-            bulk_order_id = parts[1]
-            order_entry_id = parts[2]
+            # Reconstruct the complete UUIDs
+            bulk_order_id = '-'.join(parts[1:6])    # UUID1: parts 1-5
+            order_entry_id = '-'.join(parts[6:11])  # UUID2: parts 6-10
             
+            # Find the order entry
             order_entry = OrderEntry.objects.get(
                 id=order_entry_id,
                 bulk_order__id=bulk_order_id
             )
 
-            # 🔐 IMPORTANT: Idempotency check
+            # 🔐 Idempotency check
             if order_entry.paid:
                 logger.info(f"Webhook already processed for {reference}")
                 return JsonResponse({'status': 'success', 'message': 'Already processed'})
@@ -547,10 +563,10 @@ def bulk_order_payment_webhook(request):
                 f"- OrderEntry {order_entry_id} marked as paid"
             )
 
-            # ✅ SEND PAYMENT RECEIPT EMAIL
+            # ✅ Send receipt email
             send_payment_receipt_email(order_entry)
 
-            # ✅ GENERATE PDF RECEIPT (ASYNC / BACKGROUND)
+            # ✅ Generate PDF receipt (async)
             generate_payment_receipt_pdf_task(str(order_entry_id))
 
             return JsonResponse({
