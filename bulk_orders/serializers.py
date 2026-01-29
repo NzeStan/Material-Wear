@@ -47,11 +47,11 @@ class OrderEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderEntry
         fields = [
-            'id', 'bulk_order', 'serial_number', 'email', 'full_name', 'size',
+            'id', 'reference', 'bulk_order', 'serial_number', 'email', 'full_name', 'size',
             'custom_name', 'coupon_used', 'paid', 'created_at', 'updated_at', 'coupon_code'
         ]
         read_only_fields = (
-            'id', 'bulk_order', 'serial_number',
+            'id', 'reference', 'bulk_order', 'serial_number',
             'coupon_used', 'paid', 'created_at', 'updated_at'
         )
 

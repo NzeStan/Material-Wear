@@ -333,8 +333,9 @@ class OrderEntryViewSet(viewsets.ModelViewSet):
     """
     ViewSet for OrderEntry with proper public/private access control
     
-    ✅ FIXED: 
-    - initialize_payment now works publicly (no auth required)
+    ✅ UPDATED: 
+    - initialize_payment now properly sends callback_url to FRONTEND
+    - Added verify_payment endpoint for frontend to check payment status
     - list endpoint shows authenticated user's orders only
     - retrieve endpoint allows public access (for checking order by UUID)
     """
@@ -349,9 +350,10 @@ class OrderEntryViewSet(viewsets.ModelViewSet):
         - list: Only authenticated user's orders
         - retrieve: All orders (public - anyone with UUID can view)
         - initialize_payment: All orders (public - anyone with UUID can pay)
+        - verify_payment: All orders (public - anyone with UUID can verify)
         """
-        # For initialize_payment and retrieve: allow public access to all orders
-        if self.action in ['initialize_payment', 'retrieve']:
+        # For public actions: allow access to all orders
+        if self.action in ['initialize_payment', 'retrieve', 'verify_payment']:
             return OrderEntry.objects.all().select_related('bulk_order', 'coupon_used')
         
         # For list: only show authenticated user's orders
@@ -360,11 +362,10 @@ class OrderEntryViewSet(viewsets.ModelViewSet):
                 return OrderEntry.objects.filter(
                     email=self.request.user.email
                 ).select_related('bulk_order', 'coupon_used')
-            # Not authenticated? Return empty queryset for list
+            # Not authenticated? Return empty queryset
             return OrderEntry.objects.none()
         
         # For update/delete (shouldn't be used, but just in case):
-        # Require authentication and match email
         if self.request.user.is_authenticated:
             return OrderEntry.objects.filter(
                 email=self.request.user.email
@@ -372,14 +373,14 @@ class OrderEntryViewSet(viewsets.ModelViewSet):
         
         return OrderEntry.objects.none()
 
-    # ✅ FIXED: Payment initialization endpoint - Now fully public
     @action(detail=True, methods=['post'], permission_classes=[permissions.AllowAny])
     def initialize_payment(self, request, pk=None):
         """
         Initialize payment for an OrderEntry - PUBLIC ENDPOINT
         
-        ✅ FIXED: Anyone with the order UUID can initialize payment
-        This is necessary because users submit orders without authentication
+        ✅ UPDATED: Now sends callback_url to FRONTEND, not backend webhook
+        
+        Expects frontend_callback_url in request body or uses default
         """
         order_entry = self.get_object()
         
@@ -397,27 +398,72 @@ class OrderEntryViewSet(viewsets.ModelViewSet):
         amount = order_entry.bulk_order.price_per_item
         email = order_entry.email
         
-        # Build callback URL
-        callback_url = request.build_absolute_uri(f"/api/bulk_orders/payment/callback/")
+        # ✅ CRITICAL: Callback URL should point to FRONTEND
+        # Frontend can pass their callback URL, or we use a default
+        frontend_callback_url = request.data.get('callback_url')
         
-        # Initialize payment
-        result = initialize_payment(amount, email, reference, callback_url)
+        if not frontend_callback_url:
+            # Default: Build frontend callback URL
+            # Example: https://your-frontend.com/payment/verify?reference={reference}
+            # For now, we'll use a placeholder - YOU MUST UPDATE THIS
+            frontend_domain = request.META.get('HTTP_ORIGIN', 'http://localhost:3000')
+            frontend_callback_url = f"{frontend_domain}/payment/verify"
+        
+        # Initialize payment with Paystack
+        result = initialize_payment(amount, email, reference, frontend_callback_url)
         
         if result and result.get('status'):
-            logger.info(f"Payment initialized for order {order_entry.id}: {reference}")
+            logger.info(
+                f"Payment initialized for order {order_entry.reference} "
+                f"(UUID: {order_entry.id}): {reference}"
+            )
             return Response({
                 "authorization_url": result['data']['authorization_url'],
                 "access_code": result['data']['access_code'],
                 "reference": reference,
+                "order_reference": order_entry.reference,  # ✅ User-friendly reference
                 "amount": float(amount),
                 "email": email
             })
         
-        logger.error(f"Payment initialization failed for order {order_entry.id}")
+        logger.error(f"Payment initialization failed for order {order_entry.reference}")
         return Response(
             {"error": "Payment initialization failed. Please try again."},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+    @action(detail=True, methods=['get'], permission_classes=[permissions.AllowAny])
+    def verify_payment(self, request, pk=None):
+        """
+        Verify payment status for an OrderEntry - PUBLIC ENDPOINT
+        
+        ✅ NEW: Frontend calls this after Paystack redirects user back
+        
+        This endpoint:
+        1. Gets the order by UUID
+        2. Checks if payment is complete
+        3. Returns payment status
+        
+        Frontend flow:
+        1. Paystack redirects to: frontend.com/payment/verify?reference=ORDER-xxx
+        2. Frontend extracts reference from URL
+        3. Frontend calls this endpoint: GET /api/bulk_orders/orders/{uuid}/verify_payment/
+        4. Frontend shows success/failure message based on response
+        """
+        order_entry = self.get_object()
+        
+        return Response({
+            "order_id": str(order_entry.id),
+            "reference": order_entry.reference,
+            "paid": order_entry.paid,
+            "amount": float(order_entry.bulk_order.price_per_item),
+            "email": order_entry.email,
+            "full_name": order_entry.full_name,
+            "organization": order_entry.bulk_order.organization_name,
+            "created_at": order_entry.created_at,
+            "updated_at": order_entry.updated_at,
+        })
+
 
     
 
@@ -459,12 +505,13 @@ class CouponCodeViewSet(viewsets.ModelViewSet):
 @extend_schema(
     tags=['Payment'],
     description="Paystack webhook endpoint for bulk order payment notifications (Internal use only)",
-    request=WebhookSerializer,
+    request={'application/json': {'type': 'object'}},
     responses={
         200: OpenApiResponse(description="Webhook processed successfully"),
         400: OpenApiResponse(description="Invalid JSON payload"),
         401: OpenApiResponse(description="Invalid signature"),
         404: OpenApiResponse(description="Order entry not found"),
+        405: OpenApiResponse(description="Method not allowed"),
         500: OpenApiResponse(description="Server error processing webhook")
     },
     exclude=True  # Exclude from public API docs as it's for Paystack only
@@ -473,23 +520,21 @@ class CouponCodeViewSet(viewsets.ModelViewSet):
 @csrf_exempt
 def bulk_order_payment_webhook(request):
     """
-    Handle both webhook (POST) and user redirect (GET)
-    """
-    # Handle GET redirect from Paystack
-    if request.method == 'GET':
-        return HttpResponse("""
-            <html>
-            <head><title>Payment Received</title></head>
-            <body style="font-family: Arial; text-align: center; padding: 50px;">
-                <h1>✓ Payment Received</h1>
-                <p>Your payment is being processed.</p>
-                <p>You will receive a confirmation email shortly.</p>
-            </body>
-            </html>
-        """)
+    ✅ UPDATED: POST-only webhook handler for Paystack payment notifications
     
+    This is a SERVER-TO-SERVER endpoint. Users should NEVER see this.
+    Paystack sends POST requests here when payment completes.
+    
+    ❌ REMOVED: HTML response for GET requests
+    ✅ NOW: Returns JSON error for non-POST requests
+    """
+    # ✅ ENFORCE: POST only
     if request.method != 'POST':
-        return JsonResponse({'status': 'error', 'message': 'Invalid method'}, status=405)
+        logger.warning(f"Invalid webhook method: {request.method}")
+        return JsonResponse(
+            {'status': 'error', 'message': 'Method not allowed'},
+            status=405
+        )
 
     try:
         # ✅ STEP 1: Verify webhook signature
@@ -521,24 +566,32 @@ def bulk_order_payment_webhook(request):
         
         # Only process successful charges
         if payload.get('event') != 'charge.success':
-            return JsonResponse({'status': 'success', 'message': 'Event ignored'}, status=200)
+            return JsonResponse(
+                {'status': 'success', 'message': 'Event ignored'},
+                status=200
+            )
         
         data = payload.get('data', {})
         reference = data.get('reference')
         
         if not reference:
             logger.error("Bulk order webhook: No reference in payload")
-            return JsonResponse({'status': 'error', 'message': 'Missing reference'}, status=400)
+            return JsonResponse(
+                {'status': 'error', 'message': 'Missing reference'},
+                status=400
+            )
         
-        # ✅ FIXED: Parse reference: ORDER-{bulk_order_id}-{order_entry_id}
-        # UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (5 segments)
+        # ✅ Parse reference: ORDER-{bulk_order_id}-{order_entry_id}
         try:
             parts = reference.split('-')
             
             # Reference should have 11 parts: 'ORDER' + 5 UUID parts + 5 UUID parts
             if len(parts) != 11 or parts[0] != 'ORDER':
                 logger.error(f"Invalid bulk order reference format: {reference}")
-                return JsonResponse({'status': 'error', 'message': 'Invalid reference format'}, status=400)
+                return JsonResponse(
+                    {'status': 'error', 'message': 'Invalid reference format'},
+                    status=400
+                )
             
             # Reconstruct the complete UUIDs
             bulk_order_id = '-'.join(parts[1:6])    # UUID1: parts 1-5
@@ -553,13 +606,18 @@ def bulk_order_payment_webhook(request):
             # 🔐 Idempotency check
             if order_entry.paid:
                 logger.info(f"Webhook already processed for {reference}")
-                return JsonResponse({'status': 'success', 'message': 'Already processed'})
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Already processed'
+                })
 
+            # Update payment status
             order_entry.paid = True
             order_entry.save(update_fields=['paid'])
 
             logger.info(
                 f"Bulk order payment successful: {reference} "
+                f"(Order Reference: {order_entry.reference}) "
                 f"- OrderEntry {order_entry_id} marked as paid"
             )
 
@@ -572,16 +630,26 @@ def bulk_order_payment_webhook(request):
             return JsonResponse({
                 'status': 'success',
                 'message': 'Payment verified and order updated',
-                'order_entry_id': str(order_entry_id)
+                'order_entry_id': str(order_entry_id),
+                'order_reference': order_entry.reference
             })
 
         except OrderEntry.DoesNotExist:
             logger.error(f"OrderEntry not found: {order_entry_id}")
-            return JsonResponse({'status': 'error', 'message': 'Order entry not found'}, status=404)
+            return JsonResponse(
+                {'status': 'error', 'message': 'Order entry not found'},
+                status=404
+            )
 
     except json.JSONDecodeError:
         logger.error("Invalid JSON in bulk order webhook payload")
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+        return JsonResponse(
+            {'status': 'error', 'message': 'Invalid JSON'},
+            status=400
+        )
     except Exception as e:
         logger.exception("Error processing bulk order payment webhook")
-        return JsonResponse({'status': 'error', 'message': 'Internal server error'}, status=500)
+        return JsonResponse(
+            {'status': 'error', 'message': 'Internal server error'},
+            status=500
+        )

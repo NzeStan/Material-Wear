@@ -137,6 +137,7 @@ class OrderEntry(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    reference = models.CharField(max_length=20, unique=True)  # ✅ NEW: User-friendly reference
     bulk_order = models.ForeignKey(
         BulkOrderLink, on_delete=models.CASCADE, related_name="orders"
     )
@@ -158,7 +159,19 @@ class OrderEntry(models.Model):
         if user:
             self.email = user.email
 
+    def _generate_unique_reference(self):
+        """Generate a unique reference for this order"""
+        while True:
+            # Generate reference: JMW-BULK-1234
+            ref = f"JMW-BULK-{random.randint(1000, 9999)}"
+            if not OrderEntry.objects.filter(reference=ref).exists():
+                return ref
+
     def save(self, *args, **kwargs):
+        # ✅ Generate reference if not exists
+        if not self.reference:
+            self.reference = self._generate_unique_reference()
+        
         if not self.serial_number:
             # Use select_for_update to prevent race conditions
             with transaction.atomic():
@@ -180,13 +193,15 @@ class OrderEntry(models.Model):
 
         try:
             super().save(*args, **kwargs)
-            logger.info(f"OrderEntry saved successfully: {self.id}")
+            logger.info(
+                f"OrderEntry saved successfully: {self.id} (Reference: {self.reference})"
+            )
         except Exception as e:
             logger.error(f"Error saving OrderEntry: {str(e)}")
             raise
 
     def __str__(self):
-        return f"#{self.serial_number} - {self.full_name} ({self.bulk_order.organization_name})"
+        return f"{self.reference} - {self.full_name} ({self.bulk_order.organization_name})"
 
     class Meta:
         ordering = ["bulk_order", "serial_number"]
@@ -202,4 +217,5 @@ class OrderEntry(models.Model):
             models.Index(fields=["size"], name="order_size_idx"),
             models.Index(fields=["created_at"], name="order_created_idx"),
             models.Index(fields=['updated_at'], name='order_updated_idx'),
+            models.Index(fields=['reference'], name='order_reference_idx'),  # ✅ NEW
         ]
