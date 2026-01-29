@@ -617,16 +617,6 @@ MAX_ATTEMPTS = 3
 BACKGROUND_TASK_RUN_ASYNC = True
 
 # ==============================================================================
-# CUSTOM SETTINGS FOR RECEIPTS
+# Frontend URL
 # ==============================================================================
-
-# Email subjects
-ORDER_CONFIRMATION_SUBJECT = 'Order Confirmation - JMW Order #{reference}'
-PAYMENT_RECEIPT_SUBJECT = 'Payment Receipt - {reference}'
-
-# PDF Filenames
-PDF_FILENAME_ORDER_CONFIRMATION = '{company}_Order_Confirmation_{reference}.pdf'
-PDF_FILENAME_PAYMENT_RECEIPT = '{company}_Payment_Receipt_{reference}.pdf'
-
-# Frontend URL (for emails)
 FRONTEND_URL = 'https://jumemegawears.com' if not DEBUG else 'http://localhost:3000'

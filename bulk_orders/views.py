@@ -378,9 +378,9 @@ class OrderEntryViewSet(viewsets.ModelViewSet):
         """
         Initialize payment for an OrderEntry - PUBLIC ENDPOINT
         
-        ✅ UPDATED: Now sends callback_url to FRONTEND, not backend webhook
+        ✅ UPDATED: Now uses FRONTEND_URL from settings
         
-        Expects frontend_callback_url in request body or uses default
+        Expects frontend_callback_url in request body or uses settings default
         """
         order_entry = self.get_object()
         
@@ -398,16 +398,12 @@ class OrderEntryViewSet(viewsets.ModelViewSet):
         amount = order_entry.bulk_order.price_per_item
         email = order_entry.email
         
-        # ✅ CRITICAL: Callback URL should point to FRONTEND
-        # Frontend can pass their callback URL, or we use a default
+        # ✅ CRITICAL: Callback URL from settings or request
         frontend_callback_url = request.data.get('callback_url')
         
         if not frontend_callback_url:
-            # Default: Build frontend callback URL
-            # Example: https://your-frontend.com/payment/verify?reference={reference}
-            # For now, we'll use a placeholder - YOU MUST UPDATE THIS
-            frontend_domain = request.META.get('HTTP_ORIGIN', 'http://localhost:3000')
-            frontend_callback_url = f"{frontend_domain}/payment/verify"
+            # ✅ Use FRONTEND_URL from settings
+            frontend_callback_url = f"{settings.FRONTEND_URL}/payment/verify"
         
         # Initialize payment with Paystack
         result = initialize_payment(amount, email, reference, frontend_callback_url)
@@ -421,7 +417,7 @@ class OrderEntryViewSet(viewsets.ModelViewSet):
                 "authorization_url": result['data']['authorization_url'],
                 "access_code": result['data']['access_code'],
                 "reference": reference,
-                "order_reference": order_entry.reference,  # ✅ User-friendly reference
+                "order_reference": order_entry.reference,
                 "amount": float(amount),
                 "email": email
             })
