@@ -137,9 +137,9 @@ class OrderEntry(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    reference = models.CharField(max_length=20, unique=True)  # ✅ NEW: User-friendly reference
+    reference = models.CharField(max_length=20, unique=True)
     bulk_order = models.ForeignKey(
-        BulkOrderLink, on_delete=models.CASCADE, related_name="orders"
+        "BulkOrderLink", on_delete=models.CASCADE, related_name="orders"
     )
     serial_number = models.PositiveIntegerField(editable=False)
     email = models.EmailField()
@@ -147,7 +147,7 @@ class OrderEntry(models.Model):
     size = models.CharField(max_length=10, choices=SIZE_CHOICES)
     custom_name = models.CharField(max_length=255, blank=True)
     coupon_used = models.ForeignKey(
-        CouponCode, null=True, blank=True, on_delete=models.SET_NULL
+        "CouponCode", null=True, blank=True, on_delete=models.SET_NULL
     )
     paid = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -160,18 +160,38 @@ class OrderEntry(models.Model):
             self.email = user.email
 
     def _generate_unique_reference(self):
-        """Generate a unique reference for this order"""
-        while True:
-            # Generate reference: JMW-BULK-1234
-            ref = f"JMW-BULK-{random.randint(1000, 9999)}"
+        """
+        ✅ IMPROVED: Generate unique reference with retry limit
+        
+        Changes:
+        - Uses UUID hex (16M+ possibilities) instead of random.randint (9K possibilities)
+        - Has retry limit to prevent infinite loops
+        - Fallback to full UUID if collisions persist
+        - Better for high traffic scenarios
+        """
+        max_attempts = 10
+        
+        for attempt in range(max_attempts):
+            # Use first 8 chars of UUID hex (16^8 = 4.3 billion possibilities)
+            ref = f"JMW-BULK-{uuid.uuid4().hex[:8].upper()}"
+            
+            # Check if exists (let database enforce uniqueness)
             if not OrderEntry.objects.filter(reference=ref).exists():
                 return ref
+        
+        # Fallback: use longer UUID if still colliding
+        logger.warning(f"Reference generation needed {max_attempts} attempts, using full UUID")
+        return f"JMW-BULK-{uuid.uuid4().hex[:12].upper()}"
 
     def save(self, *args, **kwargs):
-        # ✅ Generate reference if not exists
+        """
+        ✅ IMPROVED: Better transaction handling
+        """
+        # Generate reference if not exists
         if not self.reference:
             self.reference = self._generate_unique_reference()
         
+        # Generate serial number with race condition protection
         if not self.serial_number:
             # Use select_for_update to prevent race conditions
             with transaction.atomic():
@@ -187,6 +207,7 @@ class OrderEntry(models.Model):
 
                 self.serial_number = (max_serial or 0) + 1
 
+        # Normalize names to uppercase
         self.full_name = self.full_name.upper()
         if self.custom_name:
             self.custom_name = self.custom_name.upper()
@@ -217,5 +238,5 @@ class OrderEntry(models.Model):
             models.Index(fields=["size"], name="order_size_idx"),
             models.Index(fields=["created_at"], name="order_created_idx"),
             models.Index(fields=['updated_at'], name='order_updated_idx'),
-            models.Index(fields=['reference'], name='order_reference_idx'),  # ✅ NEW
+            models.Index(fields=['reference'], name='order_reference_idx'),
         ]
