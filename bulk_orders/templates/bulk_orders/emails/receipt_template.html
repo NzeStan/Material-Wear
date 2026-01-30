@@ -2,156 +2,281 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Payment Receipt</title>
+    <title>Payment Receipt - {{ order.serial_number }}</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-            line-height: 1.6;
-            color: #333;
-            margin: 30px;
+        @page {
+            size: A4;
+            margin: 20mm 15mm 30mm 15mm;
         }
+        
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #1F2937;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        /* Header Section */
         .header {
             text-align: center;
             margin-bottom: 40px;
-            border-bottom: 3px solid #28a745;
-            padding-bottom: 20px;
+            border-bottom: 4px solid #064E3B;
+            padding-bottom: 25px;
+            background: linear-gradient(to bottom, #FFFBEB, #FEF3C7);
+            padding: 30px;
+            border-radius: 8px;
         }
         .header h1 {
-            margin: 0;
-            font-size: 28px;
-            color: #28a745;
+            margin: 0 0 15px 0;
+            font-size: 32px;
+            color: #064E3B;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
         }
         .header .company {
             font-size: 16px;
-            color: #666;
-            margin-top: 10px;
+            color: #F59E0B;
+            margin-bottom: 10px;
+            font-weight: 700;
         }
         .receipt-badge {
-            background: #28a745;
-            color: white;
-            padding: 8px 20px;
-            border-radius: 20px;
+            background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+            color: #FFFBEB;
+            padding: 10px 30px;
+            border-radius: 25px;
             display: inline-block;
-            margin-top: 10px;
-            font-weight: bold;
+            margin-top: 15px;
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: 2px;
+            border: 2px solid #D97706;
         }
+        
+        /* Info Section */
         .info-section {
-            background: #f8f9fa;
-            padding: 20px;
+            background: #FFFBEB;
+            padding: 25px;
             margin: 30px 0;
-            border-left: 4px solid #28a745;
+            border-left: 6px solid #064E3B;
+            border-radius: 8px;
+            border: 1px solid #E5E7EB;
+            page-break-inside: avoid;
         }
+        .info-section h3 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: #064E3B;
+            font-size: 16px;
+            font-weight: 700;
+            border-bottom: 2px solid #F59E0B;
+            padding-bottom: 10px;
+        }
+        
+        /* Detail Table */
         .detail-table {
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
         }
         .detail-table td {
-            padding: 12px;
-            border-bottom: 1px solid #ddd;
+            padding: 14px 12px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+        .detail-table tr:last-child td {
+            border-bottom: none;
         }
         .detail-label {
-            font-weight: bold;
-            color: #555;
-            width: 200px;
+            font-weight: 700;
+            color: #064E3B;
+            width: 220px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
+        .detail-value {
+            color: #1F2937;
+            font-weight: 600;
+            font-size: 12px;
+        }
+        
+        /* Amount Section */
         .amount-section {
-            margin-top: 30px;
+            margin-top: 35px;
             text-align: right;
-            padding: 20px;
-            background: #e8f5e9;
-            border-radius: 5px;
+            padding: 25px;
+            background: linear-gradient(135deg, #064E3B 0%, #065F46 100%);
+            border-radius: 8px;
+            border: 2px solid #065F46;
+        }
+        .amount-section p {
+            margin: 0;
+        }
+        .amount-label {
+            font-size: 14px;
+            color: #FFFBEB;
+            opacity: 0.9;
+            margin-bottom: 10px;
         }
         .amount-total {
-            font-size: 24px;
-            font-weight: bold;
-            color: #28a745;
+            font-size: 36px;
+            font-weight: 700;
+            color: #F59E0B;
         }
+        
+        /* Highlight Box */
+        .highlight-box {
+            background: #FEF3C7;
+            border-left: 5px solid #F59E0B;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 5px;
+        }
+        .highlight-box strong {
+            color: #D97706;
+            font-size: 14px;
+        }
+        
+        /* Status Badge */
+        .status-paid {
+            background: #064E3B;
+            color: #FFFBEB;
+            padding: 5px 15px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* Footer */
         .footer {
-            margin-top: 60px;
-            padding-top: 20px;
-            border-top: 2px solid #ddd;
+            margin-top: 50px;
+            padding-top: 25px;
+            border-top: 3px solid #064E3B;
             text-align: center;
-            font-size: 12px;
-            color: #777;
+            font-size: 11px;
+            color: #1F2937;
+            background: #FFFBEB;
+            padding: 25px;
+            border-radius: 8px;
+        }
+        .footer p {
+            margin: 8px 0;
+            line-height: 1.8;
+        }
+        .footer strong {
+            color: #064E3B;
+            font-weight: 700;
+        }
+        .footer .thank-you {
+            font-size: 14px;
+            color: #F59E0B;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        
+        /* Watermark */
+        .watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 120px;
+            color: rgba(6, 78, 59, 0.03);
+            font-weight: 900;
+            z-index: -1;
         }
     </style>
 </head>
 <body>
+    <!-- Watermark -->
+    <div class="watermark">PAID</div>
+
+    <!-- Header -->
     <div class="header">
         <div class="company">{{ company_name }}</div>
-        <h1>PAYMENT RECEIPT</h1>
-        <div class="receipt-badge">PAID</div>
+        <h1>Payment Receipt</h1>
+        <div class="receipt-badge">✓ PAID</div>
     </div>
 
+    <!-- Receipt Information -->
     <div class="info-section">
-        <h3 style="margin-top: 0;">Receipt Information</h3>
+        <h3>📋 Receipt Information</h3>
         <table class="detail-table">
             <tr>
                 <td class="detail-label">Receipt Date:</td>
-                <td>{{ generated_date|date:"F j, Y - g:i A" }}</td>
+                <td class="detail-value">{{ generated_date|date:"F j, Y - g:i A" }}</td>
             </tr>
             <tr>
                 <td class="detail-label">Order Number:</td>
-                <td style="font-family: monospace; font-weight: bold;">#{{ order.serial_number }}</td>
+                <td class="detail-value" style="font-family: monospace; font-weight: 700; color: #064E3B;">#{{ order.serial_number }}</td>
             </tr>
             <tr>
                 <td class="detail-label">Organization:</td>
-                <td>{{ bulk_order.organization_name }}</td>
+                <td class="detail-value">{{ bulk_order.organization_name }}</td>
             </tr>
         </table>
     </div>
 
+    <!-- Customer Information -->
     <div class="info-section">
-        <h3 style="margin-top: 0;">Customer Information</h3>
+        <h3>👤 Customer Information</h3>
         <table class="detail-table">
             <tr>
                 <td class="detail-label">Full Name:</td>
-                <td>{{ order.full_name }}</td>
+                <td class="detail-value">{{ order.full_name }}</td>
             </tr>
             <tr>
-                <td class="detail-label">Email:</td>
-                <td>{{ order.email }}</td>
+                <td class="detail-label">Email Address:</td>
+                <td class="detail-value">{{ order.email }}</td>
             </tr>
         </table>
     </div>
 
+    <!-- Order Details -->
     <div class="info-section">
-        <h3 style="margin-top: 0;">Order Details</h3>
+        <h3>📦 Order Details</h3>
         <table class="detail-table">
             <tr>
                 <td class="detail-label">Size:</td>
-                <td>{{ order.size }}</td>
+                <td class="detail-value" style="font-weight: 700; color: #F59E0B;">{{ order.size }}</td>
             </tr>
             {% if bulk_order.custom_branding_enabled and order.custom_name %}
             <tr>
                 <td class="detail-label">Custom Name:</td>
-                <td>{{ order.custom_name }}</td>
+                <td class="detail-value" style="font-style: italic;">{{ order.custom_name }}</td>
             </tr>
             {% endif %}
             <tr>
                 <td class="detail-label">Payment Status:</td>
-                <td style="color: #28a745; font-weight: bold;">PAID</td>
+                <td class="detail-value"><span class="status-paid">✓ PAID</span></td>
             </tr>
             <tr>
                 <td class="detail-label">Payment Date:</td>
-                <td>{{ order.updated_at|date:"F j, Y - g:i A" }}</td>
+                <td class="detail-value">{{ order.updated_at|date:"F j, Y - g:i A" }}</td>
             </tr>
         </table>
     </div>
 
+    <!-- Amount Section -->
     <div class="amount-section">
-        <p style="margin: 0; font-size: 14px; color: #666;">Amount Paid</p>
+        <p class="amount-label">TOTAL AMOUNT PAID</p>
         <p class="amount-total">₦{{ bulk_order.price_per_item|floatformat:2 }}</p>
     </div>
 
+    <!-- Footer -->
     <div class="footer">
-        <p><strong>Thank you for your payment!</strong></p>
-        <p>{{ company_name }}</p>
+        <p class="thank-you">Thank you for your payment!</p>
+        <p><strong>{{ company_name }}</strong></p>
         <p>{{ company_address }}</p>
         <p>📞 {{ company_phone }} | 📧 {{ company_email }}</p>
-        <p style="margin-top: 20px;">This is a computer-generated receipt and does not require a signature.</p>
+        <p style="margin-top: 20px; font-size: 10px; color: #6B7280;">
+            This is a computer-generated receipt and does not require a signature.<br>
+            Please keep this receipt for your records.
+        </p>
     </div>
 </body>
 </html>

@@ -4,146 +4,246 @@
     <meta charset="utf-8">
     <style>
         body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            line-height: 1.7;
+            color: #1F2937;
+            max-width: 650px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 25px;
+            background-color: #F3F4F6;
+        }
+        .email-container {
+            background: #FFFBEB;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
         .header {
-            background: #28a745;
-            color: white;
-            padding: 20px;
+            background: linear-gradient(135deg, #064E3B 0%, #065F46 100%);
+            color: #FFFBEB;
+            padding: 35px 30px;
             text-align: center;
-            border-radius: 5px 5px 0 0;
+        }
+        .header h1 {
+            margin: 0 0 15px 0;
+            font-size: 32px;
+            font-weight: 700;
+        }
+        .header .icon {
+            font-size: 64px;
+            margin-bottom: 15px;
+        }
+        .success-badge {
+            background: #F59E0B;
+            color: #FFFBEB;
+            padding: 12px 30px;
+            border-radius: 25px;
+            display: inline-block;
+            margin: 15px 0;
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: 2px;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
         }
         .content {
-            background: #f9f9f9;
-            padding: 30px;
-            border: 1px solid #ddd;
-            border-top: none;
+            padding: 40px 35px;
+        }
+        .greeting {
+            font-size: 18px;
+            color: #064E3B;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        .greeting strong {
+            color: #F59E0B;
+        }
+        .message {
+            margin-bottom: 25px;
+            line-height: 1.8;
+            color: #1F2937;
         }
         .receipt-box {
-            background: white;
-            padding: 25px;
-            margin: 20px 0;
-            border: 2px solid #28a745;
-            border-radius: 5px;
+            background: linear-gradient(to right, #FEF3C7, #FFFBEB);
+            padding: 30px;
+            margin: 30px 0;
+            border: 3px solid #064E3B;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(6, 78, 59, 0.15);
+        }
+        .receipt-box h3 {
+            color: #064E3B;
+            margin-top: 0;
+            margin-bottom: 25px;
+            font-size: 22px;
+            font-weight: 700;
+            border-bottom: 2px solid #F59E0B;
+            padding-bottom: 12px;
         }
         .detail-row {
-            padding: 10px 0;
-            border-bottom: 1px solid #eee;
+            padding: 14px 0;
+            border-bottom: 1px solid #E5E7EB;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .detail-label {
+            font-weight: 700;
+            color: #064E3B;
+            font-size: 15px;
+        }
+        .detail-value {
+            color: #1F2937;
+            font-weight: 600;
+            text-align: right;
+        }
+        .total-row {
+            padding: 20px 0;
+            font-size: 22px;
+            font-weight: 700;
+            color: #F59E0B;
+            border-top: 3px solid #064E3B;
+            margin-top: 15px;
             display: flex;
             justify-content: space-between;
         }
-        .detail-label {
-            font-weight: bold;
-            color: #555;
+        .info-box {
+            background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+            color: #FFFBEB;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 25px 0;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
         }
-        .total-row {
-            padding: 15px 0;
-            font-size: 20px;
-            font-weight: bold;
-            color: #28a745;
-            border-top: 2px solid #28a745;
-            margin-top: 10px;
+        .info-box strong {
+            font-size: 18px;
+            display: block;
+            margin-bottom: 10px;
         }
         .footer {
+            background: #064E3B;
+            color: #FFFBEB;
             text-align: center;
-            padding: 20px;
-            color: #777;
-            font-size: 12px;
+            padding: 30px;
+            font-size: 14px;
         }
-        .success-badge {
-            background: #28a745;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 20px;
-            display: inline-block;
-            margin: 10px 0;
+        .footer p {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+        .footer strong {
+            color: #F59E0B;
+        }
+        .contact-info {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(245, 158, 11, 0.3);
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>✓ Payment Received!</h1>
-        <div class="success-badge">PAID</div>
-    </div>
-    
-    <div class="content">
-        <p>Dear <strong>{{ order.full_name }}</strong>,</p>
-        
-        <p>Thank you! Your payment has been successfully received and processed.</p>
-        
-        <div class="receipt-box">
-            <h3 style="margin-top: 0; color: #28a745;">Payment Receipt</h3>
-            
-            <div class="detail-row">
-                <span class="detail-label">Order Number:</span>
-                <span>#{{ order.serial_number }}</span>
-            </div>
-            
-            <div class="detail-row">
-                <span class="detail-label">Organization:</span>
-                <span>{{ bulk_order.organization_name }}</span>
-            </div>
-            
-            <div class="detail-row">
-                <span class="detail-label">Full Name:</span>
-                <span>{{ order.full_name }}</span>
-            </div>
-            
-            <div class="detail-row">
-                <span class="detail-label">Size:</span>
-                <span>{{ order.size }}</span>
-            </div>
-            
-            {% if bulk_order.custom_branding_enabled and order.custom_name %}
-            <div class="detail-row">
-                <span class="detail-label">Custom Name:</span>
-                <span>{{ order.custom_name }}</span>
-            </div>
-            {% endif %}
-            
-            <div class="detail-row">
-                <span class="detail-label">Email:</span>
-                <span>{{ order.email }}</span>
-            </div>
-            
-            <div class="detail-row">
-                <span class="detail-label">Payment Date:</span>
-                <span>{{ order.updated_at|date:"F j, Y - g:i A" }}</span>
-            </div>
-            
-            <div class="total-row" style="display: flex; justify-content: space-between;">
-                <span>Amount Paid:</span>
-                <span>₦{{ bulk_order.price_per_item|floatformat:2 }}</span>
-            </div>
+    <div class="email-container">
+        <div class="header">
+            <div class="icon">✓</div>
+            <h1>Payment Received!</h1>
+            <div class="success-badge">PAID</div>
         </div>
         
-        <div style="background: #d4edda; padding: 15px; border-left: 4px solid #28a745; margin: 20px 0;">
-            <strong>What's Next?</strong><br>
-            Your order is now confirmed and will be processed according to the organization's schedule. 
-            You will receive further updates as your order progresses.
+        <div class="content">
+            <p class="greeting">Dear <strong>{{ order.full_name }}</strong>,</p>
+            
+            <p class="message">
+                Thank you! Your payment has been successfully received and processed. 
+                Your order with <strong style="color: #064E3B;">{{ bulk_order.organization_name }}</strong> 
+                is now confirmed and will be processed according to schedule.
+            </p>
+            
+            <div class="receipt-box">
+                <h3>📄 Payment Receipt</h3>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Order Number:</span>
+                    <span class="detail-value">#{{ order.serial_number }}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Organization:</span>
+                    <span class="detail-value">{{ bulk_order.organization_name }}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Full Name:</span>
+                    <span class="detail-value">{{ order.full_name }}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Size:</span>
+                    <span class="detail-value">{{ order.size }}</span>
+                </div>
+                
+                {% if bulk_order.custom_branding_enabled and order.custom_name %}
+                <div class="detail-row">
+                    <span class="detail-label">Custom Name:</span>
+                    <span class="detail-value">{{ order.custom_name }}</span>
+                </div>
+                {% endif %}
+                
+                <div class="detail-row">
+                    <span class="detail-label">Email:</span>
+                    <span class="detail-value">{{ order.email }}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Payment Date:</span>
+                    <span class="detail-value">{{ order.updated_at|date:"F j, Y - g:i A" }}</span>
+                </div>
+                
+                <div class="total-row">
+                    <span>Amount Paid:</span>
+                    <span>₦{{ bulk_order.price_per_item|floatformat:2 }}</span>
+                </div>
+            </div>
+            
+            <div class="info-box">
+                <strong>✨ What's Next?</strong>
+                Your order is now confirmed and will be processed according to the organization's schedule. 
+                You will receive further updates as your order progresses.
+            </div>
+            
+            <p class="message" style="margin-top: 30px;">
+                <strong style="color: #064E3B;">Need Help?</strong><br>
+                For any questions or concerns, please don't hesitate to contact us:
+            </p>
+            
+            <p class="message" style="margin-left: 20px; line-height: 2;">
+                📧 <strong style="color: #F59E0B;">{{ company_email }}</strong><br>
+                📞 <strong style="color: #F59E0B;">{{ company_phone }}</strong><br>
+                📍 {{ company_address }}
+            </p>
+            
+            <p class="message">
+                Thank you for your business!
+            </p>
+            
+            <p class="message">
+                Best regards,<br>
+                <strong style="color: #064E3B;">{{ company_name }} Team</strong>
+            </p>
         </div>
         
-        <p style="margin-top: 30px;">For any questions or concerns, please contact us:</p>
-        <p style="margin-left: 20px;">
-            📧 {{ company_email }}<br>
-            📞 {{ company_phone }}<br>
-            📍 {{ company_address }}
-        </p>
-        
-        <p>Thank you for your business!</p>
-        
-        <p>Best regards,<br>
-        <strong>{{ company_name }} Team</strong></p>
-    </div>
-    
-    <div class="footer">
-        <p>This is an automated receipt. Please keep this email for your records.</p>
-        <p>{{ company_name }} | {{ company_email }} | {{ company_phone }}</p>
+        <div class="footer">
+            <p><strong>{{ company_name }}</strong></p>
+            <div class="contact-info">
+                <p>{{ company_address }}</p>
+                <p>📧 {{ company_email }} | 📞 {{ company_phone }}</p>
+            </div>
+            <p style="margin-top: 20px; font-size: 12px; opacity: 0.9;">
+                This is an automated receipt. Please keep this email for your records.<br>
+                &copy; {{ now|date:"Y" }} {{ company_name }}. All rights reserved.
+            </p>
+        </div>
     </div>
 </body>
 </html>

@@ -9,180 +9,307 @@
         }
         
         body {
-            font-family: sans-serif;
-            font-size: 12px;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 11px;
             margin: 0;
             padding: 0 20px 100px 20px;
+            color: #1F2937;
+            line-height: 1.6;
         }
         
+        /* Header Section */
         .header {
             text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 3px solid #333;
-            padding-bottom: 15px;
+            margin-bottom: 35px;
+            border-bottom: 4px solid #064E3B;
+            padding-bottom: 20px;
+            background: linear-gradient(to bottom, #FFFBEB, #FEF3C7);
+            padding: 25px;
+            border-radius: 8px;
         }
         .header h1 {
-            margin: 0 0 10px 0;
-            font-size: 24px;
-            color: #000;
+            margin: 0 0 12px 0;
+            font-size: 28px;
+            color: #064E3B;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
         }
         .header .company {
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 10px;
+            font-size: 16px;
+            color: #F59E0B;
+            margin-bottom: 8px;
+            font-weight: 600;
         }
-        .info-section {
-            background: #f8f9fa;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 5px;
+        .header .subtitle {
+            font-size: 12px;
+            color: #1F2937;
+            font-style: italic;
         }
         
-        /* ✅ FIXED: Simplified flexbox without calc() */
+        /* Info Section */
+        .info-section {
+            background: #FFFBEB;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 8px;
+            border-left: 5px solid #F59E0B;
+            border: 1px solid #E5E7EB;
+        }
+        
         .info-grid {
             display: flex;
             flex-wrap: wrap;
         }
         .info-item {
             width: 48%;
-            margin: 0 1% 10px 1%;
-            padding: 5px;
+            margin: 0 1% 15px 1%;
+            padding: 8px;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #E5E7EB;
         }
         
         .info-label {
-            font-weight: bold;
-            color: #555;
+            font-weight: 700;
+            color: #064E3B;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
         }
+        .info-value {
+            color: #1F2937;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        /* Summary Section */
         .summary-section {
-            margin: 20px 0;
+            margin: 30px 0;
+            page-break-inside: avoid;
         }
         .summary-section h2 {
-            color: #333;
-            font-size: 16px;
-            margin-bottom: 10px;
-            border-bottom: 2px solid #ddd;
-            padding-bottom: 5px;
+            color: #064E3B;
+            font-size: 18px;
+            margin-bottom: 15px;
+            border-bottom: 3px solid #F59E0B;
+            padding-bottom: 8px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
         }
+        
+        /* Tables */
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 15px 0;
+            margin: 20px 0;
+            background: white;
+            border: 1px solid #E5E7EB;
         }
         th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
+            border: 1px solid #E5E7EB;
+            padding: 12px 10px;
             text-align: left;
         }
         th {
-            background-color: #f5f5f5;
-            font-weight: bold;
+            background: linear-gradient(135deg, #064E3B 0%, #065F46 100%);
+            color: #FFFBEB;
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         tr:nth-child(even) {
-            background-color: #f9f9f9;
+            background-color: #FFFBEB;
         }
-        .total-row {
-            font-weight: bold;
-            background-color: #e3f2fd !important;
+        tr:nth-child(odd) {
+            background-color: #FEF3C7;
         }
         
-        /* ✅ FIXED: Simplified footer without position:fixed (WeasyPrint handles this better with @page margin) */
+        /* Total Row */
+        .total-row {
+            font-weight: 700;
+            background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%) !important;
+            color: #FFFBEB !important;
+        }
+        .total-row td {
+            border-color: #D97706 !important;
+            font-size: 13px;
+            padding: 15px 10px;
+        }
+        
+        /* Status Badges */
+        .status-paid {
+            background: #064E3B;
+            color: #FFFBEB;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .status-coupon {
+            background: #F59E0B;
+            color: #FFFBEB;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Footer */
         .footer {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 2px solid #333;
+            margin-top: 45px;
+            padding-top: 25px;
+            border-top: 3px solid #064E3B;
             text-align: center;
             font-size: 10px;
-            color: #555;
-            background-color: #f8f9fa;
-            padding: 15px 20px;
+            color: #1F2937;
+            background: #FFFBEB;
+            padding: 20px;
+            border-radius: 8px;
         }
         
         .footer p {
-            margin: 5px 0;
+            margin: 8px 0;
+            line-height: 1.8;
         }
         
         .footer strong {
-            color: #333;
+            color: #064E3B;
+            font-weight: 700;
+        }
+        
+        .footer .contact-info {
+            margin-top: 15px;
+            color: #1F2937;
+            font-weight: 600;
+        }
+        
+        .footer .generated-date {
+            color: #F59E0B;
+            font-weight: 700;
+            font-size: 11px;
+            margin-top: 10px;
+        }
+        
+        /* Watermark */
+        .watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 120px;
+            color: rgba(6, 78, 59, 0.05);
+            font-weight: 900;
+            z-index: -1;
+        }
+        
+        /* Page Numbers */
+        @page {
+            @bottom-right {
+                content: "Page " counter(page) " of " counter(pages);
+                font-size: 9px;
+                color: #1F2937;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Watermark -->
+    <div class="watermark">JMW</div>
+
+    <!-- Header -->
     <div class="header">
         <div class="company">{{ company_name }}</div>
-        <h1>BULK ORDER SUMMARY</h1>
+        <h1>Bulk Order Summary</h1>
+        <div class="subtitle">Professional Order Management Report</div>
     </div>
 
+    <!-- Organization Info -->
     <div class="info-section">
         <div class="info-grid">
             <div class="info-item">
-                <div class="info-label">Organization:</div>
-                <div>{{ bulk_order.organization_name }}</div>
+                <div class="info-label">Organization Name</div>
+                <div class="info-value">{{ bulk_order.organization_name }}</div>
             </div>
             <div class="info-item">
-                <div class="info-label">Price per Item:</div>
-                <div>₦{{ bulk_order.price_per_item|floatformat:2 }}</div>
+                <div class="info-label">Price Per Item</div>
+                <div class="info-value">₦{{ bulk_order.price_per_item|floatformat:2 }}</div>
             </div>
             <div class="info-item">
-                <div class="info-label">Payment Deadline:</div>
-                <div>{{ bulk_order.payment_deadline|date:"F j, Y" }}</div>
+                <div class="info-label">Payment Deadline</div>
+                <div class="info-value">{{ bulk_order.payment_deadline|date:"F j, Y" }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Total Completed Orders</div>
+                <div class="info-value">{{ total_paid }} Orders</div>
             </div>
         </div>
     </div>
 
+    <!-- Size Summary -->
     <div class="summary-section">
-        <h2>Summary by Size</h2>
+        <h2>📊 Summary by Size</h2>
         <table>
             <thead>
                 <tr>
                     <th style="width: 50%">Size</th>
-                    <th style="width: 50%">Count</th>
+                    <th style="width: 50%">Quantity</th>
                 </tr>
             </thead>
             <tbody>
                 {% for size in size_summary %}
                 <tr>
-                    <td>{{ size.size }}</td>
-                    <td>{{ size.count }}</td>
+                    <td style="font-weight: 600;">{{ size.size }}</td>
+                    <td style="text-align: center; font-weight: 700; color: #064E3B;">{{ size.count }}</td>
                 </tr>
                 {% endfor %}
                 <tr class="total-row">
-                    <td>Total Orders</td>
-                    <td>{{ total_paid }}</td>
+                    <td>TOTAL ORDERS</td>
+                    <td style="text-align: center;">{{ total_paid }}</td>
                 </tr>
             </tbody>
         </table>
     </div>
 
+    <!-- Order Details -->
     <div class="summary-section">
-        <h2>Order Details</h2>
+        <h2>📋 Complete Order Details</h2>
         <table>
             <thead>
                 <tr>
-                    <th style="width: 8%">S/N</th>
+                    <th style="width: 8%; text-align: center;">S/N</th>
                     {% if bulk_order.custom_branding_enabled %}
-                        <th style="width: 30%">Name</th>
+                        <th style="width: 28%">Full Name</th>
                     {% else %}
-                        <th style="width: 40%">Name</th>
+                        <th style="width: 38%">Full Name</th>
                     {% endif %}
-                    <th style="width: 12%">Size</th>
+                    <th style="width: 12%; text-align: center;">Size</th>
                     {% if bulk_order.custom_branding_enabled %}
-                    <th style="width: 30%">Custom Name</th>
+                    <th style="width: 28%">Custom Name</th>
                     {% endif %}
-                    <th style="width: 20%">Status</th>
+                    <th style="width: 24%; text-align: center;">Status</th>
                 </tr>
             </thead>
             <tbody>
                 {% for order in paid_orders %}
                 <tr>
-                    <td style="text-align: center;">{{ forloop.counter }}</td>
-                    <td>{{ order.full_name }}</td>
-                    <td style="text-align: center;">{{ order.size }}</td>
+                    <td style="text-align: center; font-weight: 600; color: #064E3B;">{{ forloop.counter }}</td>
+                    <td style="font-weight: 600;">{{ order.full_name }}</td>
+                    <td style="text-align: center; font-weight: 700; color: #F59E0B;">{{ order.size }}</td>
                     {% if bulk_order.custom_branding_enabled %}
-                    <td>{{ order.custom_name|default:'' }}</td>
+                    <td style="font-style: italic; color: #1F2937;">{{ order.custom_name|default:'—' }}</td>
                     {% endif %}
-                    <td>
-                        {% if order.paid %}Paid
-                        {% elif order.coupon_used %}Coupon ({{ order.coupon_used.code }})
+                    <td style="text-align: center;">
+                        {% if order.paid %}
+                            <span class="status-paid">✓ Paid</span>
+                        {% elif order.coupon_used %}
+                            <span class="status-coupon">🎟 Coupon: {{ order.coupon_used.code }}</span>
                         {% endif %}
                     </td>
                 </tr>
@@ -191,11 +318,15 @@
         </table>
     </div>
 
+    <!-- Footer -->
     <div class="footer">
-        <p><strong>Generated:</strong> {{ now|date:"F j, Y - g:i A" }}</p>
-        <p style="margin-top: 5px;">
-            {{ company_name }} | {{ company_address }}<br>
+        <p class="generated-date"><strong>Generated:</strong> {{ now|date:"F j, Y - g:i A" }}</p>
+        <p class="contact-info">
+            <strong>{{ company_name }}</strong> | {{ company_address }}<br>
             📞 {{ company_phone }} | 📧 {{ company_email }}
+        </p>
+        <p style="margin-top: 15px; font-size: 9px; color: #6B7280;">
+            This is a computer-generated document. No signature required.
         </p>
     </div>
 </body>
