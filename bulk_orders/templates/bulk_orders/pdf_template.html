@@ -3,11 +3,18 @@
 <head>
     <meta charset="utf-8">
     <style>
+        @page {
+            size: A4;
+            margin: 20mm 15mm 30mm 15mm;
+        }
+        
         body {
             font-family: sans-serif;
             font-size: 12px;
-            margin: 20px;
+            margin: 0;
+            padding: 0 20px 100px 20px;
         }
+        
         .header {
             text-align: center;
             margin-bottom: 30px;
@@ -30,14 +37,18 @@
             margin: 20px 0;
             border-radius: 5px;
         }
+        
+        /* ✅ FIXED: Simplified flexbox without calc() */
         .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            display: flex;
+            flex-wrap: wrap;
         }
         .info-item {
+            width: 48%;
+            margin: 0 1% 10px 1%;
             padding: 5px;
         }
+        
         .info-label {
             font-weight: bold;
             color: #555;
@@ -73,13 +84,25 @@
             font-weight: bold;
             background-color: #e3f2fd !important;
         }
+        
+        /* ✅ FIXED: Simplified footer without position:fixed (WeasyPrint handles this better with @page margin) */
         .footer {
             margin-top: 40px;
             padding-top: 20px;
-            border-top: 2px solid #ddd;
+            border-top: 2px solid #333;
             text-align: center;
             font-size: 10px;
-            color: #999;
+            color: #555;
+            background-color: #f8f9fa;
+            padding: 15px 20px;
+        }
+        
+        .footer p {
+            margin: 5px 0;
+        }
+        
+        .footer strong {
+            color: #333;
         }
     </style>
 </head>
@@ -94,10 +117,6 @@
             <div class="info-item">
                 <div class="info-label">Organization:</div>
                 <div>{{ bulk_order.organization_name }}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Order Link:</div>
-                <div style="font-family: monospace; font-size: 10px;">{{ bulk_order.slug }}</div>
             </div>
             <div class="info-item">
                 <div class="info-label">Price per Item:</div>
@@ -128,7 +147,7 @@
                 {% endfor %}
                 <tr class="total-row">
                     <td>Total Orders</td>
-                    <td>{{ total_orders }}</td>
+                    <td>{{ total_paid }}</td>
                 </tr>
             </tbody>
         </table>
@@ -153,7 +172,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for order in orders %}
+                {% for order in paid_orders %}
                 <tr>
                     <td style="text-align: center;">{{ forloop.counter }}</td>
                     <td>{{ order.full_name }}</td>
@@ -174,9 +193,8 @@
 
     <div class="footer">
         <p><strong>Generated:</strong> {{ now|date:"F j, Y - g:i A" }}</p>
-        <p style="margin-top: 10px;">
-            {{ company_name }}<br>
-            {{ company_address }}<br>
+        <p style="margin-top: 5px;">
+            {{ company_name }} | {{ company_address }}<br>
             📞 {{ company_phone }} | 📧 {{ company_email }}
         </p>
     </div>
