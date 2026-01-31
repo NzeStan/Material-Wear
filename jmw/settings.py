@@ -126,6 +126,7 @@ INSTALLED_APPS = [
     "bulk_orders.apps.BulkOrdersConfig",
     "webhook_router.apps.WebhookRouterConfig",
     "orderitem_generation.apps.OrderitemGenerationConfig",
+    "referrals.apps.ReferralsConfig",
 ]
 
 if DEBUG:
@@ -620,3 +621,8 @@ BACKGROUND_TASK_RUN_ASYNC = True
 # Frontend URL
 # ==============================================================================
 FRONTEND_URL = 'https://jumemegawears.com' if not DEBUG else 'http://localhost:3000'
+
+# ==============================================================================
+# WhatsApp Number
+# ==============================================================================
+WHATSAPP_NUMBER = env.str("WHATSAPP_NUMBER", default="2348071000804") # JMW Contact Number

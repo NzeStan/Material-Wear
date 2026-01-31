@@ -48,6 +48,7 @@ urlpatterns = [
     path("api/bulk_orders/", include("bulk_orders.urls", namespace="bulk_orders")),
     path("api/webhook/", include("webhook_router.urls")),
     path("api/generate/", include("orderitem_generation.urls")),
+    path('api/referrals/', include('referrals.urls')),
 ]
 if settings.DEBUG: # new
     import debug_toolbar
