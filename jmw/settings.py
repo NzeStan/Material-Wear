@@ -127,6 +127,7 @@ INSTALLED_APPS = [
     "webhook_router.apps.WebhookRouterConfig",
     "orderitem_generation.apps.OrderitemGenerationConfig",
     "referrals.apps.ReferralsConfig",
+    'excel_bulk_orders.apps.ExcelBulkOrdersConfig',
 ]
 
 if DEBUG:
