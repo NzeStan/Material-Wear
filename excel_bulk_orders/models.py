@@ -24,6 +24,41 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
+class ExcelCouponCode(models.Model):
+    """
+    Coupon codes for Excel bulk orders.
+    Each coupon can be used once to make a participant free.
+    """
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    bulk_order = models.ForeignKey(
+        'ExcelBulkOrder',
+        on_delete=models.CASCADE,
+        related_name='coupons'
+    )
+    code = models.CharField(max_length=50, unique=True, db_index=True)
+    is_used = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['bulk_order', 'is_used'], name='excel_coupon_bulk_used_idx'),
+            models.Index(fields=['code'], name='excel_coupon_code_idx'),
+        ]
+        verbose_name = 'Excel Coupon Code'
+        verbose_name_plural = 'Excel Coupon Codes'
+    
+    def __str__(self):
+        return f"{self.code} ({'Used' if self.is_used else 'Available'})"
+    
+    def save(self, *args, **kwargs):
+        """Ensure code is uppercase"""
+        self.code = self.code.upper()
+        super().save(*args, **kwargs)
+        logger.debug(f"Saved ExcelCouponCode: {self.code}")
+
+
 class ExcelBulkOrder(models.Model):
     """
     Main model for Excel-based bulk orders.
@@ -209,11 +244,11 @@ class ExcelParticipant(models.Model):
     # Coupon Information
     coupon_code = models.CharField(max_length=50, blank=True, null=True)
     coupon = models.ForeignKey(
-        'bulk_orders.CouponCode',
+        'ExcelCouponCode',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='excel_participants'
+        related_name='participants'
     )
     is_coupon_applied = models.BooleanField(
         default=False,

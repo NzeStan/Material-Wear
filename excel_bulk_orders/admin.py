@@ -17,14 +17,29 @@ from django.utils import timezone
 from django.conf import settings
 import logging
 
-from .models import ExcelBulkOrder, ExcelParticipant
+from .models import ExcelBulkOrder, ExcelParticipant, ExcelCouponCode
 from .utils import (
     generate_participants_pdf,
     generate_participants_word,
     generate_participants_excel,
+    generate_excel_coupon_codes,
 )
 
 logger = logging.getLogger(__name__)
+
+
+class ExcelCouponCodeInline(admin.TabularInline):
+    """Inline display of coupon codes"""
+    model = ExcelCouponCode
+    extra = 0
+    readonly_fields = ['code', 'is_used', 'created_at']
+    fields = ['code', 'is_used', 'created_at']
+    can_delete = False
+    max_num = 0
+    show_change_link = True
+    
+    def has_add_permission(self, request, obj=None):
+        return False
 
 
 class ExcelParticipantInline(admin.TabularInline):
@@ -129,9 +144,10 @@ class ExcelBulkOrderAdmin(admin.ModelAdmin):
         }),
     )
     
-    inlines = [ExcelParticipantInline]
+    inlines = [ExcelCouponCodeInline, ExcelParticipantInline]
     
     actions = [
+        'generate_coupons_action',
         'download_pdf_action',
         'download_word_action',
         'download_excel_action',
@@ -248,6 +264,46 @@ class ExcelBulkOrderAdmin(admin.ModelAdmin):
     payment_breakdown.short_description = 'Payment Breakdown'
     
     # Admin Actions
+    def generate_coupons_action(self, request, queryset):
+        """Generate coupon codes for selected bulk orders"""
+        if queryset.count() != 1:
+            self.message_user(request, "Please select exactly one bulk order.", level='error')
+            return
+        
+        bulk_order = queryset.first()
+        
+        # Check if already has coupons
+        existing_count = bulk_order.coupons.count()
+        if existing_count > 0:
+            self.message_user(
+                request,
+                f"This bulk order already has {existing_count} coupons. Generate more?",
+                level='warning'
+            )
+        
+        # Default count
+        count = 50
+        
+        # TODO: In production, add a form to let admin choose the count
+        # For now, generate 50 coupons by default
+        
+        try:
+            coupons = generate_excel_coupon_codes(bulk_order, count=count)
+            
+            self.message_user(
+                request,
+                f"Successfully generated {len(coupons)} coupon codes for {bulk_order.reference}.",
+                level='success'
+            )
+            
+            logger.info(f"Admin generated {len(coupons)} coupons for {bulk_order.reference}")
+            
+        except Exception as e:
+            logger.error(f"Error generating coupons: {str(e)}")
+            self.message_user(request, f"Error generating coupons: {str(e)}", level='error')
+    
+    generate_coupons_action.short_description = "Generate 50 coupon codes for selected bulk order"
+    
     def download_pdf_action(self, request, queryset):
         """Generate PDF for selected bulk orders"""
         if queryset.count() != 1:
@@ -334,6 +390,68 @@ class ExcelBulkOrderAdmin(admin.ModelAdmin):
             self.message_user(request, f"Error generating Excel: {str(e)}", level='error')
     
     download_excel_action.short_description = "Download Excel (Paid orders only)"
+
+
+@admin.register(ExcelCouponCode)
+class ExcelCouponCodeAdmin(admin.ModelAdmin):
+    """Admin for Excel coupon codes"""
+    
+    list_display = [
+        'code',
+        'bulk_order_link',
+        'is_used_badge',
+        'created_at',
+    ]
+    
+    list_filter = [
+        'is_used',
+        'created_at',
+    ]
+    
+    search_fields = [
+        'code',
+        'bulk_order__reference',
+        'bulk_order__title',
+    ]
+    
+    readonly_fields = [
+        'id',
+        'bulk_order',
+        'code',
+        'is_used',
+        'created_at',
+    ]
+    
+    def bulk_order_link(self, obj):
+        """Link to bulk order"""
+        url = reverse('admin:excel_bulk_orders_excelbulkorder_change', args=[obj.bulk_order.id])
+        return format_html(
+            '<a href="{}">{}</a>',
+            url,
+            obj.bulk_order.reference
+        )
+    bulk_order_link.short_description = 'Bulk Order'
+    
+    def is_used_badge(self, obj):
+        """Display usage status"""
+        if obj.is_used:
+            return format_html(
+                '<span style="background: #EF4444; color: white; padding: 3px 8px; '
+                'border-radius: 4px; font-size: 11px;">USED</span>'
+            )
+        return format_html(
+            '<span style="background: #10B981; color: white; padding: 3px 8px; '
+            'border-radius: 4px; font-size: 11px;">AVAILABLE</span>'
+        )
+    is_used_badge.short_description = 'Status'
+    
+    def has_add_permission(self, request):
+        """Coupons can only be generated via bulk order admin"""
+        return False
+    
+    def has_delete_permission(self, request, obj=None):
+        """Prevent deletion of coupons"""
+        return False
 
 
 @admin.register(ExcelParticipant)

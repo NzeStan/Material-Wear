@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ bulk_order.title }} - Participant List</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1cm;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+            color: #1F2937;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #064E3B;
+        }
+        
+        .company-name {
+            font-size: 18pt;
+            font-weight: bold;
+            color: #064E3B;
+            margin-bottom: 5px;
+        }
+        
+        .title {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #064E3B;
+            margin: 10px 0;
+        }
+        
+        .metadata {
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #FFFBEB;
+            border-left: 4px solid #F59E0B;
+        }
+        
+        .metadata p {
+            margin: 5px 0;
+        }
+        
+        .summary {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #F3F4F6;
+            border-radius: 5px;
+        }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .summary-item {
+            padding: 10px;
+            background-color: white;
+            border-left: 3px solid #064E3B;
+        }
+        
+        .summary-label {
+            font-size: 9pt;
+            color: #6B7280;
+            text-transform: uppercase;
+        }
+        
+        .summary-value {
+            font-size: 14pt;
+            font-weight: bold;
+            color: #064E3B;
+        }
+        
+        .section-title {
+            font-size: 12pt;
+            font-weight: bold;
+            color: #064E3B;
+            margin-top: 25px;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #064E3B;
+        }
+        
+        .size-breakdown {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .size-card {
+            padding: 10px;
+            background-color: #FFFBEB;
+            border: 1px solid #F59E0B;
+            border-radius: 3px;
+            text-align: center;
+        }
+        
+        .size-label {
+            font-weight: bold;
+            color: #064E3B;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 9pt;
+        }
+        
+        th {
+            background-color: #064E3B;
+            color: white;
+            padding: 8px;
+            text-align: left;
+            font-weight: bold;
+        }
+        
+        td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #F9FAFB;
+        }
+        
+        .paid-row {
+            background-color: #FEF3C7 !important;
+        }
+        
+        .free-row {
+            background-color: #D1FAE5 !important;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 8pt;
+            font-weight: bold;
+        }
+        
+        .status-paid {
+            background-color: #FCD34D;
+            color: #78350F;
+        }
+        
+        .status-free {
+            background-color: #6EE7B7;
+            color: #064E3B;
+        }
+        
+        .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 2px solid #E5E7EB;
+            text-align: center;
+            font-size: 8pt;
+            color: #6B7280;
+        }
+        
+        .page-break {
+            page-break-after: always;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="company-name">{{ company_name }}</div>
+        <div class="title">{{ bulk_order.title }}</div>
+        <p><strong>Reference:</strong> {{ bulk_order.reference }}</p>
+        <p><strong>Coordinator:</strong> {{ bulk_order.coordinator_name }}</p>
+    </div>
+    
+    <div class="metadata">
+        <p><strong>Generated:</strong> {{ now|date:"F d, Y H:i" }}</p>
+        <p><strong>Coordinator Email:</strong> {{ bulk_order.coordinator_email }}</p>
+        <p><strong>Coordinator Phone:</strong> {{ bulk_order.coordinator_phone }}</p>
+        <p><strong>Price per Participant:</strong> ₦{{ bulk_order.price_per_participant|floatformat:2 }}</p>
+    </div>
+    
+    <div class="section-title">Summary</div>
+    <div class="summary">
+        <div class="summary-grid">
+            <div class="summary-item">
+                <div class="summary-label">Total Participants</div>
+                <div class="summary-value">{{ total_participants }}</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Paid Participants</div>
+                <div class="summary-value">{{ total_paid }}</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Free (Coupons)</div>
+                <div class="summary-value">{{ total_free }}</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Total Amount</div>
+                <div class="summary-value">₦{{ bulk_order.total_amount|floatformat:2 }}</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="section-title">Size Breakdown</div>
+    <div class="size-breakdown">
+        {% for size_data in size_summary %}
+        <div class="size-card">
+            <div class="size-label">{{ size_data.size }}</div>
+            <div>{{ size_data.count }} participant(s)</div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="section-title">Participant List</div>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 5%;">S/N</th>
+                <th style="width: 25%;">Full Name</th>
+                <th style="width: 8%;">Size</th>
+                <th style="width: 20%;">Custom Name</th>
+                <th style="width: 12%;">Status</th>
+                <th style="width: 15%;">Coupon Code</th>
+                <th style="width: 15%;">Row #</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for participant in participants %}
+            <tr class="{% if participant.is_coupon_applied %}free-row{% else %}paid-row{% endif %}">
+                <td>{{ forloop.counter }}</td>
+                <td>{{ participant.full_name }}</td>
+                <td>{{ participant.size }}</td>
+                <td>{{ participant.custom_name|default:"-" }}</td>
+                <td>
+                    {% if participant.is_coupon_applied %}
+                    <span class="status-badge status-free">FREE</span>
+                    {% else %}
+                    <span class="status-badge status-paid">PAID</span>
+                    {% endif %}
+                </td>
+                <td>{{ participant.coupon_code|default:"-" }}</td>
+                <td>Row {{ participant.row_number }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <div class="footer">
+        <p><strong>{{ company_name }}</strong></p>
+        <p>{{ company_address }}</p>
+        <p>📞 {{ company_phone }} | 📧 {{ company_email }}</p>
+        <p style="margin-top: 10px;">Generated on {{ now|date:"F d, Y" }} at {{ now|date:"H:i" }}</p>
+    </div>
+</body>
+</html>

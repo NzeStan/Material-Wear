@@ -213,14 +213,18 @@ class ExcelBulkOrderViewSet(viewsets.ModelViewSet):
                 valid_coupons = 0
                 
                 # Count valid coupons
-                from bulk_orders.models import CouponCode
+                from .models import ExcelCouponCode
                 for idx, row in df.iterrows():
                     coupon_code = str(row['Coupon Code']).strip() if not pd.isna(row['Coupon Code']) else ''
                     if coupon_code:
                         try:
-                            coupon = CouponCode.objects.get(code=coupon_code, is_used=False)
+                            coupon = ExcelCouponCode.objects.get(
+                                code=coupon_code,
+                                bulk_order=bulk_order,
+                                is_used=False
+                            )
                             valid_coupons += 1
-                        except CouponCode.DoesNotExist:
+                        except ExcelCouponCode.DoesNotExist:
                             pass
                 
                 chargeable = total_participants - valid_coupons
