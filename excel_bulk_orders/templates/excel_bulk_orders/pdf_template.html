@@ -54,16 +54,25 @@
             border-radius: 5px;
         }
         
+        /* FIXED: Replace grid with table layout */
         .summary-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .summary-row {
+            display: block;
+            margin-bottom: 10px;
         }
         
         .summary-item {
+            display: inline-block;
+            width: 48%;
             padding: 10px;
             background-color: white;
             border-left: 3px solid #064E3B;
+            vertical-align: top;
+            box-sizing: border-box;
         }
         
         .summary-label {
@@ -88,19 +97,22 @@
             border-bottom: 2px solid #064E3B;
         }
         
+        /* FIXED: Replace grid with flexbox for size breakdown */
         .size-breakdown {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
             margin: 15px 0;
         }
         
         .size-card {
+            display: inline-block;
+            width: 23%;
+            margin: 5px;
             padding: 10px;
             background-color: #FFFBEB;
             border: 1px solid #F59E0B;
             border-radius: 3px;
             text-align: center;
+            vertical-align: top;
+            box-sizing: border-box;
         }
         
         .size-label {
@@ -185,26 +197,31 @@
         <p><strong>Coordinator Email:</strong> {{ bulk_order.coordinator_email }}</p>
         <p><strong>Coordinator Phone:</strong> {{ bulk_order.coordinator_phone }}</p>
         <p><strong>Price per Participant:</strong> ₦{{ bulk_order.price_per_participant|floatformat:2 }}</p>
+        <p><strong>Requires Custom Name:</strong> {{ bulk_order.requires_custom_name|yesno:"Yes,No" }}</p>
     </div>
     
     <div class="section-title">Summary</div>
     <div class="summary">
         <div class="summary-grid">
-            <div class="summary-item">
-                <div class="summary-label">Total Participants</div>
-                <div class="summary-value">{{ total_participants }}</div>
+            <div class="summary-row">
+                <div class="summary-item">
+                    <div class="summary-label">Total Participants</div>
+                    <div class="summary-value">{{ total_participants }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Paid Participants</div>
+                    <div class="summary-value">{{ total_paid }}</div>
+                </div>
             </div>
-            <div class="summary-item">
-                <div class="summary-label">Paid Participants</div>
-                <div class="summary-value">{{ total_paid }}</div>
-            </div>
-            <div class="summary-item">
-                <div class="summary-label">Free (Coupons)</div>
-                <div class="summary-value">{{ total_free }}</div>
-            </div>
-            <div class="summary-item">
-                <div class="summary-label">Total Amount</div>
-                <div class="summary-value">₦{{ bulk_order.total_amount|floatformat:2 }}</div>
+            <div class="summary-row">
+                <div class="summary-item">
+                    <div class="summary-label">Free (Coupons)</div>
+                    <div class="summary-value">{{ total_free }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Total Amount</div>
+                    <div class="summary-value">₦{{ bulk_order.total_amount|floatformat:2 }}</div>
+                </div>
             </div>
         </div>
     </div>
@@ -226,7 +243,9 @@
                 <th style="width: 5%;">S/N</th>
                 <th style="width: 25%;">Full Name</th>
                 <th style="width: 8%;">Size</th>
+                {% if bulk_order.requires_custom_name %}
                 <th style="width: 20%;">Custom Name</th>
+                {% endif %}
                 <th style="width: 12%;">Status</th>
                 <th style="width: 15%;">Coupon Code</th>
                 <th style="width: 15%;">Row #</th>
@@ -238,7 +257,9 @@
                 <td>{{ forloop.counter }}</td>
                 <td>{{ participant.full_name }}</td>
                 <td>{{ participant.size }}</td>
-                <td>{{ participant.custom_name|default:"-" }}</td>
+                {% if bulk_order.requires_custom_name %}
+                <td>{{ participant.custom_name|upper|default:"-" }}</td>
+                {% endif %}
                 <td>
                     {% if participant.is_coupon_applied %}
                     <span class="status-badge status-free">FREE</span>

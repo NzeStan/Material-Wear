@@ -105,11 +105,17 @@ def generate_bulk_order_pdf(bulk_order, request=None):
         orders = bulk_order.orders.all()
         size_summary = orders.values("size").annotate(count=Count("size")).order_by("size")
         
+        # Count paid orders
+        paid_orders = orders.filter(Q(paid=True) | Q(coupon_used__isnull=False))
+        total_paid = paid_orders.count()
+        
         context = {
             'bulk_order': bulk_order,
             'size_summary': size_summary,
             'orders': orders,
+            'paid_orders': paid_orders,
             'total_orders': orders.count(),
+            'total_paid': total_paid,
             'company_name': settings.COMPANY_NAME,
             'company_address': settings.COMPANY_ADDRESS,
             'company_phone': settings.COMPANY_PHONE,
@@ -193,50 +199,86 @@ def generate_bulk_order_word(bulk_order):
         
         for page_num in paginator.page_range:
             page = paginator.page(page_num)
+            page_orders = page.object_list
             
             # Group by size
-            size_groups = {}
-            for order in page.object_list:
-                if order.size not in size_groups:
-                    size_groups[order.size] = []
-                size_groups[order.size].append(order)
+            sizes_in_page = set(order.size for order in page_orders)
             
-            # Create table for each size
-            for size, size_orders in sorted(size_groups.items()):
-                doc.add_heading(f'Size: {size}', level=3)
+            for size in sorted(sizes_in_page):
+                size_orders = [order for order in page_orders if order.size == size]
                 
-                if bulk_order.custom_branding_enabled:
-                    # WITH custom branding
-                    table = doc.add_table(rows=1, cols=4)
-                    table.style = 'Table Grid'
-                    header_cells = table.rows[0].cells
-                    header_cells[0].text = 'S/N'
-                    header_cells[1].text = 'Name'
-                    header_cells[2].text = 'Custom Name'
-                    header_cells[3].text = 'Status'
+                if size_orders:
+                    doc.add_heading(f'Size: {size} ({len(size_orders)} people)', level=2)
                     
-                    for idx, order in enumerate(size_orders, 1):
-                        row_cells = table.add_row().cells
-                        row_cells[0].text = str(idx)
-                        row_cells[1].text = order.full_name
-                        row_cells[2].text = order.custom_name or ''
-                        row_cells[3].text = 'Coupon' if order.coupon_used else 'Paid'
-                else:
-                    # WITHOUT custom branding
-                    table = doc.add_table(rows=1, cols=3)
-                    table.style = 'Table Grid'
-                    header_cells = table.rows[0].cells
-                    header_cells[0].text = 'S/N'
-                    header_cells[1].text = 'Name'
-                    header_cells[2].text = 'Status'
+                    # Determine columns based on custom branding
+                    if bulk_order.custom_branding_enabled:
+                        table = doc.add_table(rows=1, cols=4)
+                        header_cells = table.rows[0].cells
+                        header_cells[0].text = 'S/N'
+                        header_cells[1].text = 'Name'
+                        header_cells[2].text = 'Custom Name'
+                        header_cells[3].text = 'Status'
+                        
+                        for idx, order in enumerate(size_orders, 1):
+                            row_cells = table.add_row().cells
+                            row_cells[0].text = str(idx)
+                            row_cells[1].text = order.full_name
+                            row_cells[2].text = order.custom_name or '-'
+                            row_cells[3].text = 'Coupon' if order.coupon_used else 'Paid'
+                    else:
+                        table = doc.add_table(rows=1, cols=3)
+                        header_cells = table.rows[0].cells
+                        header_cells[0].text = 'S/N'
+                        header_cells[1].text = 'Name'
+                        header_cells[2].text = 'Status'
+                        
+                        for idx, order in enumerate(size_orders, 1):
+                            row_cells = table.add_row().cells
+                            row_cells[0].text = str(idx)
+                            row_cells[1].text = order.full_name
+                            row_cells[2].text = 'Coupon' if order.coupon_used else 'Paid'
                     
-                    for idx, order in enumerate(size_orders, 1):
-                        row_cells = table.add_row().cells
-                        row_cells[0].text = str(idx)
-                        row_cells[1].text = order.full_name
-                        row_cells[2].text = 'Coupon' if order.coupon_used else 'Paid'
+                    table.style = 'Light Grid Accent 1'
+                    doc.add_paragraph()
+        
+        # ====== NEW SECTION: Custom Names by Size (only if custom branding enabled) ======
+        if bulk_order.custom_branding_enabled:
+            # Add page break to start on new page
+            doc.add_page_break()
+            
+            doc.add_heading('Custom Names by Size', level=1)
+            doc.add_paragraph('This section shows all custom names grouped by size for easy copying.')
+            doc.add_paragraph()
+            
+            # Group orders by size
+            for size_info in size_summary:
+                size = size_info['size']
+                size_orders = orders.filter(size=size).order_by('full_name')
                 
-                doc.add_paragraph()
+                # Get all custom names for this size
+                custom_names = [
+                    order.custom_name.upper() if order.custom_name else order.full_name.upper()
+                    for order in size_orders
+                ]
+                
+                if custom_names:
+                    # Add size header
+                    doc.add_heading(f'SIZE: {size}', level=2)
+                    
+                    # Create table with 5 columns for grid layout
+                    num_cols = 5
+                    num_rows = (len(custom_names) + num_cols - 1) // num_cols  # Ceiling division
+                    
+                    table = doc.add_table(rows=num_rows, cols=num_cols)
+                    table.style = 'Light Grid Accent 1'
+                    
+                    # Fill table with custom names
+                    for idx, custom_name in enumerate(custom_names):
+                        row_idx = idx // num_cols
+                        col_idx = idx % num_cols
+                        table.rows[row_idx].cells[col_idx].text = custom_name
+                    
+                    doc.add_paragraph()
         
         # Footer
         doc.add_paragraph("")
@@ -322,39 +364,49 @@ def generate_bulk_order_excel(bulk_order):
         worksheet.write(row, 0, f"Custom Branding: {'Yes' if bulk_order.custom_branding_enabled else 'No'}", info_format)
         row += 2
         
-        # ====== SIZE SUMMARY SECTION ======
+        # ====== SIZE SUMMARY ======
+        worksheet.write(row, 0, "SIZE SUMMARY", section_header_format)
+        row += 1
+        
         orders = bulk_order.orders.all()
         size_summary = orders.values("size").annotate(total=Count("id")).order_by("size")
         
-        worksheet.merge_range(row, 0, row, 1, 'SUMMARY BY SIZE', section_header_format)
+        # Table headers
+        worksheet.write(row, 0, "Size", table_header_format)
+        worksheet.write(row, 1, "Total", table_header_format)
         row += 1
         
-        for col, header in enumerate(['Size', 'Total']):
-            worksheet.write(row, col, header, table_header_format)
-        row += 1
-        
+        # Size data
         grand_total = 0
-        for size_data in size_summary:
-            worksheet.write(row, 0, size_data['size'], cell_format)
-            worksheet.write(row, 1, size_data['total'], cell_format)
-            grand_total += size_data['total']
+        for size_info in size_summary:
+            worksheet.write(row, 0, size_info['size'], cell_format)
+            worksheet.write(row, 1, size_info['total'], cell_format)
+            grand_total += size_info['total']
             row += 1
         
-        worksheet.write(row, 0, 'TOTAL', total_format)
+        # Grand total
+        worksheet.write(row, 0, "GRAND TOTAL", total_format)
         worksheet.write(row, 1, grand_total, total_format)
         row += 2
         
-        # ====== ORDER DETAILS SECTION ======
-        if bulk_order.custom_branding_enabled:
-            worksheet.merge_range(row, 0, row, 4, 'ORDER DETAILS', section_header_format)
-            headers = ['S/N', 'Size', 'Name', 'Custom Name', 'Status']
-        else:
-            worksheet.merge_range(row, 0, row, 3, 'ORDER DETAILS', section_header_format)
-            headers = ['S/N', 'Size', 'Name', 'Status']
+        # ====== ORDERS LIST ======
+        worksheet.write(row, 0, "ORDERS LIST", section_header_format)
         row += 1
         
-        for col, header in enumerate(headers):
-            worksheet.write(row, col, header, table_header_format)
+        # Table headers
+        col = 0
+        worksheet.write(row, col, "S/N", table_header_format)
+        col += 1
+        worksheet.write(row, col, "Size", table_header_format)
+        col += 1
+        worksheet.write(row, col, "Name", table_header_format)
+        col += 1
+        
+        if bulk_order.custom_branding_enabled:
+            worksheet.write(row, col, "Custom Name", table_header_format)
+            col += 1
+        
+        worksheet.write(row, col, "Status", table_header_format)
         row += 1
         
         # Write order data

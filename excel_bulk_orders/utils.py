@@ -63,7 +63,7 @@ def generate_excel_coupon_codes(bulk_order, count=10):
 # EXCEL TEMPLATE GENERATION
 # ============================================================================
 
-def generate_excel_template(bulk_order: ExcelBulkOrder) -> BytesIO:
+def generate_excel_template(bulk_order):
     """
     Generate Excel template with data validation and formatting.
     
@@ -77,9 +77,9 @@ def generate_excel_template(bulk_order: ExcelBulkOrder) -> BytesIO:
     ws = wb.active
     ws.title = "Participants"
     
-    # Style definitions
+    # Define styles
+    header_font = Font(bold=True, size=12, color="FFFFFF")
     header_fill = PatternFill(start_color="064E3B", end_color="064E3B", fill_type="solid")
-    header_font = Font(bold=True, color="FFFFFF", size=12)
     header_alignment = Alignment(horizontal="center", vertical="center")
     border = Border(
         left=Side(style='thin'),
@@ -88,59 +88,47 @@ def generate_excel_template(bulk_order: ExcelBulkOrder) -> BytesIO:
         bottom=Side(style='thin')
     )
     
-    # Define headers
+    # Column headers
     headers = ['S/N', 'Full Name', 'Size']
     if bulk_order.requires_custom_name:
         headers.append('Custom Name')
     headers.append('Coupon Code')
     
-    # Write headers
     for col_num, header in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col_num)
         cell.value = header
-        cell.fill = header_fill
         cell.font = header_font
+        cell.fill = header_fill
         cell.alignment = header_alignment
         cell.border = border
     
-    # Add data validation for Size column
-    size_col_letter = chr(67)  # 'C' (third column)
-    size_validation = DataValidation(
-        type="list",
-        formula1='"Small,Medium,Large,Extra Large,2X Large,3X Large,4X Large"',
-        allow_blank=False
-    )
-    size_validation.error = 'Please select a valid size from the dropdown'
-    size_validation.errorTitle = 'Invalid Size'
-    ws.add_data_validation(size_validation)
-    size_validation.add(f'{size_col_letter}2:{size_col_letter}1000')
+    # Size validation dropdown
+    size_options = '"Small,Medium,Large,Extra Large,2X Large,3X Large,4X Large"'
+    size_col = chr(ord('A') + 2)  # Column C
+    dv = DataValidation(type="list", formula1=size_options, allow_blank=False)
+    dv.error = 'Please select a size from the dropdown'
+    dv.errorTitle = 'Invalid Size'
+    ws.add_data_validation(dv)
+    dv.add(f'{size_col}2:{size_col}1000')
     
-    # Add example row (row 2)
-    example_data = [
-        1,
-        'John Doe',
-        'Medium',
-    ]
+    # Example row
+    example_data = [1, 'John Doe', 'Medium']
     if bulk_order.requires_custom_name:
-        example_data.append('JD')
-    example_data.append('')  # Empty coupon code
+        example_data.append('JOHN')
+    example_data.append('')  # Coupon Code
     
     for col_num, value in enumerate(example_data, 1):
         cell = ws.cell(row=2, column=col_num)
         cell.value = value
         cell.border = border
-        if col_num == 1:  # S/N column
-            cell.fill = PatternFill(start_color="F3F4F6", end_color="F3F4F6", fill_type="solid")
+        cell.alignment = Alignment(horizontal="left", vertical="center")
     
-    # Add instructions sheet
+    # Instructions worksheet
     instructions_ws = wb.create_sheet("Instructions")
     instructions = [
-        "HOW TO FILL THIS TEMPLATE",
+        f"Excel Bulk Order Template - {bulk_order.title}",
         "",
-        f"Campaign: {bulk_order.title}",
-        f"Price per participant: ₦{bulk_order.price_per_participant:,.2f}",
-        "",
-        "COLUMN INSTRUCTIONS:",
+        "HOW TO FILL THIS TEMPLATE:",
         "",
         "1. S/N: Auto-numbered (1, 2, 3, ...)",
         "   - Use sequential numbers starting from 1",
@@ -219,7 +207,7 @@ def generate_excel_template(bulk_order: ExcelBulkOrder) -> BytesIO:
 # EXCEL VALIDATION
 # ============================================================================
 
-def validate_excel_file(bulk_order: ExcelBulkOrder, excel_file) -> dict:
+def validate_excel_file(bulk_order, excel_file):
     """
     Validate uploaded Excel file.
     
@@ -255,100 +243,55 @@ def validate_excel_file(bulk_order: ExcelBulkOrder, excel_file) -> dict:
                     'row': 0,
                     'field': 'Structure',
                     'error': f'Invalid column structure. Expected: {", ".join(expected_columns)}',
-                    'current_value': str(list(df.columns))
+                    'current_value': ''
                 }],
                 'summary': {'total_rows': 0, 'valid_rows': 0, 'error_rows': 1}
             }
         
-        # Valid sizes
-        valid_sizes = ['Small', 'Medium', 'Large', 'Extra Large', '2X Large', '3X Large', '4X Large']
+        # Valid size options
+        valid_sizes = {'Small', 'Medium', 'Large', 'Extra Large', '2X Large', '3X Large', '4X Large'}
         
         # Validate each row
         for idx, row in df.iterrows():
-            row_num = idx + 2  # Excel row (accounting for header)
+            row_num = idx + 2  # Excel rows start at 1, header is row 1
             row_errors = []
             
-            # Validate S/N
-            if pd.isna(row['S/N']):
-                row_errors.append({
-                    'row': row_num,
-                    'field': 'S/N',
-                    'error': 'S/N cannot be empty',
-                    'current_value': ''
-                })
-            
             # Validate Full Name
-            full_name = str(row['Full Name']).strip() if not pd.isna(row['Full Name']) else ''
-            if not full_name:
+            if pd.isna(row['Full Name']) or not str(row['Full Name']).strip():
                 row_errors.append({
                     'row': row_num,
                     'field': 'Full Name',
-                    'error': 'Full name is required',
-                    'current_value': full_name
-                })
-            elif len(full_name) < 3:
-                row_errors.append({
-                    'row': row_num,
-                    'field': 'Full Name',
-                    'error': 'Full name must be at least 3 characters',
-                    'current_value': full_name
+                    'error': 'Full Name is required',
+                    'current_value': ''
                 })
             
             # Validate Size
-            size = str(row['Size']).strip() if not pd.isna(row['Size']) else ''
-            if not size:
+            if pd.isna(row['Size']) or str(row['Size']).strip() not in valid_sizes:
                 row_errors.append({
                     'row': row_num,
                     'field': 'Size',
-                    'error': 'Size is required',
-                    'current_value': ''
-                })
-            elif size not in valid_sizes:
-                row_errors.append({
-                    'row': row_num,
-                    'field': 'Size',
-                    'error': f'Invalid size. Must be one of: {", ".join(valid_sizes)}',
-                    'current_value': size
+                    'error': f'Size must be one of: {", ".join(valid_sizes)}',
+                    'current_value': str(row['Size']) if not pd.isna(row['Size']) else ''
                 })
             
             # Validate Custom Name (if required)
             if bulk_order.requires_custom_name:
-                custom_name = str(row['Custom Name']).strip() if not pd.isna(row['Custom Name']) else ''
-                if not custom_name:
+                if pd.isna(row['Custom Name']) or not str(row['Custom Name']).strip():
                     row_errors.append({
                         'row': row_num,
                         'field': 'Custom Name',
-                        'error': 'Custom name is required for this campaign',
+                        'error': 'Custom Name is required for this bulk order',
                         'current_value': ''
                     })
             
-            # Validate Coupon Code (optional)
-            coupon_code = str(row['Coupon Code']).strip() if not pd.isna(row['Coupon Code']) else ''
-            if coupon_code:
-                try:
-                    from .models import ExcelCouponCode
-                    coupon = ExcelCouponCode.objects.get(
-                        code=coupon_code,
-                        bulk_order=bulk_order,
-                        is_used=False
-                    )
-                except ExcelCouponCode.DoesNotExist:
-                    row_errors.append({
-                        'row': row_num,
-                        'field': 'Coupon Code',
-                        'error': f'Coupon code "{coupon_code}" does not exist, is not for this campaign, or has already been used',
-                        'current_value': coupon_code
-                    })
-            
-            # Collect results
+            # Collect errors or mark as valid
             if row_errors:
                 errors.extend(row_errors)
             else:
                 valid_rows.append(row_num)
         
-        # Build response
         total_rows = len(df)
-        is_valid = len(errors) == 0
+        is_valid = len(errors) == 0 and total_rows > 0
         
         result = {
             'valid': is_valid,
@@ -356,7 +299,7 @@ def validate_excel_file(bulk_order: ExcelBulkOrder, excel_file) -> dict:
             'summary': {
                 'total_rows': total_rows,
                 'valid_rows': len(valid_rows),
-                'error_rows': len(errors)
+                'error_rows': len(set(err['row'] for err in errors))
             }
         }
         
@@ -385,7 +328,7 @@ def validate_excel_file(bulk_order: ExcelBulkOrder, excel_file) -> dict:
 # PARTICIPANT CREATION FROM EXCEL
 # ============================================================================
 
-def create_participants_from_excel(bulk_order: ExcelBulkOrder, excel_file) -> int:
+def create_participants_from_excel(bulk_order, excel_file):
     """
     Create ExcelParticipant records from validated Excel file.
     Should only be called after successful payment.
@@ -421,9 +364,10 @@ def create_participants_from_excel(bulk_order: ExcelBulkOrder, excel_file) -> in
             size_display = str(row['Size']).strip()
             size_code = size_map.get(size_display, 'M')  # Default to Medium if unknown
             
+            # Handle custom name - make uppercase if present
             custom_name = None
             if bulk_order.requires_custom_name:
-                custom_name = str(row['Custom Name']).strip() if not pd.isna(row['Custom Name']) else ''
+                custom_name = str(row['Custom Name']).strip().upper() if not pd.isna(row['Custom Name']) else ''
             
             coupon_code = str(row['Coupon Code']).strip() if not pd.isna(row['Coupon Code']) else ''
             
@@ -450,7 +394,7 @@ def create_participants_from_excel(bulk_order: ExcelBulkOrder, excel_file) -> in
                 bulk_order=bulk_order,
                 full_name=full_name,
                 size=size_code,
-                custom_name=custom_name,
+                custom_name=custom_name if custom_name else None,
                 coupon_code=coupon_code if coupon_code else None,
                 coupon=coupon,
                 is_coupon_applied=is_coupon_applied,
@@ -474,7 +418,7 @@ def create_participants_from_excel(bulk_order: ExcelBulkOrder, excel_file) -> in
 # DOCUMENT GENERATION (PDF, WORD, EXCEL)
 # ============================================================================
 
-def generate_participants_pdf(bulk_order: ExcelBulkOrder, request=None) -> BytesIO:
+def generate_participants_pdf(bulk_order, request=None):
     """
     Generate PDF list of all participants.
     
@@ -535,8 +479,7 @@ def generate_participants_pdf(bulk_order: ExcelBulkOrder, request=None) -> Bytes
         raise
 
 
-
-def generate_participants_word(bulk_order: ExcelBulkOrder) -> BytesIO:
+def generate_participants_word(bulk_order):
     """
     Generate Word document list of all participants.
     
@@ -601,25 +544,81 @@ def generate_participants_word(bulk_order: ExcelBulkOrder) -> BytesIO:
             if size_participants.exists():
                 doc.add_heading(f"Size: {size} ({size_participants.count()})", level=2)
                 
-                # Create table
-                table = doc.add_table(rows=1, cols=4)
-                table.style = 'Light Grid Accent 1'
-                
-                # Header row
-                header_cells = table.rows[0].cells
-                header_cells[0].text = 'S/N'
-                header_cells[1].text = 'Full Name'
-                header_cells[2].text = 'Custom Name'
-                header_cells[3].text = 'Status'
-                
-                for idx, participant in enumerate(size_participants, 1):
-                    row_cells = table.add_row().cells
-                    row_cells[0].text = str(idx)
-                    row_cells[1].text = participant.full_name
-                    row_cells[2].text = participant.custom_name or '-'
-                    row_cells[3].text = 'Free (Coupon)' if participant.is_coupon_applied else 'Paid'
+                # Determine columns based on custom name requirement
+                if bulk_order.requires_custom_name:
+                    table = doc.add_table(rows=1, cols=4)
+                    table.style = 'Light Grid Accent 1'
+                    
+                    # Header row
+                    header_cells = table.rows[0].cells
+                    header_cells[0].text = 'S/N'
+                    header_cells[1].text = 'Full Name'
+                    header_cells[2].text = 'Custom Name'
+                    header_cells[3].text = 'Status'
+                    
+                    for idx, participant in enumerate(size_participants, 1):
+                        row_cells = table.add_row().cells
+                        row_cells[0].text = str(idx)
+                        row_cells[1].text = participant.full_name
+                        # Only show custom name if it exists
+                        row_cells[2].text = participant.custom_name.upper() if participant.custom_name else '-'
+                        row_cells[3].text = 'Free (Coupon)' if participant.is_coupon_applied else 'Paid'
+                else:
+                    table = doc.add_table(rows=1, cols=3)
+                    table.style = 'Light Grid Accent 1'
+                    
+                    # Header row
+                    header_cells = table.rows[0].cells
+                    header_cells[0].text = 'S/N'
+                    header_cells[1].text = 'Full Name'
+                    header_cells[2].text = 'Status'
+                    
+                    for idx, participant in enumerate(size_participants, 1):
+                        row_cells = table.add_row().cells
+                        row_cells[0].text = str(idx)
+                        row_cells[1].text = participant.full_name
+                        row_cells[2].text = 'Free (Coupon)' if participant.is_coupon_applied else 'Paid'
                 
                 doc.add_paragraph()
+        
+        # ====== NEW SECTION: Custom Names by Size (only if custom names enabled) ======
+        if bulk_order.requires_custom_name:
+            # Add page break to start on new page
+            doc.add_page_break()
+            
+            doc.add_heading('Custom Names by Size', level=1)
+            doc.add_paragraph('This section shows all custom names grouped by size for easy copying.')
+            doc.add_paragraph()
+            
+            # Group participants by size
+            for size_data in size_summary:
+                size = size_data['size']
+                size_participants = participants.filter(size=size).order_by('full_name')
+                
+                # Get all custom names for this size
+                custom_names = [
+                    participant.custom_name.upper() if participant.custom_name else participant.full_name.upper()
+                    for participant in size_participants
+                ]
+                
+                if custom_names:
+                    # Add size header
+                    doc.add_heading(f'SIZE: {size}', level=2)
+                    
+                    # Create table with 5 columns for grid layout
+                    num_cols = 5
+                    num_rows = (len(custom_names) + num_cols - 1) // num_cols  # Ceiling division
+                    
+                    table = doc.add_table(rows=num_rows, cols=num_cols)
+                    table.style = 'Light Grid Accent 1'
+                    
+                    # Fill table with custom names
+                    for idx, custom_name in enumerate(custom_names):
+                        row_idx = idx // num_cols
+                        col_idx = idx % num_cols
+                        table.rows[row_idx].cells[col_idx].text = custom_name
+                    
+                    doc.add_paragraph()
         
         # Footer
         doc.add_paragraph("")
@@ -641,7 +640,7 @@ def generate_participants_word(bulk_order: ExcelBulkOrder) -> BytesIO:
         raise
 
 
-def generate_participants_excel(bulk_order: ExcelBulkOrder) -> BytesIO:
+def generate_participants_excel(bulk_order):
     """
     Generate Excel summary of all participants.
     
@@ -660,113 +659,83 @@ def generate_participants_excel(bulk_order: ExcelBulkOrder) -> BytesIO:
         from django.utils import timezone
         
         buffer = BytesIO()
-        workbook = xlsxwriter.Workbook(buffer, {'in_memory': True})
+        workbook = xlsxwriter.Workbook(buffer, {'constant_memory': True})
         
-        # Formats
+        # Define formats
         header_format = workbook.add_format({
             'bold': True,
+            'font_size': 12,
             'bg_color': '#064E3B',
             'font_color': 'white',
+            'align': 'center',
+            'valign': 'vcenter',
             'border': 1
         })
         
         paid_format = workbook.add_format({
-            'bg_color': '#FEF3C7',
-            'border': 1
+            'bg_color': '#ECFDF5',
+            'border': 1,
+            'align': 'center',
+            'valign': 'vcenter'
         })
         
         free_format = workbook.add_format({
-            'bg_color': '#D1FAE5',
-            'border': 1
+            'bg_color': '#FEF3C7',
+            'border': 1,
+            'align': 'center',
+            'valign': 'vcenter'
         })
         
-        normal_format = workbook.add_format({'border': 1})
+        normal_format = workbook.add_format({
+            'border': 1,
+            'align': 'center',
+            'valign': 'vcenter'
+        })
         
-        # Summary Sheet
-        summary_sheet = workbook.add_worksheet('Summary')
-        summary_sheet.set_column('A:A', 25)
-        summary_sheet.set_column('B:B', 20)
-        
-        row = 0
-        summary_sheet.write(row, 0, 'Campaign', header_format)
-        summary_sheet.write(row, 1, bulk_order.title, normal_format)
-        
-        row += 1
-        summary_sheet.write(row, 0, 'Reference', header_format)
-        summary_sheet.write(row, 1, bulk_order.reference, normal_format)
-        
-        row += 1
-        summary_sheet.write(row, 0, 'Coordinator', header_format)
-        summary_sheet.write(row, 1, bulk_order.coordinator_name, normal_format)
-        
-        row += 1
-        summary_sheet.write(row, 0, 'Email', header_format)
-        summary_sheet.write(row, 1, bulk_order.coordinator_email, normal_format)
-        
-        row += 2
-        participants = bulk_order.participants.all()
-        total = participants.count()
-        free = participants.filter(is_coupon_applied=True).count()
-        paid = total - free
-        
-        summary_sheet.write(row, 0, 'Total Participants', header_format)
-        summary_sheet.write(row, 1, total, normal_format)
-        
-        row += 1
-        summary_sheet.write(row, 0, 'Paid', header_format)
-        summary_sheet.write(row, 1, paid, paid_format)
-        
-        row += 1
-        summary_sheet.write(row, 0, 'Free (Coupons)', header_format)
-        summary_sheet.write(row, 1, free, free_format)
-        
-        row += 2
-        summary_sheet.write(row, 0, 'Total Amount', header_format)
-        summary_sheet.write(row, 1, f"₦{bulk_order.total_amount:,.2f}", normal_format)
-        
-        # Size Breakdown Sheet
-        size_sheet = workbook.add_worksheet('Size Breakdown')
-        size_sheet.set_column('A:A', 15)
-        size_sheet.set_column('B:B', 15)
-        size_sheet.set_column('C:C', 15)
-        
-        size_sheet.write(0, 0, 'Size', header_format)
-        size_sheet.write(0, 1, 'Count', header_format)
-        size_sheet.write(0, 2, 'Percentage', header_format)
-        
-        size_summary = participants.values('size').annotate(count=Count('size')).order_by('size')
-        
-        for idx, size_data in enumerate(size_summary, 1):
-            size_sheet.write(idx, 0, size_data['size'], normal_format)
-            size_sheet.write(idx, 1, size_data['count'], normal_format)
-            percentage = (size_data['count'] / total * 100) if total > 0 else 0
-            size_sheet.write(idx, 2, f"{percentage:.1f}%", normal_format)
-        
-        # Participants Sheet
+        # Create worksheet
         participants_sheet = workbook.add_worksheet('Participants')
         participants_sheet.set_column('A:A', 8)  # S/N
         participants_sheet.set_column('B:B', 25) # Full Name
         participants_sheet.set_column('C:C', 10) # Size
-        participants_sheet.set_column('D:D', 20) # Custom Name
-        participants_sheet.set_column('E:E', 15) # Status
-        participants_sheet.set_column('F:F', 15) # Coupon Code
         
-        headers = ['S/N', 'Full Name', 'Size', 'Custom Name', 'Status', 'Coupon Code']
+        # Conditionally add Custom Name column
+        if bulk_order.requires_custom_name:
+            participants_sheet.set_column('D:D', 20) # Custom Name
+            participants_sheet.set_column('E:E', 15) # Status
+            participants_sheet.set_column('F:F', 15) # Coupon Code
+            headers = ['S/N', 'Full Name', 'Size', 'Custom Name', 'Status', 'Coupon Code']
+        else:
+            participants_sheet.set_column('D:D', 15) # Status
+            participants_sheet.set_column('E:E', 15) # Coupon Code
+            headers = ['S/N', 'Full Name', 'Size', 'Status', 'Coupon Code']
+        
+        # Write headers
         for col, header in enumerate(headers):
             participants_sheet.write(0, col, header, header_format)
         
-        participants_list = participants.order_by('row_number')
-        for idx, participant in enumerate(participants_list, 1):
+        # Write participant data
+        participants = bulk_order.participants.all().order_by('row_number')
+        for idx, participant in enumerate(participants, 1):
             row_format = free_format if participant.is_coupon_applied else paid_format
             
-            participants_sheet.write(idx, 0, idx, normal_format)
-            participants_sheet.write(idx, 1, participant.full_name, row_format)
-            participants_sheet.write(idx, 2, participant.size, row_format)
-            participants_sheet.write(idx, 3, participant.custom_name or '-', row_format)
+            col = 0
+            participants_sheet.write(idx, col, idx, normal_format)
+            col += 1
+            participants_sheet.write(idx, col, participant.full_name, row_format)
+            col += 1
+            participants_sheet.write(idx, col, participant.size, row_format)
+            col += 1
+            
+            # Only include Custom Name column if required
+            if bulk_order.requires_custom_name:
+                custom_name_display = participant.custom_name.upper() if participant.custom_name else '-'
+                participants_sheet.write(idx, col, custom_name_display, row_format)
+                col += 1
             
             status = 'Free (Coupon)' if participant.is_coupon_applied else 'Paid'
-            participants_sheet.write(idx, 4, status, row_format)
-            participants_sheet.write(idx, 5, participant.coupon_code or '-', row_format)
+            participants_sheet.write(idx, col, status, row_format)
+            col += 1
+            participants_sheet.write(idx, col, participant.coupon_code or '-', row_format)
         
         workbook.close()
         buffer.seek(0)
@@ -777,4 +746,3 @@ def generate_participants_excel(bulk_order: ExcelBulkOrder) -> BytesIO:
     except Exception as e:
         logger.error(f"Error generating Excel for {bulk_order.reference}: {str(e)}")
         raise
-
