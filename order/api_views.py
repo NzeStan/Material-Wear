@@ -139,7 +139,7 @@ class CheckoutView(views.APIView):
                     
                     # Create the order
                     order = order_model.objects.create(**order_data)
-                    
+                
                     # Create order items with FRESH prices from database
                     for item in items:
                         product = item['product']
@@ -159,6 +159,10 @@ class CheckoutView(views.APIView):
                             quantity=item['quantity'],
                             extra_fields=item.get('extra_fields', {})
                         )
+                    
+                    # ✅ FIX: Calculate total_cost from OrderItems
+                    order.total_cost = sum(item.get_cost() for item in order.items.all())
+                    order.save()
                     
                     orders_created.append(order)
                     logger.info(
