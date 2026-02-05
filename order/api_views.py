@@ -24,18 +24,19 @@ logger = logging.getLogger(__name__)
 @extend_schema(tags=['Order'])
 class CheckoutView(views.APIView):
     """
-    Checkout endpoint - converts cart to orders
-    Creates separate orders for each product type in cart
+    Checkout endpoint - converts cart to orders AND initializes payment
+    ✅ UPDATED: Now returns Paystack payment URL immediately
     """
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [CheckoutRateThrottle]
 
     @extend_schema(
-        description="Create orders from cart items. Returns list of created order IDs.",
+        description="Create orders from cart items and initialize payment. Returns orders + payment URL.",
         request=CheckoutSerializer,
         responses={
-            201: {'description': 'Orders created successfully'},
-            400: {'description': 'Validation error or empty cart'}
+            201: {'description': 'Orders created and payment initialized'},
+            400: {'description': 'Validation error or empty cart'},
+            503: {'description': 'Orders created but payment initialization failed'}
         }
     )
     def post(self, request):
@@ -47,7 +48,7 @@ class CheckoutView(views.APIView):
                 'error': 'Cart is empty'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # ✅ NEW: Validate cart prices before checkout
+        # ✅ Validate cart prices before checkout
         price_validation_errors = []
         for item in cart:
             product = item['product']
@@ -109,37 +110,35 @@ class CheckoutView(views.APIView):
                     order_model = order_type_map.get(product_type)
                     
                     if not order_model:
-                        logger.warning(f"Unknown product type: {product_type}")
+                        logger.error(f"Unknown product type: {product_type}")
                         continue
                     
-                    # Base order data
+                    # Build order data from validated checkout data
                     order_data = {
                         'user': request.user,
-                        'email': request.user.email,
                         'first_name': validated_data['first_name'],
                         'middle_name': validated_data.get('middle_name', ''),
                         'last_name': validated_data['last_name'],
                         'phone_number': validated_data['phone_number'],
-                        'paid': False,
                     }
                     
-                    # Add product-specific fields
-                    if product_type == 'NyscKit':
+                    # Add type-specific fields
+                    if order_model == NyscKitOrder:
                         order_data.update({
                             'call_up_number': validated_data['call_up_number'],
                             'state': validated_data['state'],
                             'local_government': validated_data['local_government'],
                         })
-                    elif product_type == 'Church':
+                    elif order_model == ChurchOrder:
                         order_data.update({
                             'pickup_on_camp': validated_data.get('pickup_on_camp', True),
                             'delivery_state': validated_data.get('delivery_state', ''),
                             'delivery_lga': validated_data.get('delivery_lga', ''),
                         })
                     
-                    # Create the order
+                    # Create order
                     order = order_model.objects.create(**order_data)
-                
+                    
                     # Create order items with FRESH prices from database
                     for item in items:
                         product = item['product']
@@ -160,7 +159,7 @@ class CheckoutView(views.APIView):
                             extra_fields=item.get('extra_fields', {})
                         )
                     
-                    # ✅ FIX: Calculate total_cost from OrderItems
+                    # ✅ Calculate total_cost from OrderItems
                     order.total_cost = sum(item.get_cost() for item in order.items.all())
                     order.save()
                     
@@ -170,35 +169,88 @@ class CheckoutView(views.APIView):
                         f"Type: {product_type} - User: {request.user.email}"
                     )
                 
-                # Store order IDs in session for payment
+            # ✅ NEW: Initialize payment with Paystack immediately after order creation
+            from payment.models import PaymentTransaction
+            from payment.utils import initialize_payment
+            
+            # Calculate total amount
+            total_amount = sum(order.total_cost for order in orders_created)
+            first_order = orders_created[0]
+            
+            # Create payment transaction
+            payment = PaymentTransaction.objects.create(
+                amount=total_amount,
+                email=first_order.email
+            )
+            payment.orders.set(orders_created)
+            
+            # Build callback URL for Paystack redirect
+            callback_url = request.build_absolute_uri('/api/payment/verify/')
+            
+            # Initialize payment with Paystack
+            paystack_response = initialize_payment(
+                amount=payment.amount,
+                email=payment.email,
+                reference=payment.reference,
+                callback_url=callback_url,
+                metadata={
+                    'orders': [str(order.id) for order in orders_created],
+                    'customer_name': f"{first_order.first_name} {first_order.last_name}",
+                    'user_id': str(request.user.id)
+                }
+            )
+            
+            if not paystack_response or not paystack_response.get('status'):
+                logger.error(
+                    f"Payment initialization failed for user {request.user.id}. "
+                    f"Orders created: {[str(o.id) for o in orders_created]}"
+                )
+                # Orders are created but payment failed - store in session for retry
                 request.session['pending_orders'] = [str(order.id) for order in orders_created]
                 
-                # Clear cart
-                cart.clear()
+                return Response({
+                    'error': 'Orders created but payment initialization failed. Please try again.',
+                    'order_ids': [str(order.id) for order in orders_created],
+                    'retry_endpoint': '/api/payment/initiate/'
+                }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            
+            # Store order IDs in session (for backup/retry scenarios)
+            request.session['pending_orders'] = [str(order.id) for order in orders_created]
+            
+            # Clear cart after successful payment initialization
+            cart.clear()
             
             # ✅ Send emails AFTER transaction commits
             for order in orders_created:
                 send_order_confirmation_email_async(str(order.id))
                 generate_order_confirmation_pdf_task(str(order.id))
             
-            # Return created orders
-            order_ids = [str(order.id) for order in orders_created]
-            total_amount = sum(order.total_cost for order in orders_created)
+            logger.info(
+                f"Checkout completed for user {request.user.email}. "
+                f"Orders: {len(orders_created)}, Payment: {payment.reference}, "
+                f"Amount: {total_amount}"
+            )
             
+            # ✅ Return orders + payment URL in single response
             return Response({
-                'message': f'{len(orders_created)} order(s) created successfully',
-                'order_ids': order_ids,
-                'total_amount': float(total_amount),
+                'message': 'Orders created successfully',
+                'total_amount': str(total_amount),
+                'order_count': len(orders_created),
                 'orders': [
                     {
                         'id': str(order.id),
-                        'serial_number': order.serial_number,
-                        'type': order.__class__.__name__,
-                        'total_cost': float(order.total_cost),
-                        'paid': order.paid
+                        'order_type': order.__class__.__name__.replace('Order', '').lower(),
+                        'reference_number': f"JMW-{order.__class__.__name__.replace('Order', '').upper()}-{order.created.strftime('%Y%m%d')}-{order.serial_number:05d}",
+                        'total_price': str(order.total_cost)
                     }
                     for order in orders_created
-                ]
+                ],
+                'payment': {
+                    'reference': payment.reference,
+                    'authorization_url': paystack_response['data']['authorization_url'],
+                    'access_code': paystack_response['data']['access_code']
+                },
+                'payment_url': paystack_response['data']['authorization_url']  # Direct link for convenience
             }, status=status.HTTP_201_CREATED)
             
         except Exception as e:

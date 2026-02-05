@@ -118,17 +118,42 @@ class CheckoutViewBasicTests(TestCase):
         response = self.client.post(self.checkout_url, checkout_data, format='json')
         
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn('order_ids', response.data)
-        self.assertIn('total_amount', response.data)
-        self.assertIn('orders', response.data)
         
-        # Verify order was created
+        # ✅ UPDATED: Check new response format
+        self.assertIn('orders', response.data)
+        self.assertIn('total_amount', response.data)
+        self.assertIn('order_count', response.data)
+        self.assertIn('payment', response.data)
+        self.assertIn('payment_url', response.data)
+        
+        # ✅ NEW: Verify payment structure
+        self.assertIn('reference', response.data['payment'])
+        self.assertIn('authorization_url', response.data['payment'])
+        self.assertIn('access_code', response.data['payment'])
+        
+        # ✅ NEW: Verify orders structure
+        self.assertEqual(len(response.data['orders']), 1)
+        order_data = response.data['orders'][0]
+        self.assertIn('id', order_data)
+        self.assertIn('order_type', order_data)
+        self.assertIn('reference_number', order_data)
+        self.assertIn('total_price', order_data)
+        
+        # Verify order was created in database
         self.assertEqual(NyscKitOrder.objects.count(), 1)
         order = NyscKitOrder.objects.first()
         self.assertEqual(order.user, self.user)
         self.assertEqual(order.first_name, 'John')
         self.assertEqual(order.call_up_number, 'AB/22C/1234')
-        self.assertFalse(order.paid)
+        self.assertFalse(order.paid)  # Not paid yet
+        
+        # ✅ NEW: Verify payment was created
+        from payment.models import PaymentTransaction
+        self.assertEqual(PaymentTransaction.objects.count(), 1)
+        payment = PaymentTransaction.objects.first()
+        self.assertEqual(payment.orders.count(), 1)
+        self.assertEqual(payment.status, 'pending')
+
     
     def test_checkout_clears_cart_after_success(self):
         """Test checkout clears cart after successful order creation"""
@@ -643,43 +668,65 @@ class CheckoutViewMultipleProductTypesTests(TestCase):
     
     def test_checkout_creates_separate_orders_for_each_type(self):
         """Test checkout creates separate orders for different product types"""
-        # Add both products to cart
+        # Add items to cart
         add_url = reverse('cart:cart-add')
         
+        # Add NyscKit item
         self.client.post(add_url, {
             'product_type': 'nysc_kit',
-            'product_id': str(self.nysc_product.id),
+            'product_id': str(self.nysc_product.id),  # ✅ CORRECT
             'quantity': 2
         }, format='json')
-        
+
+        # Add Church item
         self.client.post(add_url, {
             'product_type': 'church',
-            'product_id': str(self.church_product.id),
+            'product_id': str(self.church_product.id),  # ✅ CORRECT
             'quantity': 1,
             'size': 'L'
         }, format='json')
         
-        # Checkout with all required fields
+        # Checkout
         checkout_data = {
             'first_name': 'John',
             'last_name': 'Doe',
             'phone_number': '08012345678',
-            # NYSC Kit fields
             'call_up_number': 'AB/22C/1234',
             'state': 'Lagos',
             'local_government': 'Ikeja',
-            # Church fields
             'pickup_on_camp': True
         }
         
         response = self.client.post(self.checkout_url, checkout_data, format='json')
         
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(len(response.data['order_ids']), 2)
         
-        # Verify separate orders were created
+        # ✅ UPDATED: Check new response format
+        self.assertIn('orders', response.data)
+        self.assertIn('order_count', response.data)
+        self.assertIn('payment', response.data)
+        
+        # ✅ NEW: Should have 2 orders (one per product type)
+        self.assertEqual(response.data['order_count'], 2)
+        self.assertEqual(len(response.data['orders']), 2)
+        
+        # ✅ NEW: Verify order types
+        order_types = {order['order_type'] for order in response.data['orders']}
+        self.assertIn('nysckit', order_types)
+        self.assertIn('church', order_types)
+        
+        # Verify orders were created in database
         self.assertEqual(NyscKitOrder.objects.count(), 1)
         self.assertEqual(ChurchOrder.objects.count(), 1)
+        
+        # ✅ NEW: Verify payment links to both orders
+        from payment.models import PaymentTransaction
+        payment = PaymentTransaction.objects.first()
+        self.assertEqual(payment.orders.count(), 2)
+        
+        # ✅ NEW: Verify total amount is sum of both orders
+        total = sum(float(order['total_price']) for order in response.data['orders'])
+        self.assertEqual(float(response.data['total_amount']), total)
 
 
 class CheckoutViewEdgeCasesTests(TestCase):
