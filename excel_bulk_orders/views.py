@@ -21,6 +21,7 @@ from django.db.models import Count
 import logging
 import cloudinary.uploader
 import json
+from .email_utils import send_bulk_order_confirmation_email
 
 from .models import ExcelBulkOrder, ExcelParticipant
 from .serializers import (
@@ -37,7 +38,7 @@ from .utils import (
 )
 from payment.utils import initialize_payment, verify_payment
 from payment.security import verify_paystack_signature
-
+from jmw.background_utils import send_email_async
 logger = logging.getLogger(__name__)
 
 
@@ -202,11 +203,13 @@ class ExcelBulkOrderViewSet(viewsets.ModelViewSet):
             
             # Validate
             validation_result = validate_excel_file(bulk_order, excel_file)
-            
-            # Update bulk order
+
+            # ✅ FIX: Store complete validation result (not just errors)
+            bulk_order.validation_errors = validation_result
+
+            # Update bulk order status
             if validation_result['valid']:
                 bulk_order.validation_status = 'valid'
-                bulk_order.validation_errors = None
                 
                 # Calculate total amount
                 # Reset the file pointer to beginning
@@ -237,23 +240,25 @@ class ExcelBulkOrderViewSet(viewsets.ModelViewSet):
                 
             else:
                 bulk_order.validation_status = 'invalid'
-                bulk_order.validation_errors = validation_result
                 bulk_order.total_amount = 0
-            
+
             bulk_order.save()
-            
+
             logger.info(
-                f"Validated Excel for {bulk_order.reference}: "
-                f"Valid={validation_result['valid']}"
+                f"Excel validation for {bulk_order.reference}: "
+                f"Valid={validation_result['valid']}, "
+                f"Total rows={validation_result.get('summary', {}).get('total_rows', 0)}"
             )
-            
+
             # Return validation results
+            serializer = ExcelBulkOrderDetailSerializer(
+                bulk_order,
+                context={'request': request}
+            )
+
             return Response({
                 'validation_result': validation_result,
-                'bulk_order': ExcelBulkOrderDetailSerializer(
-                    bulk_order,
-                    context={'request': request}
-                ).data
+                'bulk_order': serializer.data
             })
             
         except Exception as e:
@@ -566,6 +571,8 @@ def excel_bulk_order_payment_webhook(request):
     - Signature verification
     - Proper logging
     - Race condition safe
+    - Creates participants from Excel
+    - Sends styled HTML confirmation email to coordinator
     """
     if request.method != 'POST':
         logger.warning(f"Invalid webhook method: {request.method}")
@@ -634,7 +641,7 @@ def excel_bulk_order_payment_webhook(request):
                         'reference': reference
                     }, status=200)
                 
-                # Mark as paid (only if not already paid)
+                # Mark as paid
                 bulk_order.payment_status = True
                 bulk_order.paystack_reference = reference
                 bulk_order.validation_status = 'completed'
@@ -645,13 +652,38 @@ def excel_bulk_order_payment_webhook(request):
                     'updated_at'
                 ])
             
-            # ✅ STEP 5: Log success
-            logger.info(f"✅ Excel bulk order payment successful: {reference}")
+            # ✅ STEP 5: Create participants (OUTSIDE transaction to avoid race conditions)
+            import requests
+            from io import BytesIO
+            
+            # Download Excel file from Cloudinary
+            response = requests.get(bulk_order.uploaded_file)
+            excel_file = BytesIO(response.content)
+            
+            # Create participants from Excel
+            participants_count = create_participants_from_excel(
+                bulk_order,
+                excel_file
+            )
+            
+            logger.info(
+                f"Created {participants_count} participants for {reference}"
+            )
+            
+            # ✅ STEP 6: Send styled confirmation email to coordinator
+            send_bulk_order_confirmation_email(bulk_order, participants_count)
+            
+            logger.info(
+                f"✅ Excel bulk order payment successful: {reference}. "
+                f"Created {participants_count} participants. "
+                f"Email sent to {bulk_order.coordinator_email}"
+            )
             
             return JsonResponse({
                 'status': 'success',
-                'message': 'Payment verified and order updated',
-                'reference': reference
+                'message': 'Payment verified, participants created, email sent',
+                'reference': reference,
+                'participants_created': participants_count
             }, status=200)
             
         except ExcelBulkOrder.DoesNotExist:

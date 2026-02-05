@@ -101,10 +101,71 @@ class ExcelBulkOrderDetailSerializer(serializers.ModelSerializer):
         return obj.get_validation_summary()
     
     def get_payment_breakdown(self, obj):
-        """Calculate payment breakdown"""
-        total_participants = obj.participants.count()
-        couponed = obj.participants.filter(is_coupon_applied=True).count()
-        chargeable = total_participants - couponed
+        """
+        Calculate payment breakdown.
+        
+        FIXED: Now calculates from Excel data before payment,
+        and from actual participants after payment.
+        """
+        import pandas as pd
+        import requests
+        from io import BytesIO
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        
+        # After payment: use actual participants
+        if obj.payment_status and obj.participants.exists():
+            total_participants = obj.participants.count()
+            couponed = obj.participants.filter(is_coupon_applied=True).count()
+            chargeable = total_participants - couponed
+            
+            logger.debug(
+                f"Payment breakdown (after payment) for {obj.reference}: "
+                f"Total={total_participants}, Couponed={couponed}, Chargeable={chargeable}"
+            )
+        
+        # Before payment but after validation: calculate from Excel
+        elif obj.validation_status == 'valid' and obj.uploaded_file:
+            try:
+                # Download and read Excel file
+                response = requests.get(obj.uploaded_file, timeout=10)
+                excel_file = BytesIO(response.content)
+                df = pd.read_excel(excel_file, sheet_name='Participants')
+                
+                total_participants = len(df)
+                couponed = 0
+                
+                # Count valid coupons
+                from .models import ExcelCouponCode
+                for idx, row in df.iterrows():
+                    coupon_code = str(row['Coupon Code']).strip() if not pd.isna(row['Coupon Code']) else ''
+                    if coupon_code:
+                        if ExcelCouponCode.objects.filter(
+                            code=coupon_code,
+                            bulk_order=obj,
+                            is_used=False
+                        ).exists():
+                            couponed += 1
+                
+                chargeable = total_participants - couponed
+                
+                logger.debug(
+                    f"Payment breakdown (before payment) for {obj.reference}: "
+                    f"Total={total_participants}, Couponed={couponed}, Chargeable={chargeable}"
+                )
+                
+            except Exception as e:
+                logger.error(f"Error calculating payment breakdown from Excel: {str(e)}")
+                total_participants = 0
+                couponed = 0
+                chargeable = 0
+        
+        # No data yet
+        else:
+            total_participants = 0
+            couponed = 0
+            chargeable = 0
         
         return {
             'total_participants': total_participants,
@@ -114,6 +175,7 @@ class ExcelBulkOrderDetailSerializer(serializers.ModelSerializer):
             'total_amount': str(obj.total_amount),
             'currency': 'NGN'
         }
+
 
 
 class ExcelBulkOrderCreateSerializer(serializers.ModelSerializer):
