@@ -11,13 +11,16 @@ Endpoints:
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.utils import timezone
 from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Count
 import logging
 import cloudinary.uploader
+import json
 
 from .models import ExcelBulkOrder, ExcelParticipant
 from .serializers import (
@@ -33,8 +36,10 @@ from .utils import (
     create_participants_from_excel,
 )
 from payment.utils import initialize_payment, verify_payment
+from payment.security import verify_paystack_signature
 
 logger = logging.getLogger(__name__)
+
 
 
 class ExcelBulkOrderViewSet(viewsets.ModelViewSet):
@@ -454,6 +459,78 @@ Best regards,
         http_response['Content-Disposition'] = f'attachment; filename="{bulk_order.reference}_template.xlsx"'
         
         return http_response
+    
+    @action(detail=True, methods=['get'], url_path='paid-participants', permission_classes=[permissions.AllowAny])
+    def paid_participants(self, request, pk=None):
+        """
+        Public page showing all paid participants for social proof.
+        Supports both HTML view and JSON API.
+        
+        Usage:
+        - JSON API: GET /api/excel-bulk-orders/{uuid}/paid-participants/
+        - HTML View: GET /api/excel-bulk-orders/{uuid}/paid-participants/ (with Accept: text/html)
+        """
+        bulk_order = self.get_object()
+        
+        # Check if payment complete
+        if not bulk_order.payment_status:
+            return Response(
+                {"error": "No paid participants yet. Payment not completed."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Get all participants
+        participants = bulk_order.participants.all().order_by('-created_at')
+        
+        # Size summary
+        size_summary = list(
+            participants.values("size")
+            .annotate(count=Count("size"))
+            .order_by("size")
+        )
+        
+        # Check if HTML view requested (browser)
+        if request.accepted_renderer.format == 'html':
+            context = {
+                'bulk_order': bulk_order,
+                'participants': participants[:20],  # First 20 for display
+                'all_participants': participants,  # All for download
+                'size_summary': size_summary,
+                'total_participants': participants.count(),
+                'total_paid': participants.filter(is_coupon_applied=False).count(),
+                'total_free': participants.filter(is_coupon_applied=True).count(),
+                'company_name': settings.COMPANY_NAME,
+                'company_address': settings.COMPANY_ADDRESS,
+                'company_phone': settings.COMPANY_PHONE,
+                'company_email': settings.COMPANY_EMAIL,
+                'now': timezone.now(),
+            }
+            
+            return Response(
+                context,
+                template_name='excel_bulk_orders/paid_participants_public.html'
+            )
+        
+        # JSON response for API
+        return Response({
+            'reference': bulk_order.reference,
+            'title': bulk_order.title,
+            'coordinator': bulk_order.coordinator_name,
+            'total_participants': participants.count(),
+            'total_paid': participants.filter(is_coupon_applied=False).count(),
+            'total_free': participants.filter(is_coupon_applied=True).count(),
+            'size_summary': size_summary,
+            'recent_participants': [
+                {
+                    'full_name': p.full_name,
+                    'size': p.size,
+                    'custom_name': p.custom_name if bulk_order.requires_custom_name else None,
+                    'status': 'Free (Coupon)' if p.is_coupon_applied else 'Paid',
+                    'created_at': p.created_at.isoformat()
+                }
+                for p in participants[:20]
+            ]
+        })
 
 
 class ExcelParticipantViewSet(viewsets.ReadOnlyModelViewSet):
@@ -475,3 +552,124 @@ class ExcelParticipantViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(bulk_order_id=bulk_order_id)
         
         return queryset.select_related('bulk_order', 'coupon')
+    
+
+@csrf_exempt
+def excel_bulk_order_payment_webhook(request):
+    """
+    Paystack webhook handler for excel bulk orders
+    
+    Reference format: EXL-{unique_code}
+    
+    Features:
+    - Idempotent (prevents double processing)
+    - Signature verification
+    - Proper logging
+    - Race condition safe
+    """
+    if request.method != 'POST':
+        logger.warning(f"Invalid webhook method: {request.method}")
+        return JsonResponse(
+            {'status': 'error', 'message': 'Method not allowed'},
+            status=405
+        )
+    
+    try:
+        # ✅ STEP 1: Verify webhook signature
+        signature = request.META.get('HTTP_X_PAYSTACK_SIGNATURE')
+        
+        if not signature:
+            logger.error("Excel webhook received without signature")
+            return JsonResponse(
+                {'status': 'error', 'message': 'Missing signature'},
+                status=401
+            )
+        
+        if not verify_paystack_signature(request.body, signature):
+            logger.error("Excel webhook signature verification failed")
+            return JsonResponse(
+                {'status': 'error', 'message': 'Invalid signature'},
+                status=401
+            )
+        
+        # ✅ STEP 2: Parse payload
+        payload = json.loads(request.body)
+        logger.info(f"Excel webhook received: {payload.get('event')}")
+        
+        # Only process successful charges
+        if payload.get('event') != 'charge.success':
+            logger.info(f"Ignoring webhook event: {payload.get('event')}")
+            return JsonResponse(
+                {'status': 'success', 'message': 'Event ignored'},
+                status=200
+            )
+        
+        # ✅ STEP 3: Extract reference
+        reference = payload.get('data', {}).get('reference', '')
+        
+        if not reference or not reference.startswith('EXL-'):
+            logger.error(f"Invalid reference format: {reference}")
+            return JsonResponse(
+                {'status': 'error', 'message': 'Invalid reference format'},
+                status=400
+            )
+        
+        try:
+            # ✅ STEP 4: Idempotent payment processing
+            with transaction.atomic():
+                # Lock order to prevent race conditions
+                bulk_order = ExcelBulkOrder.objects.select_for_update().get(
+                    reference=reference
+                )
+                
+                # ✅ CHECK: Already processed?
+                if bulk_order.payment_status:
+                    logger.info(
+                        f"⚠️ Payment already processed for {reference}. "
+                        f"Skipping duplicate webhook."
+                    )
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': 'Payment already processed',
+                        'reference': reference
+                    }, status=200)
+                
+                # Mark as paid (only if not already paid)
+                bulk_order.payment_status = True
+                bulk_order.paystack_reference = reference
+                bulk_order.validation_status = 'completed'
+                bulk_order.save(update_fields=[
+                    'payment_status',
+                    'paystack_reference',
+                    'validation_status',
+                    'updated_at'
+                ])
+            
+            # ✅ STEP 5: Log success
+            logger.info(f"✅ Excel bulk order payment successful: {reference}")
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Payment verified and order updated',
+                'reference': reference
+            }, status=200)
+            
+        except ExcelBulkOrder.DoesNotExist:
+            logger.error(f"ExcelBulkOrder not found: {reference}")
+            return JsonResponse(
+                {'status': 'error', 'message': 'Order not found'},
+                status=404
+            )
+    
+    except json.JSONDecodeError:
+        logger.error("Invalid JSON in excel webhook payload")
+        return JsonResponse(
+            {'status': 'error', 'message': 'Invalid JSON'},
+            status=400
+        )
+    except Exception as e:
+        logger.exception("Unexpected error processing excel webhook")
+        return JsonResponse(
+            {'status': 'error', 'message': 'Internal server error'},
+            status=500
+        )

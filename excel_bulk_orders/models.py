@@ -279,11 +279,4 @@ class ExcelParticipant(models.Model):
         coupon_info = f" (Coupon: {self.coupon_code})" if self.is_coupon_applied else ""
         return f"{self.full_name} - {self.size}{coupon_info}"
     
-    def clean(self):
-        """Validate custom_name requirement"""
-        from django.core.exceptions import ValidationError
-        
-        if self.bulk_order.requires_custom_name and not self.custom_name:
-            raise ValidationError({
-                'custom_name': 'Custom name is required for this bulk order.'
-            })
+    

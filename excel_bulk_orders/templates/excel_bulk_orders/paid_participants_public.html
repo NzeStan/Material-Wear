@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ bulk_order.title }} - Participants</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #064E3B 0%, #065F46 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #064E3B 0%, #065F46 100%);
+            color: #FFFBEB;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #F3F4F6;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+            border-left: 4px solid #F59E0B;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        
+        .stat-number {
+            font-size: 36px;
+            font-weight: 700;
+            color: #064E3B;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #6B7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .content-card {
+            padding: 30px;
+            margin: 20px;
+            background: white;
+            border-radius: 10px;
+            border: 1px solid #E5E7EB;
+        }
+        
+        .section-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #064E3B;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #F59E0B;
+        }
+        
+        .size-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .size-badge {
+            background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+            border: 2px solid #F59E0B;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .size-label {
+            font-size: 18px;
+            font-weight: 700;
+            color: #064E3B;
+            margin-bottom: 5px;
+        }
+        
+        .size-count {
+            font-size: 28px;
+            font-weight: 700;
+            color: #F59E0B;
+        }
+        
+        .participants-list {
+            margin: 20px 0;
+        }
+        
+        .participant-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #E5E7EB;
+            transition: background 0.3s;
+        }
+        
+        .participant-item:hover {
+            background: #F9FAFB;
+        }
+        
+        .participant-info {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .participant-number {
+            background: #064E3B;
+            color: #FFFBEB;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        
+        .participant-name {
+            font-weight: 600;
+            color: #1F2937;
+            font-size: 16px;
+        }
+        
+        .participant-size {
+            background: #F59E0B;
+            color: #78350F;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        
+        .participant-status {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        
+        .status-paid {
+            background: #FCD34D;
+            color: #78350F;
+        }
+        
+        .status-free {
+            background: #6EE7B7;
+            color: #064E3B;
+        }
+        
+        .footer {
+            background: #F3F4F6;
+            padding: 30px;
+            text-align: center;
+            color: #6B7280;
+            font-size: 14px;
+        }
+        
+        .footer a {
+            color: #064E3B;
+            text-decoration: none;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{ bulk_order.title }}</h1>
+            <p>Reference: {{ bulk_order.reference }} | Coordinator: {{ bulk_order.coordinator_name }}</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">{{ total_participants }}</div>
+                <div class="stat-label">Total Participants</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ total_paid }}</div>
+                <div class="stat-label">Paid</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ total_free }}</div>
+                <div class="stat-label">Free (Coupons)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ size_summary|length }}</div>
+                <div class="stat-label">Sizes</div>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <h2 class="section-title">Participants by Size</h2>
+            <div class="size-grid">
+                {% for size in size_summary %}
+                <div class="size-badge">
+                    <div class="size-label">Size {{ size.size }}</div>
+                    <div class="size-count">{{ size.count }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="content-card">
+            <h2 class="section-title">Recent Participants</h2>
+            <div class="participants-list">
+                {% for participant in participants %}
+                <div class="participant-item">
+                    <div class="participant-info">
+                        <span class="participant-number">{{ forloop.counter }}</span>
+                        <span class="participant-name">{{ participant.full_name }}</span>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <span class="participant-size">{{ participant.size }}</span>
+                        <span class="participant-status {% if participant.is_coupon_applied %}status-free{% else %}status-paid{% endif %}">
+                            {% if participant.is_coupon_applied %}FREE{% else %}PAID{% endif %}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            {% if total_participants > 20 %}
+            <p style="text-align: center; margin-top: 25px; color: #6B7280; font-size: 14px;">
+                Showing 20 most recent participants. Total: {{ total_participants }}
+            </p>
+            {% endif %}
+        </div>
+
+        <div class="footer">
+            <p><strong>{{ company_name }}</strong></p>
+            <p style="margin-top: 10px;">{{ company_address }}</p>
+            <p style="margin-top: 10px;">📞 {{ company_phone }} | 📧 {{ company_email }}</p>
+            <p style="margin-top: 15px; opacity: 0.8;">
+                Generated on {{ now|date:"F d, Y" }} at {{ now|date:"H:i" }}
+            </p>
+        </div>
+    </div>
+</body>
+</html>

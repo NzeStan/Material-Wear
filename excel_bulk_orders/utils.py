@@ -274,15 +274,6 @@ def validate_excel_file(bulk_order, excel_file):
                     'current_value': str(row['Size']) if not pd.isna(row['Size']) else ''
                 })
             
-            # Validate Custom Name (if required)
-            if bulk_order.requires_custom_name:
-                if pd.isna(row['Custom Name']) or not str(row['Custom Name']).strip():
-                    row_errors.append({
-                        'row': row_num,
-                        'field': 'Custom Name',
-                        'error': 'Custom Name is required for this bulk order',
-                        'current_value': ''
-                    })
             
             # Collect errors or mark as valid
             if row_errors:

@@ -1,4 +1,6 @@
 # webhook_router/views.py
+# UPDATE THIS SECTION
+
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
 from django.views.decorators.http import require_POST
@@ -17,6 +19,7 @@ def router_webhook(request):
     
     Reference formats:
     - Bulk orders: "ORDER-{bulk_order_id}-{order_entry_id}"
+    - Excel bulk orders: "EXL-{unique_code}"  ← NEW
     - Regular orders: "{uuid}"
     """
     try:
@@ -41,6 +44,11 @@ def router_webhook(request):
             logger.info(f"Routing to bulk order webhook: {reference}")
             from bulk_orders.views import bulk_order_payment_webhook
             return bulk_order_payment_webhook(request)
+        elif reference.startswith('EXL-'):
+            # Excel bulk order webhook  ← NEW SECTION
+            logger.info(f"Routing to excel bulk order webhook: {reference}")
+            from excel_bulk_orders.views import excel_bulk_order_payment_webhook
+            return excel_bulk_order_payment_webhook(request)
         else:
             # Regular order webhook
             logger.info(f"Routing to regular order webhook: {reference}")
