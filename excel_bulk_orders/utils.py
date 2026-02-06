@@ -581,16 +581,35 @@ def generate_participants_word(bulk_order):
             doc.add_paragraph('This section shows all custom names grouped by size for easy copying.')
             doc.add_paragraph()
             
+            # CRITICAL FIX: Query participants for THIS bulk_order ONLY
+            # CORRECTION: Field name is 'bulk_order', NOT 'excel_bulk_order'
+            # ONLY include participants who have custom_name set (exclude None/empty)
+            from excel_bulk_orders.models import ExcelParticipant
+            from django.db.models import Q
+            
+            bulk_order_participants = ExcelParticipant.objects.filter(
+                bulk_order=bulk_order,  # ✅ CORRECT field name
+                custom_name__isnull=False  # ✅ Only participants WITH custom names
+            ).exclude(
+                custom_name=''  # ✅ Exclude empty strings
+            ).order_by('size', 'full_name')
+            
+            # Get size summary ONLY for participants with custom names
+            custom_names_size_summary = bulk_order_participants.values('size').annotate(
+                count=Count('id')
+            ).order_by('size')
+            
             # Group participants by size
-            for size_data in size_summary:
+            for size_data in custom_names_size_summary:
                 size = size_data['size']
-                size_participants = participants.filter(size=size).order_by('full_name')
+                size_participants = bulk_order_participants.filter(size=size)
                 
-                # Get all custom names for this size
+                # Get custom names (we know they all have custom_name since we filtered)
                 custom_names = [
-                    participant.custom_name.upper() if participant.custom_name else participant.full_name.upper()
+                    participant.custom_name.upper()
                     for participant in size_participants
                 ]
+
                 
                 if custom_names:
                     # Add size header

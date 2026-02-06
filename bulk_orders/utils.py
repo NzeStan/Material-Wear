@@ -250,14 +250,30 @@ def generate_bulk_order_word(bulk_order):
             doc.add_paragraph('This section shows all custom names grouped by size for easy copying.')
             doc.add_paragraph()
             
+            # CRITICAL FIX: Query orders for THIS bulk_order ONLY
+            # ONLY include orders that have custom_name set (exclude None/empty)
+            from bulk_orders.models import OrderEntry
+            
+            bulk_order_orders = OrderEntry.objects.filter(
+                bulk_order=bulk_order,  # ✅ Only THIS bulk_order
+                custom_name__isnull=False  # ✅ Only orders WITH custom names
+            ).exclude(
+                custom_name=''  # ✅ Exclude empty strings
+            ).order_by('size', 'full_name')
+            
+            # Get size summary ONLY for orders with custom names
+            custom_names_size_summary = bulk_order_orders.values('size').annotate(
+                count=Count('id')
+            ).order_by('size')
+            
             # Group orders by size
-            for size_info in size_summary:
+            for size_info in custom_names_size_summary:
                 size = size_info['size']
-                size_orders = orders.filter(size=size).order_by('full_name')
+                size_orders = bulk_order_orders.filter(size=size)
                 
-                # Get all custom names for this size
+                # Get custom names (we know they all have custom_name since we filtered)
                 custom_names = [
-                    order.custom_name.upper() if order.custom_name else order.full_name.upper()
+                    order.custom_name.upper()
                     for order in size_orders
                 ]
                 
