@@ -146,7 +146,7 @@ def generate_excel_template(bulk_order):
     if bulk_order.requires_custom_name:
         instructions.extend([
             "4. Custom Name: Name for badge/tag",
-            "   - Required field",
+            "   - Optional field",
             "   - Keep it short (max 20 characters recommended)",
             "   - Example: 'JD', 'Mary', 'Coach John'",
             "",

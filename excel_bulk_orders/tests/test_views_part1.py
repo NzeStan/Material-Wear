@@ -516,8 +516,9 @@ class ExcelValidateActionTest(APITestCase):
         self.assertEqual(self.bulk_order.validation_status, 'invalid')
         self.assertEqual(self.bulk_order.total_amount, Decimal('0.00'))
 
-    @patch('excel_bulk_orders.utils.validate_excel_file')
-    def test_validate_excel_with_coupons(self, mock_validate):
+    @patch('requests.get')  # ADDED: Mock file download
+    @patch('excel_bulk_orders.views.validate_excel_file')
+    def test_validate_excel_with_coupons(self, mock_validate, mock_requests_get):  # ADDED mock_requests_get
         """Test Excel validation with some coupon entries"""
         from excel_bulk_orders.models import ExcelCouponCode
         from unittest.mock import Mock
@@ -531,6 +532,11 @@ class ExcelValidateActionTest(APITestCase):
             bulk_order=self.bulk_order,
             code='TESTCOUPON2'
         )
+        
+        # ADDED: Mock file download first
+        mock_response = Mock()
+        mock_response.content = b'fake excel content'
+        mock_requests_get.return_value = mock_response
         
         # Mock validation result
         mock_validate.return_value = {
@@ -547,6 +553,10 @@ class ExcelValidateActionTest(APITestCase):
         self.bulk_order.uploaded_file = 'https://example.com/uploaded.xlsx'
         self.bulk_order.save()
         
+        # ADDED: Set price per participant before calling endpoint
+        self.bulk_order.price_per_participant = Decimal('10000.00')
+        self.bulk_order.save()
+        
         # Patch pandas at module level
         with patch('pandas.read_excel') as mock_read_excel:
             # Create mock DataFrame
@@ -561,13 +571,15 @@ class ExcelValidateActionTest(APITestCase):
             ]
             mock_read_excel.return_value = mock_df
             
-            # FIXED: Use direct URL instead of reverse()
+            # Use direct URL
             url = f'/api/excel-bulk-orders/{self.bulk_order.id}/validate/'
             response = self.client.post(url)
         
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.data['is_valid'])
-        self.assertEqual(response.data['total_rows'], 5)
+        
+        # Use correct response structure
+        self.assertTrue(response.data['validation_result']['valid'])
+        self.assertEqual(response.data['validation_result']['summary']['total_rows'], 5)
         
         # Refresh bulk order
         self.bulk_order.refresh_from_db()
@@ -578,7 +590,6 @@ class ExcelValidateActionTest(APITestCase):
         
         # Should be marked as validated
         self.assertEqual(self.bulk_order.validation_status, 'valid')
-
 
 
     def test_validate_excel_not_uploaded(self):

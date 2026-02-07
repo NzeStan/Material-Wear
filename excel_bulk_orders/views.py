@@ -571,16 +571,8 @@ class ExcelParticipantViewSet(viewsets.ReadOnlyModelViewSet):
 def excel_bulk_order_payment_webhook(request):
     """
     Paystack webhook handler for excel bulk orders
-    
+
     Reference format: EXL-{unique_code}
-    
-    Features:
-    - Idempotent (prevents double processing)
-    - Signature verification
-    - Proper logging
-    - Race condition safe
-    - Creates participants from Excel
-    - Sends styled HTML confirmation email to coordinator
     """
     if request.method != 'POST':
         logger.warning(f"Invalid webhook method: {request.method}")
@@ -588,68 +580,85 @@ def excel_bulk_order_payment_webhook(request):
             {'status': 'error', 'message': 'Method not allowed'},
             status=405
         )
-    
+
     try:
-        # ✅ STEP 1: Verify webhook signature
+        # 🔐 STEP 1: Verify webhook signature
         signature = request.META.get('HTTP_X_PAYSTACK_SIGNATURE')
-        
+
         if not signature:
             logger.error("Excel webhook received without signature")
             return JsonResponse(
                 {'status': 'error', 'message': 'Missing signature'},
                 status=401
             )
-        
+
         if not verify_paystack_signature(request.body, signature):
             logger.error("Excel webhook signature verification failed")
             return JsonResponse(
                 {'status': 'error', 'message': 'Invalid signature'},
                 status=401
             )
-        
-        # ✅ STEP 2: Parse payload
+
+        # 📦 STEP 2: Parse payload
         payload = json.loads(request.body)
-        logger.info(f"Excel webhook received: {payload.get('event')}")
-        
-        # Only process successful charges
-        if payload.get('event') != 'charge.success':
-            logger.info(f"Ignoring webhook event: {payload.get('event')}")
+        event = payload.get('event')
+        data = payload.get('data', {})
+
+        logger.info(f"Excel webhook received: {event}")
+
+        # 🚫 Ignore non-charge events
+        if event != 'charge.success':
+            logger.info(f"Ignoring webhook event: {event}")
             return JsonResponse(
                 {'status': 'success', 'message': 'Event ignored'},
                 status=200
             )
-        
-        # ✅ STEP 3: Extract reference
-        reference = payload.get('data', {}).get('reference', '')
-        
+
+        # ❌ IMPORTANT: Check payment status BEFORE touching DB
+        if data.get('status') != 'success':
+            logger.warning(
+                f"Charge event received but payment not successful: {data.get('status')}"
+            )
+            return JsonResponse(
+                {'status': 'error', 'message': 'Payment not successful'},
+                status=400
+            )
+
+        # 🔎 STEP 3: Extract and validate reference
+        reference = data.get('reference', '')
+
         if not reference or not reference.startswith('EXL-'):
             logger.error(f"Invalid reference format: {reference}")
             return JsonResponse(
                 {'status': 'error', 'message': 'Invalid reference format'},
                 status=400
             )
-        
+
         try:
-            # ✅ STEP 4: Idempotent payment processing
+            # 🔒 STEP 4: Idempotent payment processing
             with transaction.atomic():
-                # Lock order to prevent race conditions
-                bulk_order = ExcelBulkOrder.objects.select_for_update().get(
-                    reference=reference
+                bulk_order = (
+                    ExcelBulkOrder.objects
+                    .select_for_update()
+                    .get(reference=reference)
                 )
-                
-                # ✅ CHECK: Already processed?
+
+                # Already processed → idempotent exit
                 if bulk_order.payment_status:
                     logger.info(
-                        f"⚠️ Payment already processed for {reference}. "
+                        f"Payment already processed for {reference}. "
                         f"Skipping duplicate webhook."
                     )
-                    return JsonResponse({
-                        'status': 'success',
-                        'message': 'Payment already processed',
-                        'reference': reference
-                    }, status=200)
-                
-                # Mark as paid
+                    return JsonResponse(
+                        {
+                            'status': 'success',
+                            'message': 'Payment already processed',
+                            'reference': reference
+                        },
+                        status=200
+                    )
+
+                # ✅ Mark payment as successful
                 bulk_order.payment_status = True
                 bulk_order.paystack_reference = reference
                 bulk_order.validation_status = 'completed'
@@ -659,55 +668,59 @@ def excel_bulk_order_payment_webhook(request):
                     'validation_status',
                     'updated_at'
                 ])
-            
-            # ✅ STEP 5: Create participants (OUTSIDE transaction to avoid race conditions)
+
+            # 📂 STEP 5: Create participants (outside transaction)
             import requests
             from io import BytesIO
-            
-            # Download Excel file from Cloudinary
+
             response = requests.get(bulk_order.uploaded_file)
             excel_file = BytesIO(response.content)
-            
-            # Create participants from Excel
+
             participants_count = create_participants_from_excel(
                 bulk_order,
                 excel_file
             )
-            
+
             logger.info(
                 f"Created {participants_count} participants for {reference}"
             )
-            
-            # ✅ STEP 6: Send styled confirmation email to coordinator
-            send_bulk_order_confirmation_email(bulk_order, participants_count)
-            
-            logger.info(
-                f"✅ Excel bulk order payment successful: {reference}. "
-                f"Created {participants_count} participants. "
-                f"Email sent to {bulk_order.coordinator_email}"
+
+            # 📧 STEP 6: Send confirmation email
+            send_bulk_order_confirmation_email(
+                bulk_order,
+                participants_count
             )
-            
-            return JsonResponse({
-                'status': 'success',
-                'message': 'Payment verified, participants created, email sent',
-                'reference': reference,
-                'participants_created': participants_count
-            }, status=200)
-            
+
+            logger.info(
+                f"Excel bulk order payment successful: {reference}. "
+                f"Participants: {participants_count}"
+            )
+
+            return JsonResponse(
+                {
+                    'status': 'success',
+                    'message': 'Payment verified, participants created, email sent',
+                    'reference': reference,
+                    'participants_created': participants_count
+                },
+                status=200
+            )
+
         except ExcelBulkOrder.DoesNotExist:
             logger.error(f"ExcelBulkOrder not found: {reference}")
             return JsonResponse(
                 {'status': 'error', 'message': 'Order not found'},
                 status=404
             )
-    
+
     except json.JSONDecodeError:
         logger.error("Invalid JSON in excel webhook payload")
         return JsonResponse(
             {'status': 'error', 'message': 'Invalid JSON'},
             status=400
         )
-    except Exception as e:
+
+    except Exception:
         logger.exception("Unexpected error processing excel webhook")
         return JsonResponse(
             {'status': 'error', 'message': 'Internal server error'},
