@@ -519,7 +519,7 @@ class ExcelValidateActionTest(APITestCase):
     @patch('excel_bulk_orders.utils.validate_excel_file')
     def test_validate_excel_with_coupons(self, mock_validate):
         """Test Excel validation with some coupon entries"""
-        from excel_bulk_orders.models import ExcelCouponCode  # CORRECTED
+        from excel_bulk_orders.models import ExcelCouponCode
         from unittest.mock import Mock
         
         # Create coupons for this bulk order
@@ -547,8 +547,8 @@ class ExcelValidateActionTest(APITestCase):
         self.bulk_order.uploaded_file = 'https://example.com/uploaded.xlsx'
         self.bulk_order.save()
         
-        # Mock Excel reading
-        with patch('excel_bulk_orders.views.pd.read_excel') as mock_read_excel:
+        # FIXED: Patch pandas at module level, not views.pd
+        with patch('pandas.read_excel') as mock_read_excel:
             # Create mock DataFrame
             mock_df = Mock()
             mock_df.__len__ = Mock(return_value=5)
@@ -572,13 +572,12 @@ class ExcelValidateActionTest(APITestCase):
         # Refresh bulk order
         self.bulk_order.refresh_from_db()
         
-        # CORRECTED: 5 total - 2 with valid coupons = 3 chargeable × 10,000 = 30,000
+        # 5 total - 2 with valid coupons = 3 chargeable × 10,000 = 30,000
         expected_amount = Decimal('30000.00')
         self.assertEqual(self.bulk_order.total_amount, expected_amount)
         
         # Should be marked as validated
         self.assertEqual(self.bulk_order.validation_status, 'valid')
-
 
 
     def test_validate_excel_not_uploaded(self):

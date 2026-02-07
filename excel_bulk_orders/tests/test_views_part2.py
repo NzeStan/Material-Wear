@@ -8,7 +8,7 @@ Coverage:
 - Security: CSRF protection, authentication bypass attempts
 """
 from decimal import Decimal
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from rest_framework.test import APIClient, APITestCase
@@ -239,6 +239,7 @@ class ExcelParticipantViewSetTest(APITestCase):
         self.assertEqual(len(response.data.get('results', [])), 0)
 
 
+@override_settings(PAYSTACK_SECRET_KEY='test_secret_key')  # FIXED: Apply to entire class
 class ExcelBulkOrderWebhookTest(APITestCase):
     """Test webhook endpoint for Excel bulk orders"""
     
@@ -248,19 +249,18 @@ class ExcelBulkOrderWebhookTest(APITestCase):
         self.webhook_secret = 'test_secret_key'
         
         # Create bulk order with correct fields
-        with self.settings(PAYSTACK_SECRET_KEY=self.webhook_secret):
-            self.bulk_order = ExcelBulkOrder.objects.create(
-                reference='EXL-WEBHOOK123',
-                title='Test Bulk Order',
-                coordinator_name='Test Coordinator',
-                coordinator_email='coordinator@example.com',
-                coordinator_phone='08012345678',
-                price_per_participant=Decimal('10000.00'),
-                total_amount=Decimal('50000.00'),
-                validation_status='valid',
-                payment_status=False,  # CORRECTED: BooleanField, must be False not None
-                template_file='https://example.com/template.xlsx'
-            )
+        self.bulk_order = ExcelBulkOrder.objects.create(
+            reference='EXL-WEBHOOK123',
+            title='Test Bulk Order',
+            coordinator_name='Test Coordinator',
+            coordinator_email='coordinator@example.com',
+            coordinator_phone='08012345678',
+            price_per_participant=Decimal('10000.00'),
+            total_amount=Decimal('50000.00'),
+            validation_status='valid',
+            payment_status=False,  # CORRECTED: BooleanField
+            template_file='https://example.com/template.xlsx'
+        )
     
     def _generate_signature(self, payload):
         """Generate Paystack webhook signature"""
@@ -351,7 +351,7 @@ class ExcelBulkOrderWebhookTest(APITestCase):
         
         self.assertEqual(response.status_code, 200)
         self.bulk_order.refresh_from_db()
-        self.assertIsNone(self.bulk_order.payment_status)  # Should remain None
+        self.assertFalse(self.bulk_order.payment_status)  # FIXED: Should remain False
     
     def test_webhook_invalid_reference_format(self):
         """Test webhook with invalid reference format"""
@@ -374,7 +374,7 @@ class ExcelBulkOrderWebhookTest(APITestCase):
         
         self.assertEqual(response.status_code, 200)
     
-    @patch('excel_bulk_orders.utils.validate_excel_file')  # CORRECTED: proper function name
+    @patch('excel_bulk_orders.utils.validate_excel_file')  # FIXED: Correct function name
     def test_webhook_idempotency(self, mock_validate):
         """Test webhook idempotency - multiple calls don't duplicate participants"""
         # Set uploaded_file for the bulk order
@@ -402,8 +402,8 @@ class ExcelBulkOrderWebhookTest(APITestCase):
         
         signature = self._generate_signature(payload)
         
-        # Mock the Excel reading to return sample data
-        with patch('excel_bulk_orders.views.pd.read_excel') as mock_read_excel:
+        # FIXED: Patch pandas at module level, not views.pd
+        with patch('pandas.read_excel') as mock_read_excel:
             mock_df = Mock()
             mock_df.iterrows.return_value = [
                 (0, {'Full Name': 'John Doe', 'Size': 'Large', 'Coupon Code': ''}),
@@ -456,9 +456,9 @@ class ExcelBulkOrderWebhookTest(APITestCase):
         
         self.assertEqual(response.status_code, 400)
         self.bulk_order.refresh_from_db()
-        self.assertIsNone(self.bulk_order.payment_status)
+        self.assertFalse(self.bulk_order.payment_status)  # FIXED: Should remain False
     
-    @patch('excel_bulk_orders.utils.validate_excel_file')  # CORRECTED: proper function name
+    @patch('excel_bulk_orders.utils.validate_excel_file')
     def test_webhook_file_download_failure(self, mock_validate):
         """Test webhook handling when file validation fails"""
         # Set uploaded_file
@@ -488,7 +488,7 @@ class ExcelBulkOrderWebhookTest(APITestCase):
         self.assertEqual(response.status_code, 500)
     
     @patch('excel_bulk_orders.utils.create_participants_from_excel')
-    @patch('excel_bulk_orders.utils.validate_excel_file')  # CORRECTED: proper function name
+    @patch('excel_bulk_orders.utils.validate_excel_file')
     def test_webhook_participant_creation_failure(self, mock_validate, mock_create):
         """Test webhook handling when participant creation fails"""
         # Set uploaded_file
@@ -522,7 +522,7 @@ class ExcelBulkOrderWebhookTest(APITestCase):
         
         self.assertEqual(response.status_code, 500)
     
-    @patch('excel_bulk_orders.utils.validate_excel_file')  # CORRECTED: proper function name
+    @patch('excel_bulk_orders.utils.validate_excel_file')
     def test_webhook_success_creates_participants(self, mock_validate):
         """Test successful webhook processing creates participants"""
         # Set uploaded_file
@@ -547,8 +547,8 @@ class ExcelBulkOrderWebhookTest(APITestCase):
         
         signature = self._generate_signature(payload)
         
-        # Mock the Excel reading to return sample data
-        with patch('excel_bulk_orders.views.pd.read_excel') as mock_read_excel:
+        # FIXED: Patch pandas at module level
+        with patch('pandas.read_excel') as mock_read_excel:
             mock_df = Mock()
             mock_df.iterrows.return_value = [
                 (0, {'Full Name': 'John Doe', 'Size': 'Large', 'Coupon Code': ''}),
@@ -568,7 +568,7 @@ class ExcelBulkOrderWebhookTest(APITestCase):
         
         # Verify bulk order status updated
         self.bulk_order.refresh_from_db()
-        self.assertEqual(self.bulk_order.payment_status, 'completed')
+        self.assertTrue(self.bulk_order.payment_status)  # FIXED: Now True after payment
         
         # Verify participants created
         participants = ExcelParticipant.objects.filter(bulk_order=self.bulk_order)
@@ -596,6 +596,8 @@ class ExcelBulkOrderWebhookTest(APITestCase):
         )
         
         self.assertIn(response.status_code, [200, 400])
+
+
 
 
 class SecurityAndEdgeCaseTests(APITestCase):
