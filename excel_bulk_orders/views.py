@@ -548,13 +548,21 @@ class ExcelParticipantViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ExcelParticipantSerializer
     permission_classes = [permissions.AllowAny]
     
+
     def get_queryset(self):
         """Filter by bulk_order if specified"""
         queryset = ExcelParticipant.objects.all()
         
         bulk_order_id = self.request.query_params.get('bulk_order')
         if bulk_order_id:
-            queryset = queryset.filter(bulk_order_id=bulk_order_id)
+            # Validate UUID format to prevent ValidationError
+            try:
+                import uuid
+                uuid.UUID(bulk_order_id)  # Will raise ValueError if invalid
+                queryset = queryset.filter(bulk_order_id=bulk_order_id)
+            except (ValueError, AttributeError):
+                # Invalid UUID format - return empty queryset
+                queryset = queryset.none()
         
         return queryset.select_related('bulk_order', 'coupon')
     
