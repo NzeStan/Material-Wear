@@ -244,22 +244,22 @@ class ExcelBulkOrderWebhookTest(APITestCase):
     
     def setUp(self):
         """Set up test data"""
-        self.webhook_url = '/api/webhook/'  # CORRECTED URL
+        self.webhook_url = '/api/webhook/'
         self.webhook_secret = 'test_secret_key'
         
-        # CORRECTED: Use proper field names for ExcelBulkOrder
+        # Create bulk order with correct fields
         with self.settings(PAYSTACK_SECRET_KEY=self.webhook_secret):
             self.bulk_order = ExcelBulkOrder.objects.create(
-                reference='EXL-WEBHOOK123',  # CORRECTED: 'reference' not 'order_reference'
-                title='Test Bulk Order',  # ADDED: required field
+                reference='EXL-WEBHOOK123',
+                title='Test Bulk Order',
                 coordinator_name='Test Coordinator',
                 coordinator_email='coordinator@example.com',
                 coordinator_phone='08012345678',
-                price_per_participant=Decimal('10000.00'),  # CORRECTED: 'price_per_participant' not 'amount_per_item'
+                price_per_participant=Decimal('10000.00'),
                 total_amount=Decimal('50000.00'),
-                validation_status='validated',  # CORRECTED: 'validation_status' not 'status'
-                payment_status=None,  # ADDED: explicit payment_status
-                template_file='https://example.com/template.xlsx'  # CORRECTED: 'template_file' not 'excel_template_url'
+                validation_status='valid',
+                payment_status=False,  # CORRECTED: BooleanField, must be False not None
+                template_file='https://example.com/template.xlsx'
             )
     
     def _generate_signature(self, payload):

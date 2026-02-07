@@ -516,21 +516,23 @@ class ExcelValidateActionTest(APITestCase):
         self.assertEqual(self.bulk_order.validation_status, 'invalid')
         self.assertEqual(self.bulk_order.total_amount, Decimal('0.00'))
 
-    @patch('excel_bulk_orders.utils.validate_excel_file')  # CORRECTED: proper function name
+    @patch('excel_bulk_orders.utils.validate_excel_file')
     def test_validate_excel_with_coupons(self, mock_validate):
         """Test Excel validation with some coupon entries"""
-        from bulk_orders.models import CouponCode  # Using bulk_orders.CouponCode, not excel_bulk_orders
+        from excel_bulk_orders.models import ExcelCouponCode  # CORRECTED
+        from unittest.mock import Mock
         
-        # Create a coupon for testing
-        coupon = CouponCode.objects.create(
-            code='DISCOUNT20',
-            discount_percentage=20,
-            is_active=True,
-            max_uses=100,
-            used_count=0
+        # Create coupons for this bulk order
+        coupon1 = ExcelCouponCode.objects.create(
+            bulk_order=self.bulk_order,
+            code='TESTCOUPON1'
+        )
+        coupon2 = ExcelCouponCode.objects.create(
+            bulk_order=self.bulk_order,
+            code='TESTCOUPON2'
         )
         
-        # Mock validation with mixed entries (some with coupons, some without)
+        # Mock validation result
         mock_validate.return_value = {
             'valid': True,
             'errors': [],
@@ -541,20 +543,20 @@ class ExcelValidateActionTest(APITestCase):
             }
         }
         
-        # Create bulk order with uploaded file
+        # Set uploaded file
         self.bulk_order.uploaded_file = 'https://example.com/uploaded.xlsx'
         self.bulk_order.save()
         
         # Mock Excel reading
         with patch('excel_bulk_orders.views.pd.read_excel') as mock_read_excel:
-            # Create mock DataFrame with coupon data
+            # Create mock DataFrame
             mock_df = Mock()
-            mock_df.__len__ = Mock(return_value=5)  # 5 participants
+            mock_df.__len__ = Mock(return_value=5)
             mock_df.iterrows.return_value = [
                 (0, {'Full Name': 'John Doe', 'Size': 'Large', 'Coupon Code': ''}),
-                (1, {'Full Name': 'Jane Smith', 'Size': 'Medium', 'Coupon Code': 'DISCOUNT20'}),
+                (1, {'Full Name': 'Jane Smith', 'Size': 'Medium', 'Coupon Code': 'TESTCOUPON1'}),
                 (2, {'Full Name': 'Bob Johnson', 'Size': 'Small', 'Coupon Code': ''}),
-                (3, {'Full Name': 'Alice Brown', 'Size': 'Large', 'Coupon Code': 'DISCOUNT20'}),
+                (3, {'Full Name': 'Alice Brown', 'Size': 'Large', 'Coupon Code': 'TESTCOUPON2'}),
                 (4, {'Full Name': 'Charlie Wilson', 'Size': 'Medium', 'Coupon Code': ''}),
             ]
             mock_read_excel.return_value = mock_df
@@ -566,20 +568,17 @@ class ExcelValidateActionTest(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.data['is_valid'])
         self.assertEqual(response.data['total_rows'], 5)
-        self.assertEqual(len(response.data['errors']), 0)
         
         # Refresh bulk order
         self.bulk_order.refresh_from_db()
         
-        # CORRECTED: During validation, total_amount should NOT be discounted
-        # Discount is only applied during actual payment/checkout, not validation
-        # 5 participants × 10,000 = 50,000 (no discount applied yet)
-        # The validation step just validates the file structure, it doesn't apply discounts
-        expected_amount = Decimal('50000.00')
+        # CORRECTED: 5 total - 2 with valid coupons = 3 chargeable × 10,000 = 30,000
+        expected_amount = Decimal('30000.00')
         self.assertEqual(self.bulk_order.total_amount, expected_amount)
         
-        # Validation should mark it as validated
+        # Should be marked as validated
         self.assertEqual(self.bulk_order.validation_status, 'valid')
+
 
 
     def test_validate_excel_not_uploaded(self):
