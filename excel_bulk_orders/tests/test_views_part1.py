@@ -547,7 +547,7 @@ class ExcelValidateActionTest(APITestCase):
         self.bulk_order.uploaded_file = 'https://example.com/uploaded.xlsx'
         self.bulk_order.save()
         
-        # FIXED: Patch pandas at module level, not views.pd
+        # Patch pandas at module level
         with patch('pandas.read_excel') as mock_read_excel:
             # Create mock DataFrame
             mock_df = Mock()
@@ -561,8 +561,8 @@ class ExcelValidateActionTest(APITestCase):
             ]
             mock_read_excel.return_value = mock_df
             
-            # Call validate endpoint
-            url = reverse('excelbulkorder-validate', kwargs={'pk': self.bulk_order.pk})
+            # FIXED: Use direct URL instead of reverse()
+            url = f'/api/excel-bulk-orders/{self.bulk_order.id}/validate/'
             response = self.client.post(url)
         
         self.assertEqual(response.status_code, 200)
@@ -578,6 +578,7 @@ class ExcelValidateActionTest(APITestCase):
         
         # Should be marked as validated
         self.assertEqual(self.bulk_order.validation_status, 'valid')
+
 
 
     def test_validate_excel_not_uploaded(self):
