@@ -71,6 +71,6 @@ asgiref==3.8.1
 typing_extensions==4.12.2
 openpyxl==3.1.5
 pandas==3.0.0
-
+python-magic==0.4.27
 # Security
 cryptography==42.0.5

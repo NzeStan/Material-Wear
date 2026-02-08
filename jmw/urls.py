@@ -50,9 +50,11 @@ urlpatterns = [
     path("api/generate/", include("orderitem_generation.urls")),
     path('api/referrals/', include('referrals.urls')),
     path('api/', include('excel_bulk_orders.urls')),
+    path('api/', include('image_bulk_orders.urls')),
 ]
 if settings.DEBUG: # new
     import debug_toolbar
     urlpatterns = [
     path("__debug__/", include(debug_toolbar.urls)),
     ] + urlpatterns
+
