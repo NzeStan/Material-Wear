@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+    <style>
+        /* Same styles as single_representatives.html */
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.4;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 15px;
+        }
+        h1 {
+            margin: 0;
+            font-size: 20pt;
+            color: #2c3e50;
+        }
+        .meta {
+            margin-top: 10px;
+            font-size: 9pt;
+            color: #666;
+        }
+        .section {
+            page-break-inside: avoid;
+            margin-bottom: 40px;
+        }
+        .section-header {
+            background: #34495e;
+            color: white;
+            padding: 12px;
+            font-size: 14pt;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th {
+            background: #7f8c8d;
+            color: white;
+            padding: 8px;
+            text-align: left;
+            font-size: 9pt;
+        }
+        td {
+            padding: 6px;
+            border-bottom: 1px solid #ddd;
+            font-size: 9pt;
+        }
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        .count-badge {
+            background: #3498db;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 9pt;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ title }}</h1>
+        <div class="meta">
+            Generated: {{ generated_at|date:"F d, Y - H:i" }}
+            <br>
+            Total Representatives: <span class="count-badge">{{ total_count }}</span>
+            <br>
+            Grouped by: {{ group_by|title }}
+        </div>
+    </div>
+
+    {% for section in sections %}
+    <div class="section">
+        <div class="section-header">
+            {{ section.title }}
+            <span class="count-badge">{{ section.count }}</span>
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>Department</th>
+                    <th>Level/Tenure</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rep in section.representatives %}
+                <tr>
+                    <td>{{ rep.display_name }}</td>
+                    <td>{{ rep.get_role_display }}</td>
+                    <td>{{ rep.department.abbreviation }}</td>
+                    <td>
+                        {% if rep.role == 'CLASS_REP' %}
+                            {{ rep.current_level_display|default:"-" }}
+                        {% else %}
+                            {{ rep.tenure_start_year }}
+                        {% endif %}
+                    </td>
+                    <td>{{ rep.phone_number }}</td>
+                    <td>{{ rep.email|default:"-" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endfor %}
+
+    <div style="margin-top: 40px; text-align: center; font-size: 8pt; color: #666;">
+        Academic Representatives Directory | Material_Wear Project
+    </div>
+</body>
+</html>

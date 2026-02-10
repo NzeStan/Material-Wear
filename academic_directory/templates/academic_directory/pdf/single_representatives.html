@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.4;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 15px;
+        }
+        h1 {
+            margin: 0;
+            font-size: 20pt;
+            color: #2c3e50;
+        }
+        .meta {
+            margin-top: 10px;
+            font-size: 9pt;
+            color: #666;
+        }
+        .filters {
+            background: #f8f9fa;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .filter-label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section-title {
+            font-size: 14pt;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th {
+            background: #34495e;
+            color: white;
+            padding: 10px;
+            text-align: left;
+            font-size: 10pt;
+        }
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+            font-size: 9pt;
+        }
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 8pt;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+        .count-badge {
+            background: #3498db;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 9pt;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ title }}</h1>
+        <div class="meta">
+            Generated: {{ generated_at|date:"F d, Y - H:i" }}
+            <br>
+            Total Representatives: <span class="count-badge">{{ total_count }}</span>
+        </div>
+    </div>
+
+    {% if filters %}
+    <div class="filters">
+        <strong>Filters Applied:</strong>
+        {% for key, value in filters.items %}
+            <span class="filter-label">{{ key|title }}:</span> {{ value }}
+            {% if not forloop.last %} | {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if class_reps %}
+    <div class="section">
+        <h2 class="section-title">Class Representatives ({{ class_reps.count }})</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Department</th>
+                    <th>Level</th>
+                    <th>Phone</th>
+                    <th>WhatsApp</th>
+                    <th>Email</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rep in class_reps %}
+                <tr>
+                    <td>{{ rep.display_name }}</td>
+                    <td>{{ rep.department.abbreviation }}</td>
+                    <td>{{ rep.current_level_display|default:"-" }}</td>
+                    <td>{{ rep.phone_number }}</td>
+                    <td>{{ rep.whatsapp_number|default:"-" }}</td>
+                    <td>{{ rep.email|default:"-" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if dept_presidents %}
+    <div class="section">
+        <h2 class="section-title">Department Presidents ({{ dept_presidents.count }})</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Department</th>
+                    <th>Tenure Start</th>
+                    <th>Phone</th>
+                    <th>WhatsApp</th>
+                    <th>Email</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rep in dept_presidents %}
+                <tr>
+                    <td>{{ rep.display_name }}</td>
+                    <td>{{ rep.department.abbreviation }}</td>
+                    <td>{{ rep.tenure_start_year }}</td>
+                    <td>{{ rep.phone_number }}</td>
+                    <td>{{ rep.whatsapp_number|default:"-" }}</td>
+                    <td>{{ rep.email|default:"-" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if faculty_presidents %}
+    <div class="section">
+        <h2 class="section-title">Faculty Presidents ({{ faculty_presidents.count }})</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Faculty</th>
+                    <th>Tenure Start</th>
+                    <th>Phone</th>
+                    <th>WhatsApp</th>
+                    <th>Email</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rep in faculty_presidents %}
+                <tr>
+                    <td>{{ rep.display_name }}</td>
+                    <td>{{ rep.faculty.abbreviation }}</td>
+                    <td>{{ rep.tenure_start_year }}</td>
+                    <td>{{ rep.phone_number }}</td>
+                    <td>{{ rep.whatsapp_number|default:"-" }}</td>
+                    <td>{{ rep.email|default:"-" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        Academic Representatives Directory | Material_Wear Project
+        <br>
+        This document contains {{ total_count }} representative contacts
+    </div>
+</body>
+</html>

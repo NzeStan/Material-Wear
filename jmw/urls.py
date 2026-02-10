@@ -50,6 +50,7 @@ urlpatterns = [
     path("api/generate/", include("orderitem_generation.urls")),
     path('api/referrals/', include('referrals.urls')),
     path('api/', include('excel_bulk_orders.urls')),
+    path('api/v1/academic-directory/', include('academic_directory.urls')),
     #path('api/', include('image_bulk_orders.urls')),
 ]
 if settings.DEBUG: # new

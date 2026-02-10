@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>New Representative Submission</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: #3498db;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background: #f8f9fa;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-top: none;
+        }
+        .info-block {
+            background: white;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #3498db;
+        }
+        .label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>New Representative Submission</h2>
+        </div>
+        
+        <div class="content">
+            <p>A new academic representative has been submitted to the directory:</p>
+            
+            <div class="info-block">
+                <p><span class="label">Name:</span> {{ display_name }}</p>
+                <p><span class="label">Phone:</span> {{ phone_number }}</p>
+                {% if email %}
+                <p><span class="label">Email:</span> {{ email }}</p>
+                {% endif %}
+                <p><span class="label">Role:</span> {{ role }}</p>
+                <p><span class="label">University:</span> {{ university }}</p>
+                <p><span class="label">Faculty:</span> {{ faculty }}</p>
+                <p><span class="label">Department:</span> {{ department }}</p>
+                {% if current_level %}
+                <p><span class="label">Current Level:</span> {{ current_level }}</p>
+                {% endif %}
+            </div>
+            
+            <p>This submission requires verification. Please review and verify or dispute this entry.</p>
+            
+            <a href="{{ admin_url }}" class="button">Review in Admin Panel</a>
+        </div>
+        
+        <div class="footer">
+            <p>Academic Representatives Directory | Material_Wear</p>
+            <p>This is an automated email. Please do not reply.</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -128,6 +128,7 @@ INSTALLED_APPS = [
     "orderitem_generation.apps.OrderitemGenerationConfig",
     "referrals.apps.ReferralsConfig",
     'excel_bulk_orders.apps.ExcelBulkOrdersConfig',
+    'academic_directory.apps.AcademicDirectoryConfig',
 ]
 
 if DEBUG:
