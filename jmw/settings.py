@@ -128,7 +128,6 @@ INSTALLED_APPS = [
     "orderitem_generation.apps.OrderitemGenerationConfig",
     "referrals.apps.ReferralsConfig",
     'excel_bulk_orders.apps.ExcelBulkOrdersConfig',
-    "image_bulk_orders.apps.ImageBulkOrdersConfig",
 ]
 
 if DEBUG:

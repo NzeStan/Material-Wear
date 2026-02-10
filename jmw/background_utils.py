@@ -368,3 +368,5 @@ def generate_payment_receipt_pdf_task_bulk(order_entry_id):
 
     except Exception as e:
         logger.error(f"Error generating payment receipt PDF: {str(e)}")
+
+
