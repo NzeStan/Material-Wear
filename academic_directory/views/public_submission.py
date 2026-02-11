@@ -9,7 +9,7 @@ from rest_framework.permissions import AllowAny
 
 from jmw.throttling import StrictAnonRateThrottle
 from ..serializers import BulkSubmissionSerializer
-from ..utils.notifications import send_new_submission_email, create_submission_notification
+from ..utils.notifications import create_submission_notification
 
 logger = logging.getLogger(__name__)
 
@@ -51,13 +51,14 @@ class PublicSubmissionView(APIView):
         # Queue async email notification for each newly created representative
         for created_item in results.get('created', []):
             try:
-                rep = created_item['representative']
-                send_new_submission_email(rep)
+                rep_data = created_item['representative']
+                rep_id = rep_data['id'] if isinstance(rep_data, dict) else rep_data.id
+                from jmw.background_utils import send_new_submission_email_async
+                send_new_submission_email_async(rep_id)
             except Exception as exc:
-                # Never let email failure break the response
                 logger.error(
                     f"public_submission: failed to queue notification email "
-                    f"for representative {created_item.get('representative')}: {exc}"
+                    f"for representative id={created_item.get('representative', {}).get('id')}: {exc}"
                 )
 
         return Response(

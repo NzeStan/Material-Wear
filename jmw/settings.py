@@ -628,3 +628,10 @@ FRONTEND_URL = 'https://jumemegawears.com' if not DEBUG else 'http://localhost:3
 # WhatsApp Number
 # ==============================================================================
 WHATSAPP_NUMBER = env.str("WHATSAPP_NUMBER", default="2348071000804") # JMW Contact Number
+
+
+# Set SITE_URL based on environment
+if DEBUG:
+    SITE_URL = 'http://127.0.0.1:8000'
+else:
+    SITE_URL = 'https://yourdomain.com'
