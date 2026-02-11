@@ -12,110 +12,138 @@
             font-family: Arial, sans-serif;
             font-size: 11pt;
             line-height: 1.4;
+            color: #1F2937;
         }
+        /* ── Header ── */
         .header {
             text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #333;
-            padding-bottom: 15px;
+            margin-bottom: 24px;
+            padding-bottom: 14px;
+            border-bottom: 3px solid #064E3B;
         }
-        h1 {
+        .header h1 {
+            margin: 0 0 4px;
+            font-size: 18pt;
+            color: #064E3B;
+            font-weight: 700;
+        }
+        .header .subtitle {
             margin: 0;
-            font-size: 20pt;
-            color: #2c3e50;
+            font-size: 10pt;
+            color: #F59E0B;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         .meta {
-            margin-top: 10px;
-            font-size: 9pt;
-            color: #666;
+            margin-top: 6px;
+            font-size: 8pt;
+            color: #6B7280;
         }
+        /* ── Filters block ── */
         .filters {
-            background: #f8f9fa;
-            padding: 10px;
-            margin-bottom: 20px;
+            background-color: #FFFBEB;
+            border: 1px solid #F59E0B;
             border-radius: 4px;
+            padding: 10px 14px;
+            margin-bottom: 20px;
+            font-size: 9pt;
         }
-        .filter-label {
-            font-weight: bold;
-            color: #2c3e50;
+        .filters strong {
+            color: #064E3B;
         }
+        /* ── Section ── */
         .section {
-            margin-bottom: 30px;
+            margin-bottom: 28px;
+            page-break-inside: avoid;
         }
         .section-title {
-            font-size: 14pt;
-            font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 15px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #ddd;
+            font-size: 12pt;
+            font-weight: 700;
+            color: #064E3B;
+            margin-bottom: 10px;
+            padding-bottom: 4px;
+            border-bottom: 2px solid #F59E0B;
         }
+        /* ── Tables ── */
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-        th {
-            background: #34495e;
-            color: white;
-            padding: 10px;
-            text-align: left;
-            font-size: 10pt;
-        }
-        td {
-            padding: 8px;
-            border-bottom: 1px solid #ddd;
+            margin-bottom: 16px;
             font-size: 9pt;
         }
-        tr:nth-child(even) {
-            background: #f8f9fa;
+        thead th {
+            background: linear-gradient(135deg, #064E3B 0%, #065F46 100%);
+            color: #FFFBEB;
+            padding: 9px 8px;
+            text-align: left;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            font-size: 8pt;
         }
+        tbody td {
+            padding: 7px 8px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+        tbody tr:nth-child(even) {
+            background-color: #FFFBEB;
+        }
+        tbody tr:nth-child(odd) {
+            background-color: #ffffff;
+        }
+        /* ── Count badge ── */
+        .count-badge {
+            display: inline-block;
+            background-color: #F59E0B;
+            color: #ffffff;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 8pt;
+            font-weight: 700;
+            margin-left: 6px;
+        }
+        /* ── Footer ── */
         .footer {
-            margin-top: 40px;
+            margin-top: 36px;
             text-align: center;
             font-size: 8pt;
-            color: #666;
-            border-top: 1px solid #ddd;
+            color: #6B7280;
+            border-top: 1px solid #E5E7EB;
             padding-top: 10px;
-        }
-        .count-badge {
-            background: #3498db;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 3px;
-            font-size: 9pt;
         }
     </style>
 </head>
 <body>
+
     <div class="header">
         <h1>{{ title }}</h1>
-        <div class="meta">
-            Generated: {{ generated_at|date:"F d, Y - H:i" }}
-            <br>
-            Total Representatives: <span class="count-badge">{{ total_count }}</span>
-        </div>
+        <p class="subtitle">Academic Representatives Directory</p>
+        <p class="meta">Generated: {{ generated_at|date:"d M Y, H:i" }} &nbsp;|&nbsp; Total: {{ total_count }} representative{{ total_count|pluralize }}</p>
     </div>
 
     {% if filters %}
     <div class="filters">
-        <strong>Filters Applied:</strong>
+        <strong>Filters applied:</strong>
         {% for key, value in filters.items %}
-            <span class="filter-label">{{ key|title }}:</span> {{ value }}
-            {% if not forloop.last %} | {% endif %}
+            &nbsp; {{ key }}: <strong>{{ value }}</strong>{% if not forloop.last %} &nbsp;·{% endif %}
         {% endfor %}
     </div>
     {% endif %}
 
     {% if class_reps %}
     <div class="section">
-        <h2 class="section-title">Class Representatives ({{ class_reps.count }})</h2>
+        <h2 class="section-title">
+            Class Representatives
+            <span class="count-badge">{{ class_reps.count }}</span>
+        </h2>
         <table>
             <thead>
                 <tr>
                     <th>Name</th>
                     <th>Department</th>
                     <th>Level</th>
+                    <th>Entry Year</th>
                     <th>Phone</th>
                     <th>WhatsApp</th>
                     <th>Email</th>
@@ -126,10 +154,11 @@
                 <tr>
                     <td>{{ rep.display_name }}</td>
                     <td>{{ rep.department.abbreviation }}</td>
-                    <td>{{ rep.current_level_display|default:"-" }}</td>
+                    <td>{{ rep.current_level_display|default:"—" }}</td>
+                    <td>{{ rep.entry_year }}</td>
                     <td>{{ rep.phone_number }}</td>
-                    <td>{{ rep.whatsapp_number|default:"-" }}</td>
-                    <td>{{ rep.email|default:"-" }}</td>
+                    <td>{{ rep.whatsapp_number|default:"—" }}</td>
+                    <td>{{ rep.email|default:"—" }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -139,7 +168,10 @@
 
     {% if dept_presidents %}
     <div class="section">
-        <h2 class="section-title">Department Presidents ({{ dept_presidents.count }})</h2>
+        <h2 class="section-title">
+            Department Presidents
+            <span class="count-badge">{{ dept_presidents.count }}</span>
+        </h2>
         <table>
             <thead>
                 <tr>
@@ -158,8 +190,8 @@
                     <td>{{ rep.department.abbreviation }}</td>
                     <td>{{ rep.tenure_start_year }}</td>
                     <td>{{ rep.phone_number }}</td>
-                    <td>{{ rep.whatsapp_number|default:"-" }}</td>
-                    <td>{{ rep.email|default:"-" }}</td>
+                    <td>{{ rep.whatsapp_number|default:"—" }}</td>
+                    <td>{{ rep.email|default:"—" }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -169,7 +201,10 @@
 
     {% if faculty_presidents %}
     <div class="section">
-        <h2 class="section-title">Faculty Presidents ({{ faculty_presidents.count }})</h2>
+        <h2 class="section-title">
+            Faculty Presidents
+            <span class="count-badge">{{ faculty_presidents.count }}</span>
+        </h2>
         <table>
             <thead>
                 <tr>
@@ -188,8 +223,8 @@
                     <td>{{ rep.faculty.abbreviation }}</td>
                     <td>{{ rep.tenure_start_year }}</td>
                     <td>{{ rep.phone_number }}</td>
-                    <td>{{ rep.whatsapp_number|default:"-" }}</td>
-                    <td>{{ rep.email|default:"-" }}</td>
+                    <td>{{ rep.whatsapp_number|default:"—" }}</td>
+                    <td>{{ rep.email|default:"—" }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -198,9 +233,10 @@
     {% endif %}
 
     <div class="footer">
-        Academic Representatives Directory | Material_Wear Project
+        Academic Representatives Directory &nbsp;|&nbsp; Material_Wear Project
         <br>
-        This document contains {{ total_count }} representative contacts
+        This document contains {{ total_count }} representative contact{{ total_count|pluralize }}.
     </div>
+
 </body>
 </html>

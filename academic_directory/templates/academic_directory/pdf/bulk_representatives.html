@@ -4,99 +4,150 @@
     <meta charset="UTF-8">
     <title>{{ title }}</title>
     <style>
-        /* Same styles as single_representatives.html */
         @page {
-            size: A4;
-            margin: 2cm;
+            size: A4 landscape;
+            margin: 1.5cm;
         }
         body {
             font-family: Arial, sans-serif;
-            font-size: 11pt;
-            line-height: 1.4;
+            font-size: 9pt;
+            line-height: 1.3;
+            color: #1F2937;
         }
+        /* ── Master Header ── */
         .header {
             text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #333;
-            padding-bottom: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid #064E3B;
         }
-        h1 {
+        .header h1 {
+            margin: 0 0 4px;
+            font-size: 15pt;
+            color: #064E3B;
+            font-weight: 700;
+        }
+        .header .sub {
             margin: 0;
-            font-size: 20pt;
-            color: #2c3e50;
-        }
-        .meta {
-            margin-top: 10px;
             font-size: 9pt;
-            color: #666;
+            color: #F59E0B;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
+        .header .meta {
+            margin-top: 4px;
+            font-size: 8pt;
+            color: #6B7280;
+        }
+        /* ── Filters ── */
+        .filters {
+            background-color: #FFFBEB;
+            border: 1px solid #F59E0B;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-bottom: 16px;
+            font-size: 8pt;
+        }
+        .filters strong {
+            color: #064E3B;
+        }
+        /* ── Section (per group) ── */
         .section {
+            margin-bottom: 24px;
             page-break-inside: avoid;
-            margin-bottom: 40px;
         }
         .section-header {
-            background: #34495e;
-            color: white;
-            padding: 12px;
-            font-size: 14pt;
-            font-weight: bold;
-            margin-bottom: 15px;
+            background: linear-gradient(135deg, #064E3B 0%, #065F46 100%);
+            color: #FFFBEB;
+            padding: 7px 12px;
+            border-radius: 4px 4px 0 0;
+            font-size: 10pt;
+            font-weight: 700;
         }
+        .section-header .count {
+            float: right;
+            background-color: #F59E0B;
+            color: #ffffff;
+            padding: 1px 8px;
+            border-radius: 10px;
+            font-size: 8pt;
+            font-weight: 700;
+        }
+        /* ── Tables ── */
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
+            margin: 0;
+            border: 1px solid #E5E7EB;
         }
-        th {
-            background: #7f8c8d;
-            color: white;
-            padding: 8px;
+        thead th {
+            background-color: #065F46;
+            color: #FFFBEB;
+            padding: 7px 6px;
             text-align: left;
-            font-size: 9pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            font-size: 7.5pt;
+            border: 1px solid #047857;
         }
-        td {
+        tbody td {
             padding: 6px;
-            border-bottom: 1px solid #ddd;
-            font-size: 9pt;
+            border: 1px solid #E5E7EB;
+            font-size: 8.5pt;
         }
-        tr:nth-child(even) {
-            background: #f8f9fa;
+        tbody tr:nth-child(even) {
+            background-color: #FFFBEB;
         }
-        .count-badge {
-            background: #3498db;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 3px;
-            font-size: 9pt;
+        tbody tr:nth-child(odd) {
+            background-color: #ffffff;
+        }
+        /* ── Footer ── */
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 7.5pt;
+            color: #6B7280;
+            border-top: 2px solid #064E3B;
+            padding-top: 8px;
         }
     </style>
 </head>
 <body>
+
     <div class="header">
         <h1>{{ title }}</h1>
-        <div class="meta">
-            Generated: {{ generated_at|date:"F d, Y - H:i" }}
-            <br>
-            Total Representatives: <span class="count-badge">{{ total_count }}</span>
-            <br>
-            Grouped by: {{ group_by|title }}
-        </div>
+        <p class="sub">Academic Representatives Directory</p>
+        <p class="meta">
+            Generated: {{ generated_at|date:"d M Y, H:i" }}
+            &nbsp;|&nbsp; Total: {{ total_count }} representative{{ total_count|pluralize }}
+            &nbsp;|&nbsp; Grouped by: {{ group_by|capfirst }}
+        </p>
     </div>
+
+    {% if filters %}
+    <div class="filters">
+        <strong>Filters:</strong>
+        {% for key, value in filters.items %}
+            &nbsp;{{ key }}: <strong>{{ value }}</strong>{% if not forloop.last %} ·{% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
 
     {% for section in sections %}
     <div class="section">
         <div class="section-header">
             {{ section.title }}
-            <span class="count-badge">{{ section.count }}</span>
+            <span class="count">{{ section.count }}</span>
         </div>
-        
         <table>
             <thead>
                 <tr>
                     <th>Name</th>
                     <th>Role</th>
                     <th>Department</th>
-                    <th>Level/Tenure</th>
+                    <th>Level / Tenure</th>
                     <th>Phone</th>
                     <th>Email</th>
                 </tr>
@@ -109,13 +160,19 @@
                     <td>{{ rep.department.abbreviation }}</td>
                     <td>
                         {% if rep.role == 'CLASS_REP' %}
-                            {{ rep.current_level_display|default:"-" }}
+                            {{ rep.current_level_display|default:"—" }}
                         {% else %}
                             {{ rep.tenure_start_year }}
                         {% endif %}
                     </td>
                     <td>{{ rep.phone_number }}</td>
-                    <td>{{ rep.email|default:"-" }}</td>
+                    <td>{{ rep.email|default:"—" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align:center;color:#6B7280;font-style:italic;">
+                        No representatives in this group.
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -123,8 +180,10 @@
     </div>
     {% endfor %}
 
-    <div style="margin-top: 40px; text-align: center; font-size: 8pt; color: #666;">
-        Academic Representatives Directory | Material_Wear Project
+    <div class="footer">
+        Academic Representatives Directory &nbsp;|&nbsp; Material_Wear Project
+        &nbsp;|&nbsp; {{ total_count }} representative contact{{ total_count|pluralize }}
     </div>
+
 </body>
 </html>

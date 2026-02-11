@@ -2,91 +2,200 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>New Representative Submission</title>
     <style>
         body {
+            margin: 0;
+            padding: 0;
             font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #1F2937;
             line-height: 1.6;
-            color: #333;
         }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
+        .wrapper {
+            max-width: 620px;
+            margin: 30px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
         .header {
-            background: #3498db;
-            color: white;
-            padding: 20px;
+            background-color: #064E3B;
+            padding: 28px 32px;
             text-align: center;
-            border-radius: 5px 5px 0 0;
+        }
+        .header h1 {
+            margin: 0;
+            color: #FFFBEB;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+        .header p {
+            margin: 6px 0 0;
+            color: #A7F3D0;
+            font-size: 13px;
         }
         .content {
-            background: #f8f9fa;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-top: none;
+            padding: 28px 32px;
         }
-        .info-block {
-            background: white;
-            padding: 15px;
-            margin: 15px 0;
-            border-left: 4px solid #3498db;
+        .content p {
+            margin: 0 0 14px;
+            font-size: 14px;
+            color: #374151;
         }
-        .label {
-            font-weight: bold;
-            color: #2c3e50;
+        .info-card {
+            background-color: #FFFBEB;
+            border-left: 4px solid #F59E0B;
+            border-radius: 0 4px 4px 0;
+            padding: 16px 20px;
+            margin: 20px 0;
         }
-        .button {
+        .info-row {
+            display: flex;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .info-row:last-child {
+            margin-bottom: 0;
+        }
+        .info-label {
+            font-weight: 700;
+            color: #064E3B;
+            min-width: 130px;
+            flex-shrink: 0;
+        }
+        .info-value {
+            color: #1F2937;
+        }
+        .badge {
             display: inline-block;
-            padding: 12px 24px;
-            background: #3498db;
-            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: #ffffff;
+            background-color: #064E3B;
+        }
+        .badge-unverified {
+            background-color: #F59E0B;
+            color: #ffffff;
+        }
+        .cta-container {
+            text-align: center;
+            margin: 24px 0 8px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 28px;
+            background-color: #064E3B;
+            color: #ffffff;
             text-decoration: none;
-            border-radius: 5px;
-            margin-top: 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .btn:hover {
+            background-color: #053a2b;
+        }
+        .notice {
+            background-color: #FEF3C7;
+            border-left: 4px solid #F59E0B;
+            padding: 12px 16px;
+            margin: 20px 0;
+            border-radius: 0 4px 4px 0;
+            font-size: 13px;
+            color: #92400E;
         }
         .footer {
+            background-color: #064E3B;
+            color: #A7F3D0;
+            padding: 20px 32px;
             text-align: center;
-            margin-top: 20px;
             font-size: 12px;
-            color: #666;
+        }
+        .footer strong {
+            color: #FFFBEB;
         }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="wrapper">
+
         <div class="header">
-            <h2>New Representative Submission</h2>
+            <h1>New Representative Submission</h1>
+            <p>Academic Directory — {{ company_name }}</p>
         </div>
-        
+
         <div class="content">
-            <p>A new academic representative has been submitted to the directory:</p>
-            
-            <div class="info-block">
-                <p><span class="label">Name:</span> {{ display_name }}</p>
-                <p><span class="label">Phone:</span> {{ phone_number }}</p>
-                {% if email %}
-                <p><span class="label">Email:</span> {{ email }}</p>
+            <p>A new academic representative has been submitted to the directory and requires verification.</p>
+
+            <div class="info-card">
+                <div class="info-row">
+                    <span class="info-label">Name:</span>
+                    <span class="info-value">{{ display_name }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Phone:</span>
+                    <span class="info-value">{{ phone_number }}</span>
+                </div>
+                {% if representative.email %}
+                <div class="info-row">
+                    <span class="info-label">Email:</span>
+                    <span class="info-value">{{ representative.email }}</span>
+                </div>
                 {% endif %}
-                <p><span class="label">Role:</span> {{ role }}</p>
-                <p><span class="label">University:</span> {{ university }}</p>
-                <p><span class="label">Faculty:</span> {{ faculty }}</p>
-                <p><span class="label">Department:</span> {{ department }}</p>
+                <div class="info-row">
+                    <span class="info-label">Role:</span>
+                    <span class="info-value">
+                        <span class="badge">{{ role }}</span>
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">University:</span>
+                    <span class="info-value">{{ university }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Faculty:</span>
+                    <span class="info-value">{{ faculty }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Department:</span>
+                    <span class="info-value">{{ department }}</span>
+                </div>
                 {% if current_level %}
-                <p><span class="label">Current Level:</span> {{ current_level }}</p>
+                <div class="info-row">
+                    <span class="info-label">Current Level:</span>
+                    <span class="info-value">{{ current_level }}</span>
+                </div>
                 {% endif %}
+                <div class="info-row">
+                    <span class="info-label">Status:</span>
+                    <span class="info-value">
+                        <span class="badge badge-unverified">Pending Verification</span>
+                    </span>
+                </div>
             </div>
-            
-            <p>This submission requires verification. Please review and verify or dispute this entry.</p>
-            
-            <a href="{{ admin_url }}" class="button">Review in Admin Panel</a>
+
+            <div class="notice">
+                This submission is awaiting verification. Please review and either verify or dispute the entry.
+            </div>
+
+            <div class="cta-container">
+                <a href="{{ admin_url }}" class="btn">Review in Admin Panel</a>
+            </div>
         </div>
-        
+
         <div class="footer">
-            <p>Academic Representatives Directory | Material_Wear</p>
-            <p>This is an automated email. Please do not reply.</p>
+            <strong>{{ company_name }}</strong> — Academic Representatives Directory
+            <br>
+            This is an automated notification. Please do not reply.
         </div>
+
     </div>
 </body>
 </html>

@@ -370,3 +370,294 @@ def generate_payment_receipt_pdf_task_bulk(order_entry_id):
         logger.error(f"Error generating payment receipt PDF: {str(e)}")
 
 
+# =============================================================================
+# ACADEMIC DIRECTORY - EMAIL & BACKGROUND TASKS (Threading / background-tasks)
+# Add this section to the bottom of jmw/background_utils.py
+# =============================================================================
+
+def send_new_submission_email_async(representative_id):
+    """
+    Send email notification to all staff admins about a new representative submission.
+    Uses threading for non-blocking delivery.
+
+    Args:
+        representative_id: int PK of the Representative instance
+    """
+    def _send():
+        try:
+            from academic_directory.models import Representative
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+
+            rep = Representative.objects.select_related(
+                'department__faculty__university'
+            ).get(id=representative_id)
+
+            admin_emails = list(
+                User.objects.filter(is_staff=True, is_active=True)
+                .exclude(email='')
+                .values_list('email', flat=True)
+            )
+
+            if not admin_emails:
+                logger.warning("academic_directory: no admin emails found — skipping new submission notification")
+                return
+
+            context = {
+                'representative': rep,
+                'university': rep.university.name,
+                'faculty': rep.faculty.name,
+                'department': rep.department.name,
+                'role': rep.get_role_display(),
+                'display_name': rep.display_name,
+                'phone_number': rep.phone_number,
+                'current_level': rep.current_level_display if rep.role == 'CLASS_REP' else None,
+                'admin_url': f"{settings.SITE_URL}/admin/academic_directory/representative/{rep.id}/change/",
+                'company_name': getattr(settings, 'COMPANY_NAME', 'Material_Wear'),
+                'primary_color': '#064E3B',
+                'accent_color': '#F59E0B',
+            }
+
+            html_message = render_to_string(
+                'academic_directory/emails/new_submission.html', context
+            )
+
+            send_email_async(
+                subject=f"New Representative Submission: {rep.display_name}",
+                message=f"New submission: {rep.display_name} ({rep.get_role_display()}) — {rep.department.name}",
+                html_message=html_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=admin_emails,
+            )
+
+            # Mark notification as emailed
+            if hasattr(rep, 'notification'):
+                rep.notification.mark_as_emailed()
+
+            logger.info(f"academic_directory: queued new submission email for rep #{representative_id}")
+
+        except Exception as e:
+            logger.error(f"academic_directory: error in send_new_submission_email_async for rep #{representative_id}: {e}")
+
+    thread = Thread(target=_send)
+    thread.daemon = True
+    thread.start()
+
+
+def send_bulk_verification_email_async(representative_ids, verifier_id):
+    """
+    Send bulk verification notification email to all staff admins.
+    Uses threading for non-blocking delivery.
+
+    Args:
+        representative_ids: list of int PKs for verified/disputed Representatives
+        verifier_id: int PK of the User who performed the action
+    """
+    def _send():
+        try:
+            from academic_directory.models import Representative
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+
+            representatives = list(
+                Representative.objects.filter(id__in=representative_ids)
+                .select_related('department__faculty__university')
+            )
+            if not representatives:
+                return
+
+            verifier = User.objects.get(id=verifier_id)
+
+            admin_emails = list(
+                User.objects.filter(is_staff=True, is_active=True)
+                .exclude(email='')
+                .values_list('email', flat=True)
+            )
+
+            if not admin_emails:
+                return
+
+            context = {
+                'representatives': representatives,
+                'count': len(representatives),
+                'verifier': verifier.get_full_name() or verifier.username,
+                'site_url': settings.SITE_URL,
+                'company_name': getattr(settings, 'COMPANY_NAME', 'Material_Wear'),
+                'primary_color': '#064E3B',
+                'accent_color': '#F59E0B',
+            }
+
+            html_message = render_to_string(
+                'academic_directory/emails/bulk_verification.html', context
+            )
+
+            send_email_async(
+                subject=f"Bulk Verification: {len(representatives)} representative(s) verified",
+                message=f"{len(representatives)} representatives were verified by {verifier.get_full_name() or verifier.username}.",
+                html_message=html_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=admin_emails,
+            )
+
+            logger.info(f"academic_directory: queued bulk verification email for {len(representatives)} reps")
+
+        except Exception as e:
+            logger.error(f"academic_directory: error in send_bulk_verification_email_async: {e}")
+
+    thread = Thread(target=_send)
+    thread.daemon = True
+    thread.start()
+
+
+def send_daily_summary_email_async():
+    """
+    Send daily summary email to admins about new unverified submissions.
+    Call this from a scheduled management command (cron / django-background-tasks).
+    Uses threading so the management command returns immediately.
+    """
+    def _send():
+        try:
+            from academic_directory.models import Representative, SubmissionNotification
+            from django.contrib.auth import get_user_model
+            from datetime import timedelta
+            User = get_user_model()
+
+            yesterday = timezone.now() - timedelta(days=1)
+            new_submissions = Representative.objects.filter(
+                verification_status='UNVERIFIED',
+                created_at__gte=yesterday,
+            ).select_related('department__faculty__university')
+
+            if not new_submissions.exists():
+                logger.info("academic_directory: daily summary — no new submissions, skipping email")
+                return
+
+            admin_emails = list(
+                User.objects.filter(is_staff=True, is_active=True)
+                .exclude(email='')
+                .values_list('email', flat=True)
+            )
+
+            if not admin_emails:
+                return
+
+            context = {
+                'submissions': new_submissions,
+                'count': new_submissions.count(),
+                'unread_count': SubmissionNotification.get_unread_count(),
+                'site_url': settings.SITE_URL,
+                'company_name': getattr(settings, 'COMPANY_NAME', 'Material_Wear'),
+                'primary_color': '#064E3B',
+                'accent_color': '#F59E0B',
+            }
+
+            html_message = render_to_string(
+                'academic_directory/emails/daily_summary.html', context
+            )
+
+            send_email_async(
+                subject=f"Daily Summary: {new_submissions.count()} new representative submission(s)",
+                message=f"{new_submissions.count()} new unverified representative(s) submitted in the last 24 hours.",
+                html_message=html_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=admin_emails,
+            )
+
+            logger.info(f"academic_directory: queued daily summary email ({new_submissions.count()} submissions)")
+
+        except Exception as e:
+            logger.error(f"academic_directory: error in send_daily_summary_email_async: {e}")
+
+    thread = Thread(target=_send)
+    thread.daemon = True
+    thread.start()
+
+
+def process_pending_notifications_async():
+    """
+    Process all SubmissionNotifications that have not yet been emailed.
+    Batches them into a single email. Non-blocking via threading.
+    Call from a scheduled management command.
+    """
+    def _send():
+        try:
+            from academic_directory.models import SubmissionNotification
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+
+            pending = SubmissionNotification.get_pending_email_notifications()
+
+            if not pending.exists():
+                return
+
+            representatives = [n.representative for n in pending]
+
+            admin_emails = list(
+                User.objects.filter(is_staff=True, is_active=True)
+                .exclude(email='')
+                .values_list('email', flat=True)
+            )
+
+            if not admin_emails:
+                return
+
+            context = {
+                'submissions': representatives,
+                'count': len(representatives),
+                'site_url': settings.SITE_URL,
+                'company_name': getattr(settings, 'COMPANY_NAME', 'Material_Wear'),
+                'primary_color': '#064E3B',
+                'accent_color': '#F59E0B',
+            }
+
+            html_message = render_to_string(
+                'academic_directory/emails/batch_notification.html', context
+            )
+
+            send_email_async(
+                subject=f"New Submissions: {len(representatives)} representative(s) added",
+                message=f"{len(representatives)} new representative submission(s) are pending verification.",
+                html_message=html_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=admin_emails,
+            )
+
+            # Mark all as emailed after queuing
+            for notification in pending:
+                notification.mark_as_emailed()
+
+            logger.info(f"academic_directory: queued batch notification email for {len(representatives)} reps")
+
+        except Exception as e:
+            logger.error(f"academic_directory: error in process_pending_notifications_async: {e}")
+
+    thread = Thread(target=_send)
+    thread.daemon = True
+    thread.start()
+
+
+@background(schedule=0)
+def check_graduation_statuses_task():
+    """
+    Check all active CLASS_REP representatives and auto-deactivate graduated ones.
+    Heavy periodic task — uses django-background-tasks.
+    Schedule daily via management command: check_graduation_statuses_task(schedule=0)
+    """
+    try:
+        from academic_directory.models import Representative
+
+        class_reps = Representative.objects.filter(role='CLASS_REP', is_active=True)
+        deactivated_count = 0
+
+        for rep in class_reps:
+            if rep.has_graduated:
+                rep.is_active = False
+                note = f"Auto-deactivated: Graduated in {rep.expected_graduation_year}"
+                rep.notes = f"{rep.notes}\n\n{note}" if rep.notes else note
+                rep.save(update_fields=['is_active', 'notes'])
+                deactivated_count += 1
+
+        logger.info(f"academic_directory: graduation check complete — deactivated {deactivated_count} rep(s)")
+
+    except Exception as e:
+        logger.error(f"academic_directory: error in check_graduation_statuses_task: {e}")

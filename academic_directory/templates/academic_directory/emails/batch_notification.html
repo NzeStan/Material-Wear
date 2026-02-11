@@ -2,71 +2,145 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>New Submissions Summary</title>
     <style>
-        /* Similar styling to new_submission.html */
         body {
+            margin: 0;
+            padding: 0;
             font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #1F2937;
             line-height: 1.6;
-            color: #333;
         }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
+        .wrapper {
+            max-width: 620px;
+            margin: 30px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
         .header {
-            background: #2c3e50;
-            color: white;
-            padding: 20px;
+            background-color: #064E3B;
+            padding: 28px 32px;
             text-align: center;
         }
-        .content {
-            background: #f8f9fa;
-            padding: 20px;
-            border: 1px solid #ddd;
+        .header h1 {
+            margin: 0;
+            color: #FFFBEB;
+            font-size: 20px;
+            font-weight: 700;
         }
-        .submission {
-            background: white;
-            padding: 10px;
-            margin: 10px 0;
-            border-left: 3px solid #3498db;
-        }
-        .button {
+        .header .sub {
             display: inline-block;
-            padding: 12px 24px;
-            background: #2c3e50;
-            color: white;
+            margin-top: 10px;
+            background-color: #F59E0B;
+            color: #ffffff;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .content {
+            padding: 28px 32px;
+        }
+        .content > p {
+            margin: 0 0 20px;
+            font-size: 14px;
+            color: #374151;
+        }
+        .submission-card {
+            background-color: #FFFBEB;
+            border-left: 4px solid #F59E0B;
+            border-radius: 0 4px 4px 0;
+            padding: 12px 16px;
+            margin-bottom: 10px;
+        }
+        .submission-card strong {
+            font-size: 14px;
+            color: #064E3B;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .submission-card .meta {
+            font-size: 12px;
+            color: #6B7280;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: #ffffff;
+            background-color: #064E3B;
+            margin-left: 4px;
+        }
+        .cta-container {
+            text-align: center;
+            margin: 24px 0 8px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 28px;
+            background-color: #064E3B;
+            color: #ffffff;
             text-decoration: none;
-            border-radius: 5px;
-            margin-top: 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .footer {
+            background-color: #064E3B;
+            color: #A7F3D0;
+            padding: 20px 32px;
+            text-align: center;
+            font-size: 12px;
+        }
+        .footer strong {
+            color: #FFFBEB;
         }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="wrapper">
+
         <div class="header">
-            <h2>New Submissions Summary</h2>
-            <p>{{ count }} new representative(s) submitted</p>
+            <h1>New Submissions Summary</h1>
+            <span class="sub">{{ count }} representative{{ count|pluralize }} pending verification</span>
         </div>
-        
+
         <div class="content">
-            <p>The following representatives have been submitted and require verification:</p>
-            
+            <p>The following representatives have been submitted to the directory and are awaiting verification:</p>
+
             {% for rep in submissions %}
-            <div class="submission">
+            <div class="submission-card">
                 <strong>{{ rep.display_name }}</strong>
-                <br>
-                {{ rep.role }} - {{ rep.department.name }}
-                <br>
-                Phone: {{ rep.phone_number }}
+                <span class="meta">
+                    {{ rep.get_role_display }}<span class="badge">{{ rep.department.abbreviation }}</span>
+                    &nbsp;·&nbsp; {{ rep.department.faculty.university.abbreviation }}
+                    &nbsp;·&nbsp; {{ rep.phone_number }}
+                </span>
             </div>
             {% endfor %}
-            
-            <a href="{{ site_url }}/admin/academic_directory/representative/" class="button">
-                Review All Submissions
-            </a>
+
+            <div class="cta-container">
+                <a href="{{ site_url }}/admin/academic_directory/representative/?verification_status=UNVERIFIED"
+                   class="btn">
+                    Review All Pending Submissions
+                </a>
+            </div>
         </div>
+
+        <div class="footer">
+            <strong>{{ company_name }}</strong> — Academic Representatives Directory
+            <br>
+            This is an automated notification. Please do not reply.
+        </div>
+
     </div>
 </body>
 </html>
