@@ -129,6 +129,7 @@ INSTALLED_APPS = [
     "referrals.apps.ReferralsConfig",
     'excel_bulk_orders.apps.ExcelBulkOrdersConfig',
     'academic_directory.apps.AcademicDirectoryConfig',
+    'clothing_image_orders.apps.ClothingImageOrdersConfig',
 ]
 
 if DEBUG:
