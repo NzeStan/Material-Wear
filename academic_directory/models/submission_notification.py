@@ -7,6 +7,7 @@ Tracks new submissions for admin dashboard notifications.
 from django.db import models
 from django.utils import timezone
 from django.conf import settings
+import uuid
 
 class SubmissionNotification(models.Model):
     """
@@ -27,7 +28,7 @@ class SubmissionNotification(models.Model):
         read_at: When notification was read
         created_at: When notification was created
     """
-    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     representative = models.OneToOneField(
         'Representative',
         on_delete=models.CASCADE,

@@ -6,7 +6,7 @@ Tracks the duration of academic programs by department.
 
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
-
+import uuid
 
 class ProgramDuration(models.Model):
     """
@@ -39,7 +39,7 @@ class ProgramDuration(models.Model):
         ('BPHARM', 'Bachelor of Pharmacy (B.Pharm)'),
         ('OTHER', 'Other'),
     ]
-    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     department = models.OneToOneField(
         'Department',
         on_delete=models.CASCADE,

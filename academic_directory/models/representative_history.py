@@ -6,7 +6,7 @@ Tracks historical positions and role changes for representatives.
 
 from django.db import models
 from django.utils import timezone
-
+import uuid
 
 class RepresentativeHistory(models.Model):
     """
@@ -33,7 +33,7 @@ class RepresentativeHistory(models.Model):
         snapshot_date: When this snapshot was created
         notes: Optional notes about this historical record
     """
-    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     representative = models.ForeignKey(
         'Representative',
         on_delete=models.CASCADE,

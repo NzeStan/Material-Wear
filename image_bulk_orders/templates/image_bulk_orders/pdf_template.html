@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ bulk_order.organization_name }} - Order Summary</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        h1 { color: #064E3B; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #064E3B; color: white; }
+        .summary { background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>{{ company_name }}</h1>
+    <h2>{{ bulk_order.organization_name }} - Order Summary</h2>
+    
+    <div class="summary">
+        <p><strong>Generated:</strong> {{ now|date:"F d, Y - h:i A" }}</p>
+        <p><strong>Payment Deadline:</strong> {{ bulk_order.payment_deadline|date:"F d, Y" }}</p>
+        <p><strong>Total Orders:</strong> {{ total_orders }}</p>
+        <p><strong>Paid Orders:</strong> {{ total_paid }}</p>
+    </div>
+
+    <h3>Size Summary</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Size</th>
+                <th>Quantity</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for size in size_summary %}
+            <tr>
+                <td>{{ size.size }}</td>
+                <td>{{ size.count }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h3>All Orders</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Size</th>
+                {% if bulk_order.custom_branding_enabled %}
+                <th>Custom Name</th>
+                {% endif %}
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in orders %}
+            <tr>
+                <td>{{ order.serial_number }}</td>
+                <td>{{ order.full_name }}</td>
+                <td>{{ order.size }}</td>
+                {% if bulk_order.custom_branding_enabled %}
+                <td>{{ order.custom_name|default:"—" }}</td>
+                {% endif %}
+                <td>
+                    {% if order.paid %}Paid
+                    {% elif order.coupon_used %}Coupon
+                    {% else %}Pending{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <footer style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #064E3B;">
+        <p><strong>{{ company_name }}</strong></p>
+        <p>{{ company_address }}</p>
+        <p>{{ company_phone }} | {{ company_email }}</p>
+    </footer>
+</body>
+</html>

@@ -6,7 +6,7 @@ Represents departments within faculties.
 
 from django.db import models
 from django.core.validators import RegexValidator
-
+import uuid
 
 class Department(models.Model):
     """
@@ -23,7 +23,7 @@ class Department(models.Model):
         created_at: Timestamp when record was created
         updated_at: Timestamp when record was last updated
     """
-    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     faculty = models.ForeignKey(
         'Faculty',
         on_delete=models.CASCADE,

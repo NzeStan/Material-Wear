@@ -6,7 +6,7 @@ Represents Nigerian universities in the directory system.
 
 from django.db import models
 from django.core.validators import RegexValidator
-
+import uuid
 
 class University(models.Model):
     """
@@ -68,7 +68,7 @@ class University(models.Model):
         ('YOBE', 'Yobe'),
         ('ZAMFARA', 'Zamfara'),
     ]
-    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(
         max_length=255,
         unique=True,

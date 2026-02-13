@@ -6,7 +6,7 @@ Represents faculties within universities.
 
 from django.db import models
 from django.core.validators import RegexValidator
-
+import uuid
 
 class Faculty(models.Model):
     """
@@ -22,7 +22,7 @@ class Faculty(models.Model):
         created_at: Timestamp when record was created
         updated_at: Timestamp when record was last updated
     """
-    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     university = models.ForeignKey(
         'University',
         on_delete=models.CASCADE,

@@ -9,6 +9,7 @@ from django.core.validators import RegexValidator
 from django.utils import timezone
 from datetime import datetime
 from django.conf import settings
+import uuid
 
 class Representative(models.Model):
     """
@@ -71,6 +72,8 @@ class Representative(models.Model):
         ('IMPORT', 'Bulk Import'),
         ('OTHER', 'Other'),
     ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     
     # Phone number validator (Nigerian format)
     phone_regex = RegexValidator(
