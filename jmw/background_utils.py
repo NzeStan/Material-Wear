@@ -661,3 +661,99 @@ def check_graduation_statuses_task():
 
     except Exception as e:
         logger.error(f"academic_directory: error in check_graduation_statuses_task: {e}")
+
+
+# ============================================================================
+# IMAGE BULK ORDERS APP - EMAIL & PDF TASKS (NEW)
+# ============================================================================
+
+def send_image_order_confirmation_email(order_entry):
+    """Send order confirmation email after image bulk order creation"""
+    context = {
+        'order': order_entry,
+        'bulk_order': order_entry.bulk_order,
+        'company_name': settings.COMPANY_NAME,
+        'has_image': bool(order_entry.image),
+    }
+    
+    html_message = render_to_string('image_bulk_orders/emails/order_confirmation.html', context)
+    
+    subject = f"Order Confirmation - {order_entry.bulk_order.organization_name}"
+    
+    send_email_async(
+        subject=subject,
+        message=f"Thank you for your order! Your order number is #{order_entry.serial_number}",
+        html_message=html_message,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[order_entry.email]
+    )
+
+
+def send_image_payment_receipt_email(order_entry):
+    """Send payment receipt email after successful image bulk order payment"""
+    context = {
+        'order': order_entry,
+        'bulk_order': order_entry.bulk_order,
+        'company_name': settings.COMPANY_NAME,
+        'company_address': settings.COMPANY_ADDRESS,
+        'company_phone': settings.COMPANY_PHONE,
+        'company_email': settings.COMPANY_EMAIL,
+        'has_image': bool(order_entry.image),
+    }
+    
+    html_message = render_to_string('image_bulk_orders/emails/payment_receipt.html', context)
+    
+    subject = f"Payment Receipt - Order #{order_entry.serial_number}"
+    
+    send_email_async(
+        subject=subject,
+        message=f"Payment received for order #{order_entry.serial_number}",
+        html_message=html_message,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[order_entry.email]
+    )
+
+
+@background(schedule=0)
+def generate_image_payment_receipt_pdf_task(order_entry_id):
+    """Generate individual payment receipt PDF in background for image bulk orders"""
+    try:
+        from image_bulk_orders.models import ImageOrderEntry
+        from weasyprint import HTML
+        from django.utils import timezone
+        
+        order_entry = ImageOrderEntry.objects.select_related('bulk_order', 'coupon_used').get(id=order_entry_id)
+        
+        context = {
+            'order': order_entry,
+            'bulk_order': order_entry.bulk_order,
+            'company_name': settings.COMPANY_NAME,
+            'company_address': settings.COMPANY_ADDRESS,
+            'company_phone': settings.COMPANY_PHONE,
+            'company_email': settings.COMPANY_EMAIL,
+            'generated_date': timezone.now(),
+            'has_image': bool(order_entry.image),
+        }
+        
+        html_string = render_to_string('image_bulk_orders/receipt_template.html', context)
+        html = HTML(string=html_string)
+        pdf = html.write_pdf()
+        
+        # Send receipt email with PDF
+        subject = f"Payment Receipt - Order #{order_entry.serial_number}"
+        message = f"Thank you for your payment! Please find your receipt attached."
+        
+        send_email_async(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[order_entry.email],
+            attachments=[
+                (f'receipt_{order_entry.serial_number}.pdf', pdf, 'application/pdf')
+            ]
+        )
+        
+        logger.info(f"Payment receipt PDF generated for image order entry: {order_entry_id}")
+
+    except Exception as e:
+        logger.error(f"Error generating image payment receipt PDF: {str(e)}")

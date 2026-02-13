@@ -1,63 +1,83 @@
 # webhook_router/views.py
-# UPDATE THIS SECTION
+"""
+Central webhook router for all payment callbacks.
 
-from django.views.decorators.csrf import csrf_exempt
-from django.http import HttpResponse
-from django.views.decorators.http import require_POST
+Routes payment webhooks to appropriate app handlers based on reference format:
+- JMW-xxxx → payment.api_views.payment_webhook (regular orders)
+- ORDER-xxx-xxx → bulk_orders.views.bulk_order_payment_webhook
+- IMG-BULK-xxxx → image_bulk_orders.views.image_bulk_order_payment_webhook
+- EXCEL-xxx → excel_bulk_orders.views.excel_payment_webhook
+"""
 import json
 import logging
+from django.http import JsonResponse, HttpRequest
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 
 logger = logging.getLogger(__name__)
 
 
 @csrf_exempt
-@require_POST
-def router_webhook(request):
+@require_http_methods(["POST"])
+def router_webhook(request: HttpRequest):
     """
-    Universal webhook router for Paystack webhooks
-    Routes to appropriate handler based on reference format
+    Route webhooks to appropriate handler based on reference format.
     
     Reference formats:
-    - Bulk orders: "ORDER-{bulk_order_id}-{order_entry_id}"
-    - Excel bulk orders: "EXL-{unique_code}"  ← NEW
-    - Regular orders: "{uuid}"
+    - JMW-xxxx → Regular orders (payment app)
+    - ORDER-xxx-xxx → Bulk orders  
+    - IMG-BULK-xxxx → Image bulk orders
+    - EXCEL-xxx → Excel bulk orders
     """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
     try:
+        # Parse webhook payload
         payload = json.loads(request.body)
-        logger.info(f"Webhook received: {payload.get('event')}")
+        event = payload.get('event')
         
-        # Only process successful charges
-        if payload.get('event') != 'charge.success':
-            logger.info(f"Ignoring event: {payload.get('event')}")
-            return HttpResponse(status=200)
+        if event != 'charge.success':
+            return JsonResponse({'status': 'ignored'}, status=200)
         
         data = payload.get('data', {})
         reference = data.get('reference', '')
         
-        if not reference:
-            logger.error("No reference in webhook payload")
-            return HttpResponse(status=400)
+        logger.info(f"Router received webhook for reference: {reference}")
         
         # Route based on reference format
-        if reference.startswith('ORDER-'):
-            # Bulk order webhook
-            logger.info(f"Routing to bulk order webhook: {reference}")
+        if reference.startswith('IMG-BULK-'):
+            # Image bulk orders
+            from image_bulk_orders.views import image_bulk_order_payment_webhook
+            return image_bulk_order_payment_webhook(request)
+        
+        elif reference.startswith('ORDER-'):
+            # Regular bulk orders
             from bulk_orders.views import bulk_order_payment_webhook
             return bulk_order_payment_webhook(request)
-        elif reference.startswith('EXL-'):
-            # Excel bulk order webhook  ← NEW SECTION
-            logger.info(f"Routing to excel bulk order webhook: {reference}")
-            from excel_bulk_orders.views import excel_bulk_order_payment_webhook
-            return excel_bulk_order_payment_webhook(request)
-        else:
-            # Regular order webhook
-            logger.info(f"Routing to regular order webhook: {reference}")
+        
+        elif reference.startswith('EXCEL-'):
+            # Excel bulk orders
+            from excel_bulk_orders.views import excel_payment_webhook
+            return excel_payment_webhook(request)
+        
+        elif reference.startswith('JMW-'):
+            # Regular payment app orders
             from payment.api_views import payment_webhook
             return payment_webhook(request)
-            
+        
+        else:
+            logger.error(f"Unknown reference format: {reference}")
+            return JsonResponse({
+                'error': 'Unknown reference format'
+            }, status=400)
+    
     except json.JSONDecodeError:
-        logger.error("Invalid JSON in webhook payload")
-        return HttpResponse(status=400)
+        logger.error("Invalid JSON payload")
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    
     except Exception as e:
-        logger.exception("Error routing webhook")
-        return HttpResponse(status=500)
+        logger.error(f"Webhook router error: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'error': 'Internal server error'
+        }, status=500)

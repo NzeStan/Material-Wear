@@ -152,39 +152,33 @@ class ImageOrderEntrySerializer(serializers.ModelSerializer):
                 {"payment_deadline": "This bulk order has expired and is no longer accepting submissions."}
             )
         
-        # Validate coupon code if provided
-        coupon_code = attrs.get('coupon_code', '').strip()
-        if coupon_code:
+        # ✅ FIX: Validate custom_name only if branding is enabled
+        if not bulk_order.custom_branding_enabled:
+            attrs.pop('custom_name', None)  # Remove custom_name if not enabled
+        
+        # ✅ FIX: Validate coupon belongs to THIS specific bulk_order
+        coupon_code_str = attrs.pop('coupon_code', None)
+        if coupon_code_str:
             try:
                 coupon = ImageCouponCode.objects.get(
-                    bulk_order=bulk_order,
-                    code=coupon_code.upper()
+                    code=coupon_code_str.upper(),
+                    bulk_order=bulk_order,  # ✅ Must match THIS bulk order
+                    is_used=False
                 )
-                if coupon.is_used:
-                    raise serializers.ValidationError(
-                        {"coupon_code": "This coupon code has already been used."}
-                    )
-                # Store coupon object for save method
-                attrs['coupon_obj'] = coupon
+                attrs['coupon_used'] = coupon
+                # ✅ FIX: When coupon is used, automatically mark as paid
+                attrs['paid'] = True
             except ImageCouponCode.DoesNotExist:
-                raise serializers.ValidationError(
-                    {"coupon_code": "Invalid coupon code for this bulk order."}
-                )
-        
-        # Validate custom_name only if custom branding is enabled
-        custom_name = attrs.get('custom_name', '').strip()
-        if custom_name and not bulk_order.custom_branding_enabled:
-            raise serializers.ValidationError(
-                {"custom_name": "Custom branding is not enabled for this bulk order."}
-            )
+                raise serializers.ValidationError({
+                    "coupon_code": f"Invalid coupon code or coupon does not belong to {bulk_order.organization_name}. Please check your code."
+                })
         
         return attrs
 
     def create(self, validated_data):
         """Create order entry with proper coupon handling and Cloudinary image upload"""
         bulk_order = self.context.get('bulk_order')
-        coupon_obj = validated_data.pop('coupon_obj', None)
-        validated_data.pop('coupon_code', None)  # Remove the code string
+        coupon_used = validated_data.get('coupon_used')
         
         # Extract image before creating (Cloudinary will handle upload)
         image = validated_data.pop('image', None)
@@ -192,7 +186,6 @@ class ImageOrderEntrySerializer(serializers.ModelSerializer):
         # Create order entry
         order_entry = ImageOrderEntry.objects.create(
             bulk_order=bulk_order,
-            coupon_used=coupon_obj,
             **validated_data
         )
         
@@ -214,10 +207,14 @@ class ImageOrderEntrySerializer(serializers.ModelSerializer):
             logger.info(f"Image uploaded to Cloudinary: {folder_path}/{filename}")
         
         # Mark coupon as used if provided
-        if coupon_obj:
-            coupon_obj.is_used = True
-            coupon_obj.save(update_fields=['is_used'])
-            logger.info(f"Coupon marked as used: {coupon_obj.code}")
+        if coupon_used:
+            coupon_used.is_used = True
+            coupon_used.save(update_fields=['is_used'])
+            logger.info(f"Coupon marked as used: {coupon_used.code}")
+        
+        # ✅ SEND ORDER CONFIRMATION EMAIL
+        from jmw.background_utils import send_image_order_confirmation_email
+        send_image_order_confirmation_email(order_entry)
         
         return order_entry
 
@@ -228,37 +225,33 @@ class ImageBulkOrderLinkSerializer(serializers.ModelSerializer):
     IDENTICAL to BulkOrderLinkSerializer from bulk_orders.
     """
     
-    created_by = serializers.HiddenField(default=serializers.CurrentUserDefault())
-    is_expired = serializers.SerializerMethodField()
+    orders = ImageOrderEntrySerializer(many=True, read_only=True)
+    order_count = serializers.IntegerField(source='orders.count', read_only=True)
+    paid_count = serializers.SerializerMethodField()
+    coupon_count = serializers.IntegerField(source='coupons.count', read_only=True)
     shareable_url = serializers.SerializerMethodField()
-    total_orders = serializers.SerializerMethodField()
-    total_paid = serializers.SerializerMethodField()
-    coupon_count = serializers.SerializerMethodField()
-
+    
     class Meta:
         model = ImageBulkOrderLink
         fields = [
-            'id', 'slug', 'organization_name', 'price_per_item',
-            'custom_branding_enabled', 'payment_deadline', 'created_by',
-            'created_at', 'updated_at', 'is_expired', 'shareable_url',
-            'total_orders', 'total_paid', 'coupon_count'
+            'id', 'slug', 'organization_name', 'price_per_item', 'custom_branding_enabled',
+            'payment_deadline', 'created_by', 'created_at', 'updated_at', 
+            'orders', 'order_count', 'paid_count', 'coupon_count', 'shareable_url'
         ]
-        read_only_fields = ('id', 'slug', 'created_at', 'updated_at')
+        read_only_fields = ('created_by', 'created_at', 'updated_at', 'slug')
+        lookup_field = 'slug'
 
-    def get_is_expired(self, obj):
-        return obj.is_expired()
+    def get_paid_count(self, obj: 'ImageBulkOrderLink') -> int:
+        """Get count of paid orders"""
+        return obj.orders.filter(paid=True).count()
     
-    def get_shareable_url(self, obj):
+    def get_shareable_url(self, obj: 'ImageBulkOrderLink') -> str:
+        """Get shareable URL for bulk order"""
         request = self.context.get('request')
         if request:
             return request.build_absolute_uri(f'/image-bulk-order/{obj.slug}/')
         return f'/image-bulk-order/{obj.slug}/'
-    
-    def get_total_orders(self, obj):
-        return obj.orders.count()
-    
-    def get_total_paid(self, obj):
-        return obj.orders.filter(paid=True).count()
-    
-    def get_coupon_count(self, obj):
-        return obj.coupons.count()
+
+    def create(self, validated_data):
+        validated_data['created_by'] = self.context['request'].user
+        return super().create(validated_data)

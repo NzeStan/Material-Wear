@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Confirmation</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #1F2937;
+            background-color: #F9FAFB;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+        .header {
+            background: linear-gradient(135deg, #064E3B 0%, #047857 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.95;
+            font-size: 16px;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #064E3B;
+            font-weight: 600;
+        }
+        .info-box {
+            background: #F0FDF4;
+            border-left: 4px solid #064E3B;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 6px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #D1FAE5;
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #064E3B;
+        }
+        .info-value {
+            color: #1F2937;
+            text-align: right;
+        }
+        .next-steps {
+            background: #FFFBEB;
+            border: 2px solid #F59E0B;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 8px;
+        }
+        .next-steps h3 {
+            margin: 0 0 15px 0;
+            color: #92400E;
+            font-size: 18px;
+        }
+        .next-steps ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .next-steps li {
+            margin: 10px 0;
+            color: #78350F;
+        }
+        .footer {
+            background: #F3F4F6;
+            padding: 30px;
+            text-align: center;
+            color: #6B7280;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #064E3B;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .badge {
+            display: inline-block;
+            background: #F59E0B;
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✓ Order Confirmed!</h1>
+            <p>{{ company_name }}</p>
+        </div>
+        
+        <div class="content">
+            <p class="greeting">Hi {{ order.full_name }},</p>
+            
+            <p>Thank you for your order! Your submission has been received successfully.</p>
+            
+            <div class="info-box">
+                <div class="info-row">
+                    <span class="info-label">Order Number:</span>
+                    <span class="info-value"><strong>#{{ order.serial_number }}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Reference:</span>
+                    <span class="info-value">{{ order.reference }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Organization:</span>
+                    <span class="info-value">{{ bulk_order.organization_name }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Size:</span>
+                    <span class="info-value">{{ order.size }}</span>
+                </div>
+                {% if order.custom_name %}
+                <div class="info-row">
+                    <span class="info-label">Custom Name:</span>
+                    <span class="info-value">{{ order.custom_name }}</span>
+                </div>
+                {% endif %}
+                {% if has_image %}
+                <div class="info-row">
+                    <span class="info-label">Image:</span>
+                    <span class="info-value"><span class="badge">Uploaded</span></span>
+                </div>
+                {% endif %}
+                {% if order.coupon_used %}
+                <div class="info-row">
+                    <span class="info-label">Coupon:</span>
+                    <span class="info-value"><span class="badge">{{ order.coupon_used.code }}</span></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Amount:</span>
+                    <span class="info-value"><strong style="color: #059669;">FREE</strong></span>
+                </div>
+                {% else %}
+                <div class="info-row">
+                    <span class="info-label">Amount:</span>
+                    <span class="info-value"><strong>₦{{ bulk_order.price_per_item|floatformat:2 }}</strong></span>
+                </div>
+                {% endif %}
+            </div>
+            
+            {% if not order.coupon_used %}
+            <div class="next-steps">
+                <h3>📋 Next Steps</h3>
+                <ul>
+                    <li>Complete your payment to confirm your order</li>
+                    <li>You will receive a payment receipt once payment is confirmed</li>
+                    <li>Keep this email for your records</li>
+                </ul>
+            </div>
+            {% else %}
+            <div class="next-steps">
+                <h3>✓ Order Complete</h3>
+                <p style="margin: 0; color: #059669; font-weight: 600;">
+                    Your order is confirmed! You used a coupon and your order is paid in full.
+                </p>
+            </div>
+            {% endif %}
+            
+            <p style="margin-top: 30px; color: #6B7280; font-size: 14px;">
+                If you have any questions, please don't hesitate to contact us.
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p><strong>{{ company_name }}</strong></p>
+            <p style="margin-top: 10px;">
+                Professional service • Secure payments • Quality guaranteed
+            </p>
+        </div>
+    </div>
+</body>
+</html>

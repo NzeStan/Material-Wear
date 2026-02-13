@@ -17,7 +17,7 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse
 from .models import BulkOrderLink, OrderEntry, CouponCode
 from .serializers import BulkOrderLinkSerializer, OrderEntrySerializer, CouponCodeSerializer
 from payment.security import verify_paystack_signature, sanitize_payment_log_data
-from payment.utils import initialize_payment, verify_payment
+from payment.utils import initialize_payment
 from .utils import (
     generate_coupon_codes,
     generate_bulk_order_pdf,

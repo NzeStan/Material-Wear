@@ -4,79 +4,298 @@
     <meta charset="UTF-8">
     <title>{{ bulk_order.organization_name }} - Order Summary</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        h1 { color: #064E3B; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #064E3B; color: white; }
-        .summary { background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        @page {
+            size: A4;
+            margin: 1.5cm;
+        }
+        
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            line-height: 1.5;
+            color: #1F2937;
+            font-size: 10pt;
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* Header Section */
+        .header {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 4px solid #064E3B;
+            margin-bottom: 25px;
+        }
+        .header h1 {
+            color: #064E3B;
+            font-size: 24pt;
+            margin: 0 0 8px 0;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .header h2 {
+            color: #F59E0B;
+            font-size: 16pt;
+            margin: 0 0 12px 0;
+            font-weight: 600;
+        }
+        .header .company-name {
+            color: #6B7280;
+            font-size: 11pt;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        /* Info Section - Using table layout instead of grid */
+        .info-section {
+            background: #FFFBEB;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 6px;
+            border: 2px solid #F59E0B;
+        }
+        .info-grid {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .info-grid td {
+            width: 50%;
+            padding: 8px;
+            vertical-align: top;
+        }
+        .info-item {
+            padding: 8px 0;
+        }
+        .info-label {
+            font-size: 9pt;
+            color: #6B7280;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+        .info-value {
+            color: #1F2937;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        /* Summary Section */
+        .summary-section {
+            margin: 30px 0;
+            page-break-inside: avoid;
+        }
+        .summary-section h2 {
+            color: #064E3B;
+            font-size: 18px;
+            margin-bottom: 15px;
+            border-bottom: 3px solid #F59E0B;
+            padding-bottom: 8px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Tables */
+        table.data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border: 1px solid #E5E7EB;
+        }
+        table.data-table th, 
+        table.data-table td {
+            border: 1px solid #E5E7EB;
+            padding: 12px 10px;
+            text-align: left;
+        }
+        table.data-table th {
+            background: linear-gradient(135deg, #064E3B 0%, #065F46 100%);
+            color: #FFFBEB;
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        table.data-table tr:nth-child(even) {
+            background-color: #FFFBEB;
+        }
+        table.data-table tr:nth-child(odd) {
+            background-color: #FEF3C7;
+        }
+        
+        /* Total Row */
+        .total-row {
+            font-weight: 700;
+            background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%) !important;
+            color: #FFFBEB !important;
+        }
+        .total-row td {
+            border-color: #D97706 !important;
+            font-size: 13px;
+            padding: 15px 10px;
+        }
+        
+        /* Status Badges */
+        .status-paid {
+            background: #064E3B;
+            color: #FFFBEB;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .status-coupon {
+            background: #F59E0B;
+            color: #FFFBEB;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Footer */
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #E5E7EB;
+            text-align: center;
+            color: #6B7280;
+            font-size: 9pt;
+        }
+        .footer .generated-date {
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: #1F2937;
+        }
+        .footer .contact-info {
+            line-height: 1.6;
+        }
     </style>
 </head>
 <body>
-    <h1>{{ company_name }}</h1>
-    <h2>{{ bulk_order.organization_name }} - Order Summary</h2>
-    
-    <div class="summary">
-        <p><strong>Generated:</strong> {{ now|date:"F d, Y - h:i A" }}</p>
-        <p><strong>Payment Deadline:</strong> {{ bulk_order.payment_deadline|date:"F d, Y" }}</p>
-        <p><strong>Total Orders:</strong> {{ total_orders }}</p>
-        <p><strong>Paid Orders:</strong> {{ total_paid }}</p>
+    <!-- Header -->
+    <div class="header">
+        <div class="company-name">{{ company_name }}</div>
+        <h1>📊 ORDER SUMMARY</h1>
+        <h2>{{ bulk_order.organization_name }}</h2>
     </div>
 
-    <h3>Size Summary</h3>
-    <table>
-        <thead>
+    <!-- Info Section - Using table layout -->
+    <div class="info-section">
+        <table class="info-grid">
             <tr>
-                <th>Size</th>
-                <th>Quantity</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for size in size_summary %}
-            <tr>
-                <td>{{ size.size }}</td>
-                <td>{{ size.count }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <h3>All Orders</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>Name</th>
-                <th>Size</th>
-                {% if bulk_order.custom_branding_enabled %}
-                <th>Custom Name</th>
-                {% endif %}
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for order in orders %}
-            <tr>
-                <td>{{ order.serial_number }}</td>
-                <td>{{ order.full_name }}</td>
-                <td>{{ order.size }}</td>
-                {% if bulk_order.custom_branding_enabled %}
-                <td>{{ order.custom_name|default:"—" }}</td>
-                {% endif %}
                 <td>
-                    {% if order.paid %}Paid
-                    {% elif order.coupon_used %}Coupon
-                    {% else %}Pending{% endif %}
+                    <div class="info-item">
+                        <div class="info-label">Organization Name</div>
+                        <div class="info-value">{{ bulk_order.organization_name }}</div>
+                    </div>
+                </td>
+                <td>
+                    <div class="info-item">
+                        <div class="info-label">Price Per Item</div>
+                        <div class="info-value">₦{{ bulk_order.price_per_item|floatformat:2 }}</div>
+                    </div>
                 </td>
             </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            <tr>
+                <td>
+                    <div class="info-item">
+                        <div class="info-label">Payment Deadline</div>
+                        <div class="info-value">{{ bulk_order.payment_deadline|date:"F j, Y" }}</div>
+                    </div>
+                </td>
+                <td>
+                    <div class="info-item">
+                        <div class="info-label">Total Completed Orders</div>
+                        <div class="info-value">{{ total_paid }} Orders</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
 
-    <footer style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #064E3B;">
-        <p><strong>{{ company_name }}</strong></p>
-        <p>{{ company_address }}</p>
-        <p>{{ company_phone }} | {{ company_email }}</p>
-    </footer>
+    <!-- Size Summary -->
+    <div class="summary-section">
+        <h2>📊 Summary by Size</h2>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width: 50%">Size</th>
+                    <th style="width: 50%">Quantity</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for size in size_summary %}
+                <tr>
+                    <td style="font-weight: 600;">{{ size.size }}</td>
+                    <td style="text-align: center; font-weight: 700; color: #064E3B;">{{ size.count }}</td>
+                </tr>
+                {% endfor %}
+                <tr class="total-row">
+                    <td>TOTAL ORDERS</td>
+                    <td style="text-align: center;">{{ total_paid }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Order Details -->
+    <div class="summary-section">
+        <h2>📋 Complete Order Details</h2>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width: 8%; text-align: center;">S/N</th>
+                    {% if bulk_order.custom_branding_enabled %}
+                        <th style="width: 28%">Full Name</th>
+                    {% else %}
+                        <th style="width: 38%">Full Name</th>
+                    {% endif %}
+                    <th style="width: 12%; text-align: center;">Size</th>
+                    {% if bulk_order.custom_branding_enabled %}
+                    <th style="width: 28%">Custom Name</th>
+                    {% endif %}
+                    <th style="width: 10%; text-align: center;">Image</th>
+                    <th style="width: 14%; text-align: center;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in paid_orders %}
+                <tr>
+                    <td style="text-align: center; font-weight: 600; color: #064E3B;">{{ forloop.counter }}</td>
+                    <td style="font-weight: 600;">{{ order.full_name }}</td>
+                    <td style="text-align: center; font-weight: 700; color: #F59E0B;">{{ order.size }}</td>
+                    {% if bulk_order.custom_branding_enabled %}
+                    <td style="font-style: italic; color: #1F2937;">{{ order.custom_name|default:'—' }}</td>
+                    {% endif %}
+                    <td style="text-align: center;">{% if order.image %}✓{% else %}—{% endif %}</td>
+                    <td style="text-align: center;">
+                        {% if order.paid %}
+                            <span class="status-paid">✓ Paid</span>
+                        {% elif order.coupon_used %}
+                            <span class="status-coupon">🎟 Coupon</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <p class="generated-date"><strong>Generated:</strong> {{ now|date:"F j, Y - g:i A" }}</p>
+        <p class="contact-info">
+            <strong>{{ company_name }}</strong> | {{ company_address }}<br>
+            📞 {{ company_phone }} | 📧 {{ company_email }}
+        </p>
+        <p style="margin-top: 15px; font-size: 9px; color: #6B7280;">
+            This is a computer-generated document. No signature required.
+        </p>
+    </div>
 </body>
 </html>

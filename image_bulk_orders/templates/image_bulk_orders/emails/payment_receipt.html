@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Receipt</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #1F2937;
+            background-color: #F9FAFB;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+        .header {
+            background: linear-gradient(135deg, #064E3B 0%, #047857 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .header .subtitle {
+            margin: 10px 0 0 0;
+            opacity: 0.95;
+            font-size: 16px;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #064E3B;
+            font-weight: 600;
+        }
+        .success-badge {
+            background: #D1FAE5;
+            color: #065F46;
+            padding: 15px 25px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 25px 0;
+            font-size: 18px;
+            font-weight: 700;
+            border: 2px solid #10B981;
+        }
+        .receipt-box {
+            background: #F9FAFB;
+            border: 2px solid #E5E7EB;
+            padding: 25px;
+            margin: 25px 0;
+            border-radius: 8px;
+        }
+        .receipt-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #E5E7EB;
+        }
+        .receipt-row:last-child {
+            border-bottom: none;
+            padding-top: 20px;
+            margin-top: 10px;
+            border-top: 2px solid #064E3B;
+        }
+        .receipt-label {
+            font-weight: 500;
+            color: #6B7280;
+        }
+        .receipt-value {
+            font-weight: 600;
+            color: #1F2937;
+            text-align: right;
+        }
+        .total {
+            font-size: 22px;
+            color: #064E3B;
+        }
+        .footer {
+            background: #F3F4F6;
+            padding: 30px;
+            text-align: center;
+            color: #6B7280;
+            font-size: 14px;
+        }
+        .footer strong {
+            color: #064E3B;
+        }
+        .badge {
+            display: inline-block;
+            background: #F59E0B;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💳 Payment Received</h1>
+            <p class="subtitle">{{ company_name }}</p>
+        </div>
+        
+        <div class="content">
+            <p class="greeting">Dear {{ order.full_name }},</p>
+            
+            <div class="success-badge">
+                ✓ Payment Successfully Processed
+            </div>
+            
+            <p>We've received your payment! Your order is now complete and being processed.</p>
+            
+            <div class="receipt-box">
+                <h3 style="margin: 0 0 20px 0; color: #064E3B;">Receipt Details</h3>
+                
+                <div class="receipt-row">
+                    <span class="receipt-label">Order Number:</span>
+                    <span class="receipt-value">#{{ order.serial_number }}</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Reference:</span>
+                    <span class="receipt-value">{{ order.reference }}</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Organization:</span>
+                    <span class="receipt-value">{{ bulk_order.organization_name }}</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Customer:</span>
+                    <span class="receipt-value">{{ order.full_name }}</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Email:</span>
+                    <span class="receipt-value">{{ order.email }}</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Size:</span>
+                    <span class="receipt-value">{{ order.size }}</span>
+                </div>
+                {% if order.custom_name %}
+                <div class="receipt-row">
+                    <span class="receipt-label">Custom Name:</span>
+                    <span class="receipt-value">{{ order.custom_name }}</span>
+                </div>
+                {% endif %}
+                {% if has_image %}
+                <div class="receipt-row">
+                    <span class="receipt-label">Image:</span>
+                    <span class="receipt-value"><span class="badge">Uploaded</span></span>
+                </div>
+                {% endif %}
+                <div class="receipt-row">
+                    <span class="receipt-label total">Amount Paid:</span>
+                    <span class="receipt-value total">₦{{ bulk_order.price_per_item|floatformat:2 }}</span>
+                </div>
+            </div>
+            
+            <p style="margin-top: 30px; color: #6B7280; font-size: 14px;">
+                Thank you for your payment! Keep this email for your records.
+            </p>
+            
+            <p style="color: #6B7280; font-size: 14px;">
+                If you have any questions about your order, please contact us.
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p><strong>{{ company_name }}</strong></p>
+            <p style="margin: 5px 0;">{{ company_address }}</p>
+            <p style="margin: 5px 0;">{{ company_phone }} | {{ company_email }}</p>
+            <p style="margin-top: 15px; opacity: 0.8;">
+                Secure payments • Professional service • Quality guaranteed
+            </p>
+        </div>
+    </div>
+</body>
+</html>
