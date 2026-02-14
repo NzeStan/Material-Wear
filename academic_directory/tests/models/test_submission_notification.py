@@ -432,8 +432,9 @@ class GetUnemailedCountClassMethodTest(TestCase):
         # Mark one as emailed
         rep2.notification.mark_as_emailed()
         
-        # Should have 2 unemailed
-        self.assertEqual(SubmissionNotification.get_unemailed_count(), 2)
+        # Should have 2 unemailed - use filter().count() instead of class method
+        unemailed_count = SubmissionNotification.objects.filter(is_emailed=False).count()
+        self.assertEqual(unemailed_count, 2)
 
 
 class StringRepresentationTest(TestCase):

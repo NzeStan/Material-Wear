@@ -196,12 +196,13 @@ class PhoneNumberValidationTest(TestCase):
     
     def test_valid_nigerian_phone_number(self):
         """Test valid Nigerian phone number formats."""
+        # Use truly different phone numbers that won't normalize to same value
         valid_numbers = [
-            "08012345678",
-            "07012345678",
-            "09012345678",
-            "+2348012345678",
-            "+2347012345678",
+            "08012345678",      # Normalizes to +2348012345678
+            "07012345679",      # Normalizes to +2347012345679
+            "09012345680",      # Normalizes to +2349012345680
+            "+2348112345681",   # Different number
+            "+2347112345682",   # Different number
         ]
         
         for index, number in enumerate(valid_numbers):
@@ -310,36 +311,35 @@ class RoleSpecificFieldValidationTest(TestCase):
     
     def test_class_rep_cannot_have_tenure_start_year(self):
         """Test that CLASS_REP should not have tenure_start_year."""
-        rep = Representative.objects.create(
-            full_name="John Doe",
-            phone_number="08012345678",
-            department=self.department,
-            faculty=self.faculty,
-            university=self.university,
-            role="CLASS_REP",
-            entry_year=2020,
-            tenure_start_year=2024  # Should not have this
-        )
+        with self.assertRaises(ValidationError) as context:
+            rep = Representative.objects.create(
+                full_name="Test User",
+                phone_number="+2348012345678",
+                department=self.department,
+                faculty=self.faculty,
+                university=self.university,
+                role="CLASS_REP",
+                entry_year=2020,
+                tenure_start_year=2024  # Should not be allowed
+            )
         
-        # Model allows it, but business logic should prevent it
-        self.assertIsNotNone(rep.tenure_start_year)
+        self.assertIn('tenure_start_year', str(context.exception))
     
     def test_president_cannot_have_entry_year(self):
         """Test that presidents should not have entry_year."""
-        rep = Representative.objects.create(
-            full_name="Jane Smith",
-            phone_number="08098765432",
-            department=self.department,
-            faculty=self.faculty,
-            university=self.university,
-            role="DEPT_PRESIDENT",
-            tenure_start_year=2024,
-            entry_year=2020  # Should not have this
-        )
+        with self.assertRaises(ValidationError) as context:
+            rep = Representative.objects.create(
+                full_name="Test User",
+                phone_number="+2348012345679",
+                department=self.department,
+                faculty=self.faculty,
+                university=self.university,
+                role="DEPT_PRESIDENT",
+                tenure_start_year=2024,
+                entry_year=2020  # Should not be allowed
+            )
         
-        # Model allows it, but business logic should prevent it
-        self.assertIsNotNone(rep.entry_year)
-
+        self.assertIn('entry_year', str(context.exception))
 
 class SubmissionSourceValidationTest(TestCase):
     """Test submission source validation."""
@@ -371,6 +371,11 @@ class SubmissionSourceValidationTest(TestCase):
         ]
         
         for index, source in enumerate(valid_sources):
+            # For OTHER source, provide submission_source_other
+            extra_kwargs = {}
+            if source == 'OTHER':
+                extra_kwargs['submission_source_other'] = 'Student portal'
+            
             rep = Representative.objects.create(
                 full_name=f"Test User {index}",
                 phone_number=f"08012345{index:03d}",
@@ -379,7 +384,8 @@ class SubmissionSourceValidationTest(TestCase):
                 university=self.university,
                 role="CLASS_REP",
                 entry_year=2020,
-                submission_source=source
+                submission_source=source,
+                **extra_kwargs
             )
             self.assertEqual(rep.submission_source, source)
     
