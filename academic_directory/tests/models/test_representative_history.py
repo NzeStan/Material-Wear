@@ -278,6 +278,16 @@ class RoleTrackingTest(TestCase):
             name="Computer Science",
             abbreviation="CSC"
         )
+
+        self.rep = Representative.objects.create(
+            full_name="John Doe",
+            phone_number="+2348012345678",
+            department=self.department,
+            faculty=self.faculty,
+            university=self.university,
+            role="CLASS_REP",
+            entry_year=2020
+        )
     
     def test_track_class_rep_to_president_transition(self):
         """Test tracking transition from class rep to president."""
@@ -512,12 +522,21 @@ class EdgeCasesTest(TestCase):
             name="Computer Science",
             abbreviation="CSC"
         )
+        self.rep = Representative.objects.create(
+            full_name="John Doe",
+            phone_number="+2348012345678",
+            department=self.department,
+            faculty=self.faculty,
+            university=self.university,
+            role="CLASS_REP",
+            entry_year=2020
+        )
     
     def test_snapshot_with_null_optional_fields(self):
         """Test snapshot with null optional fields."""
         rep = Representative.objects.create(
             full_name="John Doe",
-            phone_number="08012345678",
+            phone_number="+2348012345679",  # ✅ unique number
             department=self.department,
             faculty=self.faculty,
             university=self.university,
@@ -533,7 +552,7 @@ class EdgeCasesTest(TestCase):
         """Test snapshot with very long notes."""
         rep = Representative.objects.create(
             full_name="John Doe",
-            phone_number="08012345678",
+            phone_number="+2348012345680",  # ✅ unique number
             department=self.department,
             faculty=self.faculty,
             university=self.university,
@@ -581,4 +600,4 @@ class EdgeCasesTest(TestCase):
         
         # Account for automatic history creation
         self.assertEqual(self.rep.history.count(), 3)  # 2 manual + 1 auto
-        self.assertEqual(rep2.history.count(), 2)  # 2 manual
+        self.assertEqual(rep2.history.count(), 3)      # 2 manual + 1 auto
