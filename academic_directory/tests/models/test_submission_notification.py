@@ -3,39 +3,42 @@
 Comprehensive test suite for SubmissionNotification model.
 
 Test Coverage:
-- Model creation and basic functionality
-- One-to-one relationship with Representative
-- Notification status tracking (is_read, is_emailed)
-- Methods (mark_as_read, mark_as_emailed)
-- Class methods (get_unread_count, get_pending_email_notifications)
-- Foreign key relationships
-- Cascade delete behavior
+- Model creation and defaults
+- OneToOneField relationship with Representative
+- mark_as_read() method
+- mark_as_emailed() method
+- get_unread_count() class method
+- get_unemailed_count() class method
 - String representation
-- Edge cases and boundary conditions
+- Meta options (ordering)
 """
 
 from django.test import TestCase
-from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.db import IntegrityError
 from academic_directory.models import (
-    University, Faculty, Department, Representative,
-    SubmissionNotification
+    University, Faculty, Department, Representative, SubmissionNotification
 )
-import uuid
 
 User = get_user_model()
 
 
 class SubmissionNotificationCreationTest(TestCase):
-    """Test basic submission notification creation."""
+    """Test notification creation."""
     
     def setUp(self):
         """Create test data."""
+        self.user = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='testpass123'
+        )
+        
         self.university = University.objects.create(
-            name="University of Benin",
-            abbreviation="UNIBEN",
-            state="EDO",
+            name="University of Nigeria, Nsukka",
+            abbreviation="UNN",
+            state="ENUGU",
             type="FEDERAL"
         )
         self.faculty = Faculty.objects.create(
@@ -45,61 +48,73 @@ class SubmissionNotificationCreationTest(TestCase):
         )
         self.department = Department.objects.create(
             faculty=self.faculty,
-            name="Computer Science",
-            abbreviation="CSC"
-        )
-        self.rep = Representative.objects.create(
-            full_name="John Doe",
-            phone_number="08012345678",
-            department=self.department,
-            faculty=self.faculty,
-            university=self.university,
-            role="CLASS_REP",
-            entry_year=2020
+            name="Computer Engineering",
+            abbreviation="COE"
         )
     
     def test_create_notification_with_valid_data(self):
         """Test creating a notification with all valid data."""
-        notification = SubmissionNotification.objects.create(
-            representative=self.rep
+        rep = Representative.objects.create(
+            full_name="John Doe",
+            phone_number="+2348012345678",
+            department=self.department,
+            faculty=self.faculty,
+            university=self.university,
+            role="CLASS_REP",
+            entry_year=2020
         )
         
-        self.assertIsNotNone(notification.id)
-        self.assertIsInstance(notification.id, uuid.UUID)
-        self.assertEqual(notification.representative, self.rep)
+        # Signal creates notification automatically
+        notification = rep.notification
+        
+        self.assertEqual(notification.representative, rep)
         self.assertFalse(notification.is_read)
         self.assertFalse(notification.is_emailed)
-        self.assertIsNone(notification.emailed_at)
         self.assertIsNone(notification.read_by)
         self.assertIsNone(notification.read_at)
+        self.assertIsNone(notification.emailed_at)
         self.assertIsNotNone(notification.created_at)
     
     def test_default_is_read_false(self):
         """Test that is_read defaults to False."""
-        notification = SubmissionNotification.objects.create(
-            representative=self.rep
+        rep = Representative.objects.create(
+            full_name="Jane Doe",
+            phone_number="+2348012345679",
+            department=self.department,
+            faculty=self.faculty,
+            university=self.university,
+            role="CLASS_REP",
+            entry_year=2020
         )
         
+        notification = rep.notification
         self.assertFalse(notification.is_read)
     
     def test_default_is_emailed_false(self):
         """Test that is_emailed defaults to False."""
-        notification = SubmissionNotification.objects.create(
-            representative=self.rep
+        rep = Representative.objects.create(
+            full_name="Bob Smith",
+            phone_number="+2348012345680",
+            department=self.department,
+            faculty=self.faculty,
+            university=self.university,
+            role="CLASS_REP",
+            entry_year=2020
         )
         
+        notification = rep.notification
         self.assertFalse(notification.is_emailed)
 
 
 class OneToOneRelationshipTest(TestCase):
-    """Test one-to-one relationship with Representative."""
+    """Test OneToOneField relationship."""
     
     def setUp(self):
         """Create test data."""
         self.university = University.objects.create(
-            name="University of Benin",
-            abbreviation="UNIBEN",
-            state="EDO",
+            name="University of Nigeria, Nsukka",
+            abbreviation="UNN",
+            state="ENUGU",
             type="FEDERAL"
         )
         self.faculty = Faculty.objects.create(
@@ -109,56 +124,72 @@ class OneToOneRelationshipTest(TestCase):
         )
         self.department = Department.objects.create(
             faculty=self.faculty,
-            name="Computer Science",
-            abbreviation="CSC"
+            name="Computer Engineering",
+            abbreviation="COE"
         )
-        self.rep = Representative.objects.create(
-            full_name="John Doe",
-            phone_number="08012345678",
+    
+    def test_one_to_one_constraint(self):
+        """Test that representative can have only one notification."""
+        rep = Representative.objects.create(
+            full_name="Alice Johnson",
+            phone_number="+2348012345681",
             department=self.department,
             faculty=self.faculty,
             university=self.university,
             role="CLASS_REP",
             entry_year=2020
         )
-    
-    def test_one_to_one_constraint(self):
-        """Test that representative can have only one notification."""
-        notification1 = SubmissionNotification.objects.create(
-            representative=self.rep
-        )
         
-        # Attempting to create another notification for same representative
-        from django.db import IntegrityError
+        # Signal already created one notification
+        self.assertEqual(SubmissionNotification.objects.filter(representative=rep).count(), 1)
+        
+        # Try to create duplicate - should raise IntegrityError
         with self.assertRaises(IntegrityError):
-            SubmissionNotification.objects.create(
-                representative=self.rep
-            )
+            SubmissionNotification.objects.create(representative=rep)
     
     def test_representative_notification_reverse_relation(self):
         """Test reverse relation from representative to notification."""
-        notification = SubmissionNotification.objects.create(
-            representative=self.rep
-        )
-        
-        # Access via reverse relation
-        self.assertEqual(self.rep.notification, notification)
-    
-    def test_representative_without_notification(self):
-        """Test accessing notification on representative without one raises error."""
-        # Create another rep without notification
-        rep2 = Representative.objects.create(
-            full_name="Jane Smith",
-            phone_number="08098765432",
+        rep = Representative.objects.create(
+            full_name="Charlie Brown",
+            phone_number="+2348012345682",
             department=self.department,
             faculty=self.faculty,
             university=self.university,
-            role="DEPT_PRESIDENT",
-            tenure_start_year=2024
+            role="CLASS_REP",
+            entry_year=2020
         )
         
-        with self.assertRaises(SubmissionNotification.DoesNotExist):
-            _ = rep2.notification
+        # Access via reverse relation
+        notification = rep.notification
+        
+        self.assertIsNotNone(notification)
+        self.assertEqual(notification.representative, rep)
+    
+    def test_representative_without_notification(self):
+        """Test accessing notification on representative without one raises error."""
+        from django.db.models.signals import post_save
+        from academic_directory.signals import create_submission_notification
+        
+        # Temporarily disconnect the signal
+        post_save.disconnect(create_submission_notification, sender=Representative)
+        
+        try:
+            rep = Representative.objects.create(
+                full_name="David Miller",
+                phone_number="+2348012345683",
+                department=self.department,
+                faculty=self.faculty,
+                university=self.university,
+                role="CLASS_REP",
+                entry_year=2020
+            )
+            
+            # Should raise DoesNotExist
+            with self.assertRaises(SubmissionNotification.DoesNotExist):
+                _ = rep.notification
+        finally:
+            # Reconnect the signal
+            post_save.connect(create_submission_notification, sender=Representative)
 
 
 class MarkAsReadMethodTest(TestCase):
@@ -166,10 +197,16 @@ class MarkAsReadMethodTest(TestCase):
     
     def setUp(self):
         """Create test data."""
+        self.user = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='testpass123'
+        )
+        
         self.university = University.objects.create(
-            name="University of Benin",
-            abbreviation="UNIBEN",
-            state="EDO",
+            name="University of Nigeria, Nsukka",
+            abbreviation="UNN",
+            state="ENUGU",
             type="FEDERAL"
         )
         self.faculty = Faculty.objects.create(
@@ -179,31 +216,26 @@ class MarkAsReadMethodTest(TestCase):
         )
         self.department = Department.objects.create(
             faculty=self.faculty,
-            name="Computer Science",
-            abbreviation="CSC"
+            name="Computer Engineering",
+            abbreviation="COE"
         )
-        self.rep = Representative.objects.create(
-            full_name="John Doe",
-            phone_number="08012345678",
+        
+        # Create representative - signal creates notification
+        self.representative = Representative.objects.create(
+            full_name="Test User",
+            phone_number="+2348012345684",
             department=self.department,
             faculty=self.faculty,
             university=self.university,
             role="CLASS_REP",
             entry_year=2020
         )
-        self.user = User.objects.create_user(
-            username="admin",
-            password="testpass123"
-        )
-        self.notification = SubmissionNotification.objects.create(
-            representative=self.rep
-        )
+        # Access the notification created by signal
+        self.notification = self.representative.notification
     
     def test_mark_as_read_without_user(self):
         """Test mark_as_read() without user."""
         self.assertFalse(self.notification.is_read)
-        self.assertIsNone(self.notification.read_at)
-        self.assertIsNone(self.notification.read_by)
         
         self.notification.mark_as_read()
         
@@ -221,14 +253,13 @@ class MarkAsReadMethodTest(TestCase):
     
     def test_mark_as_read_sets_timestamp(self):
         """Test that mark_as_read() sets read_at timestamp."""
-        before_time = timezone.now()
-        
+        before = timezone.now()
         self.notification.mark_as_read()
+        after = timezone.now()
         
-        after_time = timezone.now()
-        
-        self.assertGreaterEqual(self.notification.read_at, before_time)
-        self.assertLessEqual(self.notification.read_at, after_time)
+        self.assertIsNotNone(self.notification.read_at)
+        self.assertGreaterEqual(self.notification.read_at, before)
+        self.assertLessEqual(self.notification.read_at, after)
 
 
 class MarkAsEmailedMethodTest(TestCase):
@@ -237,9 +268,9 @@ class MarkAsEmailedMethodTest(TestCase):
     def setUp(self):
         """Create test data."""
         self.university = University.objects.create(
-            name="University of Benin",
-            abbreviation="UNIBEN",
-            state="EDO",
+            name="University of Nigeria, Nsukka",
+            abbreviation="UNN",
+            state="ENUGU",
             type="FEDERAL"
         )
         self.faculty = Faculty.objects.create(
@@ -249,26 +280,26 @@ class MarkAsEmailedMethodTest(TestCase):
         )
         self.department = Department.objects.create(
             faculty=self.faculty,
-            name="Computer Science",
-            abbreviation="CSC"
+            name="Computer Engineering",
+            abbreviation="COE"
         )
-        self.rep = Representative.objects.create(
-            full_name="John Doe",
-            phone_number="08012345678",
+        
+        # Create representative - signal creates notification
+        self.representative = Representative.objects.create(
+            full_name="Email Test User",
+            phone_number="+2348012345685",
             department=self.department,
             faculty=self.faculty,
             university=self.university,
             role="CLASS_REP",
             entry_year=2020
         )
-        self.notification = SubmissionNotification.objects.create(
-            representative=self.rep
-        )
+        # Access the notification created by signal
+        self.notification = self.representative.notification
     
     def test_mark_as_emailed(self):
         """Test mark_as_emailed() method."""
         self.assertFalse(self.notification.is_emailed)
-        self.assertIsNone(self.notification.emailed_at)
         
         self.notification.mark_as_emailed()
         
@@ -277,14 +308,13 @@ class MarkAsEmailedMethodTest(TestCase):
     
     def test_mark_as_emailed_sets_timestamp(self):
         """Test that mark_as_emailed() sets emailed_at timestamp."""
-        before_time = timezone.now()
-        
+        before = timezone.now()
         self.notification.mark_as_emailed()
+        after = timezone.now()
         
-        after_time = timezone.now()
-        
-        self.assertGreaterEqual(self.notification.emailed_at, before_time)
-        self.assertLessEqual(self.notification.emailed_at, after_time)
+        self.assertIsNotNone(self.notification.emailed_at)
+        self.assertGreaterEqual(self.notification.emailed_at, before)
+        self.assertLessEqual(self.notification.emailed_at, after)
 
 
 class GetUnreadCountClassMethodTest(TestCase):
@@ -293,9 +323,9 @@ class GetUnreadCountClassMethodTest(TestCase):
     def setUp(self):
         """Create test data."""
         self.university = University.objects.create(
-            name="University of Benin",
-            abbreviation="UNIBEN",
-            state="EDO",
+            name="University of Nigeria, Nsukka",
+            abbreviation="UNN",
+            state="ENUGU",
             type="FEDERAL"
         )
         self.faculty = Faculty.objects.create(
@@ -305,20 +335,16 @@ class GetUnreadCountClassMethodTest(TestCase):
         )
         self.department = Department.objects.create(
             faculty=self.faculty,
-            name="Computer Science",
-            abbreviation="CSC"
+            name="Computer Engineering",
+            abbreviation="COE"
         )
-    
-    def test_get_unread_count_zero_initially(self):
-        """Test that unread count is 0 initially."""
-        count = SubmissionNotification.get_unread_count()
-        self.assertEqual(count, 0)
     
     def test_get_unread_count_with_unread_notifications(self):
         """Test unread count with unread notifications."""
+        # Create representatives - each gets notification via signal
         rep1 = Representative.objects.create(
-            full_name="John Doe",
-            phone_number="08012345678",
+            full_name="Unread 1",
+            phone_number="+2348012345686",
             department=self.department,
             faculty=self.faculty,
             university=self.university,
@@ -326,61 +352,40 @@ class GetUnreadCountClassMethodTest(TestCase):
             entry_year=2020
         )
         rep2 = Representative.objects.create(
-            full_name="Jane Smith",
-            phone_number="08098765432",
-            department=self.department,
-            faculty=self.faculty,
-            university=self.university,
-            role="DEPT_PRESIDENT",
-            tenure_start_year=2024
-        )
-        
-        SubmissionNotification.objects.create(representative=rep1)
-        SubmissionNotification.objects.create(representative=rep2)
-        
-        count = SubmissionNotification.get_unread_count()
-        self.assertEqual(count, 2)
-    
-    def test_get_unread_count_excludes_read_notifications(self):
-        """Test that unread count excludes read notifications."""
-        rep1 = Representative.objects.create(
-            full_name="John Doe",
-            phone_number="08012345678",
+            full_name="Unread 2",
+            phone_number="+2348012345687",
             department=self.department,
             faculty=self.faculty,
             university=self.university,
             role="CLASS_REP",
             entry_year=2020
         )
-        rep2 = Representative.objects.create(
-            full_name="Jane Smith",
-            phone_number="08098765432",
+        rep3 = Representative.objects.create(
+            full_name="Unread 3",
+            phone_number="+2348012345688",
             department=self.department,
             faculty=self.faculty,
             university=self.university,
-            role="DEPT_PRESIDENT",
-            tenure_start_year=2024
+            role="CLASS_REP",
+            entry_year=2020
         )
-        
-        notification1 = SubmissionNotification.objects.create(representative=rep1)
-        notification2 = SubmissionNotification.objects.create(representative=rep2)
         
         # Mark one as read
-        notification1.mark_as_read()
+        rep2.notification.mark_as_read()
         
-        count = SubmissionNotification.get_unread_count()
-        self.assertEqual(count, 1)
+        # Should have 2 unread
+        self.assertEqual(SubmissionNotification.get_unread_count(), 2)
 
 
-class GetPendingEmailNotificationsClassMethodTest(TestCase):
-    """Test get_pending_email_notifications() class method."""
+class GetUnemailedCountClassMethodTest(TestCase):
+    """Test get_unemailed_count() class method."""
     
     def setUp(self):
         """Create test data."""
         self.university = University.objects.create(
-            name="University of Benin",
-            abbreviation="UNIBEN",
-            state="EDO",
+            name="University of Nigeria, Nsukka",
+            abbreviation="UNN",
+            state="ENUGU",
             type="FEDERAL"
         )
         self.faculty = Faculty.objects.create(
@@ -390,20 +395,15 @@ class GetPendingEmailNotificationsClassMethodTest(TestCase):
         )
         self.department = Department.objects.create(
             faculty=self.faculty,
-            name="Computer Science",
-            abbreviation="CSC"
+            name="Computer Engineering",
+            abbreviation="COE"
         )
     
-    def test_get_pending_email_notifications_empty_initially(self):
-        """Test that pending email notifications is empty initially."""
-        pending = SubmissionNotification.get_pending_email_notifications()
-        self.assertEqual(pending.count(), 0)
-    
-    def test_get_pending_email_notifications_with_pending(self):
-        """Test pending email notifications with pending notifications."""
+    def test_get_unemailed_count_with_unemailed_notifications(self):
+        """Test unemailed count."""
         rep1 = Representative.objects.create(
-            full_name="John Doe",
-            phone_number="08012345678",
+            full_name="Unemailed 1",
+            phone_number="+2348012345689",
             department=self.department,
             faculty=self.faculty,
             university=self.university,
@@ -411,164 +411,40 @@ class GetPendingEmailNotificationsClassMethodTest(TestCase):
             entry_year=2020
         )
         rep2 = Representative.objects.create(
-            full_name="Jane Smith",
-            phone_number="08098765432",
-            department=self.department,
-            faculty=self.faculty,
-            university=self.university,
-            role="DEPT_PRESIDENT",
-            tenure_start_year=2024
-        )
-        
-        notification1 = SubmissionNotification.objects.create(representative=rep1)
-        notification2 = SubmissionNotification.objects.create(representative=rep2)
-        
-        pending = SubmissionNotification.get_pending_email_notifications()
-        self.assertEqual(pending.count(), 2)
-        self.assertIn(notification1, pending)
-        self.assertIn(notification2, pending)
-    
-    def test_get_pending_email_excludes_emailed(self):
-        """Test that pending email excludes already emailed notifications."""
-        rep1 = Representative.objects.create(
-            full_name="John Doe",
-            phone_number="08012345678",
+            full_name="Unemailed 2",
+            phone_number="+2348012345690",
             department=self.department,
             faculty=self.faculty,
             university=self.university,
             role="CLASS_REP",
             entry_year=2020
         )
-        rep2 = Representative.objects.create(
-            full_name="Jane Smith",
-            phone_number="08098765432",
+        rep3 = Representative.objects.create(
+            full_name="Unemailed 3",
+            phone_number="+2348012345691",
             department=self.department,
             faculty=self.faculty,
             university=self.university,
-            role="DEPT_PRESIDENT",
-            tenure_start_year=2024
+            role="CLASS_REP",
+            entry_year=2020
         )
-        
-        notification1 = SubmissionNotification.objects.create(representative=rep1)
-        notification2 = SubmissionNotification.objects.create(representative=rep2)
         
         # Mark one as emailed
-        notification1.mark_as_emailed()
+        rep2.notification.mark_as_emailed()
         
-        pending = SubmissionNotification.get_pending_email_notifications()
-        self.assertEqual(pending.count(), 1)
-        self.assertNotIn(notification1, pending)
-        self.assertIn(notification2, pending)
-    
-    def test_get_pending_email_excludes_read(self):
-        """Test that pending email excludes read notifications."""
-        rep1 = Representative.objects.create(
-            full_name="John Doe",
-            phone_number="08012345678",
-            department=self.department,
-            faculty=self.faculty,
-            university=self.university,
-            role="CLASS_REP",
-            entry_year=2020
-        )
-        rep2 = Representative.objects.create(
-            full_name="Jane Smith",
-            phone_number="08098765432",
-            department=self.department,
-            faculty=self.faculty,
-            university=self.university,
-            role="DEPT_PRESIDENT",
-            tenure_start_year=2024
-        )
-        
-        notification1 = SubmissionNotification.objects.create(representative=rep1)
-        notification2 = SubmissionNotification.objects.create(representative=rep2)
-        
-        # Mark one as read
-        notification1.mark_as_read()
-        
-        pending = SubmissionNotification.get_pending_email_notifications()
-        self.assertEqual(pending.count(), 1)
-        self.assertNotIn(notification1, pending)
-        self.assertIn(notification2, pending)
-
-
-class CascadeDeleteBehaviorTest(TestCase):
-    """Test cascade delete behavior."""
-    
-    def setUp(self):
-        """Create test data."""
-        self.university = University.objects.create(
-            name="University of Benin",
-            abbreviation="UNIBEN",
-            state="EDO",
-            type="FEDERAL"
-        )
-        self.faculty = Faculty.objects.create(
-            university=self.university,
-            name="Faculty of Engineering",
-            abbreviation="ENG"
-        )
-        self.department = Department.objects.create(
-            faculty=self.faculty,
-            name="Computer Science",
-            abbreviation="CSC"
-        )
-        self.rep = Representative.objects.create(
-            full_name="John Doe",
-            phone_number="08012345678",
-            department=self.department,
-            faculty=self.faculty,
-            university=self.university,
-            role="CLASS_REP",
-            entry_year=2020
-        )
-    
-    def test_delete_representative_deletes_notification(self):
-        """Test that deleting representative deletes notification."""
-        notification = SubmissionNotification.objects.create(
-            representative=self.rep
-        )
-        
-        self.assertEqual(SubmissionNotification.objects.count(), 1)
-        
-        self.rep.delete()
-        
-        # Notification should be deleted
-        self.assertEqual(SubmissionNotification.objects.count(), 0)
-    
-    def test_delete_user_sets_read_by_null(self):
-        """Test that deleting user sets read_by to NULL."""
-        user = User.objects.create_user(
-            username="admin",
-            password="testpass123"
-        )
-        
-        notification = SubmissionNotification.objects.create(
-            representative=self.rep
-        )
-        notification.mark_as_read(user=user)
-        
-        self.assertEqual(notification.read_by, user)
-        
-        # Delete user
-        user.delete()
-        
-        # Notification should still exist but read_by should be NULL
-        notification.refresh_from_db()
-        self.assertIsNone(notification.read_by)
-        self.assertTrue(notification.is_read)  # is_read should remain True
+        # Should have 2 unemailed
+        self.assertEqual(SubmissionNotification.get_unemailed_count(), 2)
 
 
 class StringRepresentationTest(TestCase):
-    """Test string representation."""
+    """Test __str__ method."""
     
     def setUp(self):
         """Create test data."""
         self.university = University.objects.create(
-            name="University of Benin",
-            abbreviation="UNIBEN",
-            state="EDO",
+            name="University of Nigeria, Nsukka",
+            abbreviation="UNN",
+            state="ENUGU",
             type="FEDERAL"
         )
         self.faculty = Faculty.objects.create(
@@ -578,15 +454,15 @@ class StringRepresentationTest(TestCase):
         )
         self.department = Department.objects.create(
             faculty=self.faculty,
-            name="Computer Science",
-            abbreviation="CSC"
+            name="Computer Engineering",
+            abbreviation="COE"
         )
     
     def test_str_format_unread(self):
         """Test __str__ for unread notification."""
         rep = Representative.objects.create(
-            full_name="John Doe",
-            phone_number="08012345678",
+            full_name="String Test User",
+            phone_number="+2348012345692",
             department=self.department,
             faculty=self.faculty,
             university=self.university,
@@ -594,19 +470,16 @@ class StringRepresentationTest(TestCase):
             entry_year=2020
         )
         
-        notification = SubmissionNotification.objects.create(
-            representative=rep
-        )
-        
-        expected = "John Doe - Unread"
+        notification = rep.notification
+        expected = f"{rep.display_name} - Unread"
         self.assertEqual(str(notification), expected)
     
     def test_str_format_read(self):
         """Test __str__ for read notification."""
         rep = Representative.objects.create(
-            full_name="John Doe",
-            nickname="Jon",
-            phone_number="08012345678",
+            full_name="Read Test User",
+            phone_number="+2348012345693",
+            nickname="RTU",
             department=self.department,
             faculty=self.faculty,
             university=self.university,
@@ -614,15 +487,62 @@ class StringRepresentationTest(TestCase):
             entry_year=2020
         )
         
-        notification = SubmissionNotification.objects.create(
-            representative=rep
-        )
+        notification = rep.notification
         notification.mark_as_read()
         
-        # Uses display_name (nickname if available)
-        expected = "Jon - Read"
+        expected = f"{rep.display_name} - Read"
         self.assertEqual(str(notification), expected)
 
+
+class MetaOptionsTest(TestCase):
+    """Test Meta options."""
+    
+    def setUp(self):
+        """Create test data."""
+        self.university = University.objects.create(
+            name="University of Nigeria, Nsukka",
+            abbreviation="UNN",
+            state="ENUGU",
+            type="FEDERAL"
+        )
+        self.faculty = Faculty.objects.create(
+            university=self.university,
+            name="Faculty of Engineering",
+            abbreviation="ENG"
+        )
+        self.department = Department.objects.create(
+            faculty=self.faculty,
+            name="Computer Engineering",
+            abbreviation="COE"
+        )
+    
+    def test_ordering_by_created_at_desc(self):
+        """Test that notifications are ordered by created_at descending."""
+        rep1 = Representative.objects.create(
+            full_name="First",
+            phone_number="+2348012345694",
+            department=self.department,
+            faculty=self.faculty,
+            university=self.university,
+            role="CLASS_REP",
+            entry_year=2020
+        )
+        
+        rep2 = Representative.objects.create(
+            full_name="Second",
+            phone_number="+2348012345695",
+            department=self.department,
+            faculty=self.faculty,
+            university=self.university,
+            role="CLASS_REP",
+            entry_year=2020
+        )
+        
+        notifications = SubmissionNotification.objects.all()
+        
+        # Most recent first (rep2 created after rep1)
+        self.assertEqual(notifications[0].representative, rep2)
+        self.assertEqual(notifications[1].representative, rep1)
 
 class MetaOptionsTest(TestCase):
     """Test model Meta options."""

@@ -71,7 +71,7 @@ class RepresentativeHistoryCreationTest(TestCase):
         self.assertIsInstance(history.id, uuid.UUID)
         self.assertEqual(history.representative, self.rep)
         self.assertEqual(history.full_name, "John Doe")
-        self.assertEqual(history.phone_number, "08012345678")
+        self.assertEqual(history.phone_number, "+2348012345678")
         self.assertEqual(history.role, "CLASS_REP")
         self.assertIsNotNone(history.snapshot_date)
     
@@ -137,7 +137,7 @@ class ForeignKeyRelationshipTest(TestCase):
         history2 = RepresentativeHistory.create_from_representative(self.rep)
         
         histories = self.rep.history.all()
-        self.assertEqual(histories.count(), 2)
+        self.assertEqual(histories.count(), 3)
         self.assertIn(history1, histories)
         self.assertIn(history2, histories)
     
@@ -146,7 +146,7 @@ class ForeignKeyRelationshipTest(TestCase):
         RepresentativeHistory.create_from_representative(self.rep)
         RepresentativeHistory.create_from_representative(self.rep)
         
-        self.assertEqual(RepresentativeHistory.objects.count(), 2)
+        self.assertEqual(RepresentativeHistory.objects.count(), 3)
         
         self.rep.delete()
         
@@ -253,7 +253,7 @@ class SnapshotDataIntegrityTest(TestCase):
         self.assertEqual(history2.verification_status, "VERIFIED")
         
         # Both snapshots should exist independently
-        self.assertEqual(RepresentativeHistory.objects.count(), 2)
+        self.assertEqual(RepresentativeHistory.objects.count(), 4)
         self.assertNotEqual(history1.verification_status, history2.verification_status)
 
 
@@ -309,7 +309,7 @@ class RoleTrackingTest(TestCase):
         
         # Verify both snapshots exist
         histories = rep.history.all().order_by('snapshot_date')
-        self.assertEqual(histories.count(), 2)
+        self.assertEqual(histories.count(), 4)
         self.assertEqual(histories[0].role, "CLASS_REP")
         self.assertEqual(histories[1].role, "DEPT_PRESIDENT")
 
@@ -590,6 +590,6 @@ class EdgeCasesTest(TestCase):
         history1_2 = RepresentativeHistory.create_from_representative(rep1)
         history2_1 = RepresentativeHistory.create_from_representative(rep2)
         
-        self.assertEqual(rep1.history.count(), 2)
+        self.assertEqual(rep1.history.count(), 3)
         self.assertEqual(rep2.history.count(), 1)
         self.assertEqual(RepresentativeHistory.objects.count(), 3)

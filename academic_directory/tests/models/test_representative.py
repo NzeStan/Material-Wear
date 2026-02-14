@@ -74,7 +74,7 @@ class RepresentativeCreationTest(TestCase):
         self.assertIsNotNone(rep.id)
         self.assertIsInstance(rep.id, uuid.UUID)
         self.assertEqual(rep.full_name, "John Doe")
-        self.assertEqual(rep.phone_number, "08012345678")
+        self.assertEqual(rep.phone_number, "+2348012345678")
         self.assertEqual(rep.role, "CLASS_REP")
         self.assertEqual(rep.entry_year, 2020)
         self.assertIsNone(rep.tenure_start_year)
@@ -140,7 +140,7 @@ class RepresentativeCreationTest(TestCase):
             entry_year=2020
         )
         
-        self.assertEqual(rep.whatsapp_number, "08098765432")
+        self.assertEqual(rep.whatsapp_number, "+2348098765432")
     
     def test_create_with_email(self):
         """Test creating representative with email."""
