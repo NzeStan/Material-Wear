@@ -56,7 +56,7 @@ def router_webhook(request: HttpRequest):
             from bulk_orders.views import bulk_order_payment_webhook
             return bulk_order_payment_webhook(request)
         
-        elif reference.startswith('EXCEL-'):
+        elif reference.startswith('EXL-'):
             # Excel bulk orders
             from excel_bulk_orders.views import excel_payment_webhook
             return excel_payment_webhook(request)

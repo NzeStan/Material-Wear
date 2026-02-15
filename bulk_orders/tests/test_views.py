@@ -543,7 +543,7 @@ class OrderEntryViewSetTest(APITestCase):
         self.assertIn('error', response.data)
         mock_initialize_payment.assert_not_called()
 
-    @patch('bulk_orders.views.verify_payment')
+    @patch('payment.utils.verify_payment')  # ✅ FIXED
     def test_verify_payment_endpoint(self, mock_verify_payment):
         """Test verify_payment endpoint"""
         order = OrderEntry.objects.create(
@@ -776,7 +776,7 @@ class BulkOrderPaymentWebhookTest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     @patch('bulk_orders.views.verify_paystack_signature')
-    @patch('bulk_orders.views.verify_payment')
+    @patch('payment.utils.verify_payment')  # ✅ FIXED
     def test_webhook_failed_payment(self, mock_verify_payment, mock_verify_signature):
         """Test webhook for failed payment"""
         mock_verify_signature.return_value = True
