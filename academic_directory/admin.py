@@ -49,7 +49,7 @@ def _badge(bg_colour: str, label: str) -> str:
 # ---------------------------------------------------------------------------
 @admin.register(University)
 class UniversityAdmin(admin.ModelAdmin):
-    list_display = ['abbreviation', 'name', 'state', 'type_badge', 'is_active']
+    list_display = ["id",'abbreviation', 'name', 'state', 'type_badge', 'is_active']
     list_filter = ['type', 'state', 'is_active']
     search_fields = ['name', 'abbreviation', 'state']   # required for autocomplete
     ordering = ['name']
@@ -76,7 +76,7 @@ class UniversityAdmin(admin.ModelAdmin):
 # ---------------------------------------------------------------------------
 @admin.register(Faculty)
 class FacultyAdmin(admin.ModelAdmin):
-    list_display = ['abbreviation', 'name', 'university', 'is_active']
+    list_display = ["id",'abbreviation', 'name', 'university', 'is_active']
     list_filter = ['university', 'is_active']
     search_fields = ['name', 'abbreviation', 'university__name']  # required for autocomplete
     ordering = ['university__name', 'name']
@@ -93,7 +93,7 @@ class FacultyAdmin(admin.ModelAdmin):
 # ---------------------------------------------------------------------------
 @admin.register(Department)
 class DepartmentAdmin(admin.ModelAdmin):
-    list_display = ['abbreviation', 'name', 'faculty', 'university_display', 'is_active']
+    list_display = ["id",'abbreviation', 'name', 'faculty', 'university_display', 'is_active']
     list_filter = ['faculty__university', 'faculty', 'is_active']
     search_fields = ['name', 'abbreviation', 'faculty__name', 'faculty__university__name']
     ordering = ['faculty__university__name', 'faculty__name', 'name']
@@ -114,7 +114,7 @@ class DepartmentAdmin(admin.ModelAdmin):
 # ---------------------------------------------------------------------------
 @admin.register(ProgramDuration)
 class ProgramDurationAdmin(admin.ModelAdmin):
-    list_display = ['department', 'duration_years', 'program_type']
+    list_display = ["id",'department', 'duration_years', 'program_type']
     list_filter = ['duration_years', 'program_type']
     search_fields = ['department__name']
     ordering = ['department__name']
@@ -133,7 +133,7 @@ class RepresentativeHistoryInline(admin.TabularInline):
     model = RepresentativeHistory
     extra = 0
     can_delete = False
-    fields = ['role', 'department', 'verification_status', 'snapshot_date']
+    fields = ["id",'role', 'department', 'verification_status', 'snapshot_date']
     readonly_fields = ['role', 'department', 'verification_status', 'snapshot_date']
     ordering = ['-snapshot_date']
 
@@ -143,7 +143,7 @@ class RepresentativeHistoryInline(admin.TabularInline):
 # ---------------------------------------------------------------------------
 @admin.register(Representative)
 class RepresentativeAdmin(admin.ModelAdmin):
-    list_display = [
+    list_display = ["id",
         'display_name', 'phone_number', 'role_badge',
         'department', 'level_display', 'verification_badge', 'is_active', 'created_at',
     ]
@@ -290,7 +290,7 @@ class RepresentativeAdmin(admin.ModelAdmin):
 # ---------------------------------------------------------------------------
 @admin.register(RepresentativeHistory)
 class RepresentativeHistoryAdmin(admin.ModelAdmin):
-    list_display = ['representative', 'role', 'department', 'verification_status', 'snapshot_date']
+    list_display = ["id",'representative', 'role', 'department', 'verification_status', 'snapshot_date']
     list_filter = ['role', 'verification_status']
     search_fields = ['representative__full_name', 'phone_number']
     readonly_fields = [
@@ -312,7 +312,7 @@ class RepresentativeHistoryAdmin(admin.ModelAdmin):
 # ---------------------------------------------------------------------------
 @admin.register(SubmissionNotification)
 class SubmissionNotificationAdmin(admin.ModelAdmin):
-    list_display = ['representative', 'is_read', 'is_emailed', 'created_at', 'read_at']
+    list_display = ["id",'representative', 'is_read', 'is_emailed', 'created_at', 'read_at']
     list_filter = ['is_read', 'is_emailed']
     search_fields = ['representative__full_name', 'representative__phone_number']
     readonly_fields = ['representative', 'is_emailed', 'emailed_at', 'created_at', 'read_at', 'read_by']
