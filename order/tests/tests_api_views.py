@@ -186,16 +186,16 @@ class CheckoutViewBasicTests(TestCase):
         response = self.client.get(cart_url)
         self.assertEqual(response.data['total_items'], 0)
     
-    @patch('order.api_views.initialize_payment')  # ✅ ADD THIS DECORATOR
-    def test_checkout_creates_order_items(self, mock_initialize_payment):  # ✅ ADD PARAMETER
+    @patch('payment.utils.initialize_payment')
+    def test_checkout_creates_order_items(self, mock_initialize):
         """Test checkout creates order items with correct details"""
-        # ✅ ADD THIS BLOCK:
-        mock_initialize_payment.return_value = {
+        # Mock the payment initialization
+        mock_initialize.return_value = {
             'status': True,
             'data': {
                 'authorization_url': 'https://checkout.paystack.com/test',
-                'access_code': 'test_access_code',
-                'reference': 'TEST-REF-123'
+                'access_code': 'test_access',
+                'reference': 'JMW-TEST123'
             }
         }
         # Add item to cart

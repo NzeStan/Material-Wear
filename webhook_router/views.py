@@ -6,7 +6,7 @@ Routes payment webhooks to appropriate app handlers based on reference format:
 - JMW-xxxx → payment.api_views.payment_webhook (regular orders)
 - ORDER-xxx-xxx → bulk_orders.views.bulk_order_payment_webhook
 - IMG-BULK-xxxx → image_bulk_orders.views.image_bulk_order_payment_webhook
-- EXCEL-xxx → excel_bulk_orders.views.excel_payment_webhook
+- EXL-xxxx → excel_bulk_orders.views.excel_bulk_order_payment_webhook (FIXED)
 """
 import json
 import logging
@@ -27,7 +27,7 @@ def router_webhook(request: HttpRequest):
     - JMW-xxxx → Regular orders (payment app)
     - ORDER-xxx-xxx → Bulk orders  
     - IMG-BULK-xxxx → Image bulk orders
-    - EXCEL-xxx → Excel bulk orders
+    - EXL-xxxx → Excel bulk orders (FIXED import name)
     """
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -57,9 +57,9 @@ def router_webhook(request: HttpRequest):
             return bulk_order_payment_webhook(request)
         
         elif reference.startswith('EXL-'):
-            # Excel bulk orders
-            from excel_bulk_orders.views import excel_payment_webhook
-            return excel_payment_webhook(request)
+            # Excel bulk orders - FIXED: Use correct function name
+            from excel_bulk_orders.views import excel_bulk_order_payment_webhook
+            return excel_bulk_order_payment_webhook(request)
         
         elif reference.startswith('JMW-'):
             # Regular payment app orders
