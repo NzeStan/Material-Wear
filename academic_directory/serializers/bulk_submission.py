@@ -13,7 +13,7 @@ class SingleSubmissionSerializer(serializers.Serializer):
     phone_number = serializers.CharField(max_length=20)
     whatsapp_number = serializers.CharField(max_length=20, required=False, allow_blank=True, allow_null=True)
     email = serializers.EmailField(required=False, allow_blank=True, allow_null=True)
-    department_id = serializers.IntegerField()
+    department_id = serializers.UUIDField()  # Changed from IntegerField to UUIDField
     role = serializers.ChoiceField(choices=Representative.ROLES)
     entry_year = serializers.IntegerField(required=False, allow_null=True)
     tenure_start_year = serializers.IntegerField(required=False, allow_null=True)

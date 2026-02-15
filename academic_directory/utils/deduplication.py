@@ -7,6 +7,7 @@ Handles automatic merging of duplicate representative entries based on phone num
 from typing import Optional, Dict, Any
 from django.db import transaction
 from django.utils import timezone
+import uuid
 
 
 def merge_representative_records(existing_record, new_data: Dict[str, Any]) -> tuple:
@@ -151,40 +152,39 @@ def check_for_potential_duplicates(data: Dict[str, Any]) -> list:
     
     potential_duplicates = []
     
-    # Check by email (if provided)
+    # Check for same email (if provided)
     if data.get('email'):
         email_matches = Representative.objects.filter(
             email__iexact=data['email']
         ).exclude(phone_number=data.get('phone_number'))
-        potential_duplicates.extend(email_matches)
+        potential_duplicates.extend(list(email_matches))
     
-    # Check by WhatsApp number (if provided and different from phone)
-    if data.get('whatsapp_number') and data['whatsapp_number'] != data.get('phone_number'):
+    # Check for same WhatsApp number (if provided)
+    if data.get('whatsapp_number'):
         whatsapp_matches = Representative.objects.filter(
-            Q(phone_number=data['whatsapp_number']) |
-            Q(whatsapp_number=data['whatsapp_number'])
+            whatsapp_number=data['whatsapp_number']
         ).exclude(phone_number=data.get('phone_number'))
-        potential_duplicates.extend(whatsapp_matches)
+        potential_duplicates.extend(list(whatsapp_matches))
     
-    # Check by similar name in same department
+    # Check for similar names in same department
     if data.get('full_name') and data.get('department'):
-        # Simple similarity: same first 3 characters and same department
-        name = data['full_name'].strip().lower()
-        if len(name) >= 3:
-            name_prefix = name[:3]
+        name_parts = data['full_name'].lower().split()
+        if len(name_parts) >= 2:
+            # Look for records with same first and last name
+            name_query = Q(full_name__icontains=name_parts[0]) & Q(full_name__icontains=name_parts[-1])
             name_matches = Representative.objects.filter(
-                full_name__istartswith=name_prefix,
+                name_query,
                 department=data['department']
             ).exclude(phone_number=data.get('phone_number'))
-            potential_duplicates.extend(name_matches)
+            potential_duplicates.extend(list(name_matches))
     
-    # Remove duplicates from list
+    # Remove duplicates from the list
     return list(set(potential_duplicates))
 
 
-def get_merge_preview(existing_record, new_data: Dict[str, Any]) -> Dict[str, Any]:
+def preview_merge_changes(existing_record, new_data: Dict[str, Any]) -> Dict:
     """
-    Preview what changes would be made if records were merged.
+    Preview what would change if we merged new data with existing record.
     
     Useful for admin review before automatic merging.
     
@@ -241,7 +241,7 @@ def handle_submission_with_deduplication(data: Dict[str, Any]):
         >>> data = {
         ...     'phone_number': '+2348012345678',
         ...     'full_name': 'John Doe',
-        ...     'department_id': 1,
+        ...     'department_id': '10950e0b-c8e2-4628-aacb-dcd0d6c7cc68',
         ...     'role': 'CLASS_REP',
         ...     'entry_year': 2022
         ... }
@@ -251,7 +251,7 @@ def handle_submission_with_deduplication(data: Dict[str, Any]):
         ... else:
         ...     print(f"Updated existing record. Changes: {result}")
     """
-    from ..models import Representative
+    from ..models import Representative, Department
     from .validators import normalize_phone_number
     
     # Normalize phone number
@@ -267,18 +267,24 @@ def handle_submission_with_deduplication(data: Dict[str, Any]):
         return updated_record, False, changes
     else:
         # Create new record
-        # Handle denormalized fields
+        # Handle denormalized fields and UUID support
         if 'department' in data or 'department_id' in data:
-            from ..models import Department
             dept_id = data.get('department_id') or data.get('department')
-            if isinstance(dept_id, int):
+            
+            # Check if dept_id needs to be fetched from database
+            # Support both int (legacy) and UUID
+            if isinstance(dept_id, (int, uuid.UUID, str)):
                 department = Department.objects.select_related('faculty__university').get(id=dept_id)
             else:
+                # Already a Department instance
                 department = dept_id
             
             data['department'] = department
             data['faculty'] = department.faculty
             data['university'] = department.faculty.university
+            
+            # Remove department_id if present (we use department object)
+            data.pop('department_id', None)
         
         new_record = Representative.objects.create(**data)
         return new_record, True, {}
