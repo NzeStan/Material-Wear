@@ -114,6 +114,7 @@ INSTALLED_APPS = [
     "whitenoise.runserver_nostatic",
     "background_task",
     "corsheaders",
+    'testimonials',
     
     # Local apps
     "accounts.apps.AccountsConfig",
@@ -187,8 +188,7 @@ DATABASES = {
 # ==============================================================================
 # CACHING
 # ==============================================================================
-
-# Use Redis for production, dummy cache for development
+#Production, dummy cache for development
 if DEBUG:
     CACHES = {
         'default': {
@@ -198,15 +198,13 @@ if DEBUG:
 else:
     CACHES = {
         'default': {
-            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-            'LOCATION': env('REDIS_URL', default='redis://127.0.0.1:6379/1'),
-            'OPTIONS': {
-                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            },
+            'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+            'LOCATION': 'django_cache_table',
             'KEY_PREFIX': 'jmw',
-            'TIMEOUT': 300,  # 5 minutes default
+            'TIMEOUT': 300,
         }
     }
+
 
 # Cache time settings (in seconds)
 CACHE_TTL_SHORT = 60 * 5  # 5 minutes
@@ -636,3 +634,14 @@ if DEBUG:
     SITE_URL = 'http://127.0.0.1:8000'
 else:
     SITE_URL = 'https://yourdomain.com'
+
+
+#testimonials
+TESTIMONIALS_USE_CACHE = True
+TESTIMONIALS_NOTIFICATION_EMAIL = "admin@yoursite.com"
+TESTIMONIALS_USE_UUIDS = True
+TESTIMONIALS_ENABLE_DASHBOARD = True
+TESTIMONIALS_NOTIFICATION_EMAIL = "nnamaniifeanyi10@gmail.com"
+TESTIMONIALS_SEND_EMAIL_NOTIFICATIONS = True
+TESTIMONIALS_SEND_ADMIN_NOTIFICATIONS = True
+TESTIMONIALS_USE_BACKGROUND_TASKS = True

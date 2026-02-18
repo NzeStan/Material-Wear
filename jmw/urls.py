@@ -52,6 +52,7 @@ urlpatterns = [
     path('api/', include('excel_bulk_orders.urls')),
     path('api/v1/academic-directory/', include('academic_directory.urls')),
     path('api/', include('image_bulk_orders.urls')),
+    path('api/testimonials/', include('testimonials.api.urls')),
 ]
 if settings.DEBUG: # new
     import debug_toolbar
