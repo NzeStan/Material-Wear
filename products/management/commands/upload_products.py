@@ -320,6 +320,7 @@ class Command(BaseCommand):
             for chunk in resp.iter_content(8192):
                 tmp.write(chunk)
             tmp.flush()
+            tmp.seek(0)  # Reset file pointer to beginning for reading
 
             fname = url.split("/")[-1].split("?")[0]
             if not any(

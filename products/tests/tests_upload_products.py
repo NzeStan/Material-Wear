@@ -1558,6 +1558,32 @@ class ImageDownloadingTests(TestCase):
         self.assertIsInstance(result, File)
 
     @patch("products.management.commands.upload_products.requests.get")
+    def test_downloaded_file_content_readable(self, mock_get):
+        """Test that downloaded file content is readable from the beginning (not empty)"""
+        # This test verifies the fix for the file pointer position bug
+        # where the file pointer was left at the end after writing
+        test_content = b"test_image_binary_content_12345"
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {
+            "content-type": "image/jpeg",
+            "content-length": str(len(test_content)),
+        }
+        mock_response.iter_content = lambda chunk_size: [test_content]
+        mock_get.return_value = mock_response
+
+        command = Command()
+        command.stdout = StringIO()
+
+        result = command._download_image("https://example.com/image.jpg")
+
+        self.assertIsNotNone(result)
+        # Read the file content - this should NOT be empty
+        content = result.read()
+        self.assertEqual(content, test_content)
+        self.assertGreater(len(content), 0, "File content should not be empty")
+
+    @patch("products.management.commands.upload_products.requests.get")
     def test_download_non_image_content_type(self, mock_get):
         """Test rejection of non-image content types"""
         mock_response = Mock()
