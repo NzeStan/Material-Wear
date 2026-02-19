@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse, JsonResponse
+from django.db import transaction
+from django.conf import settings
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from .models import PaymentTransaction
 from .serializers import (
@@ -94,15 +96,17 @@ class InitiatePaymentView(views.APIView):
                 f"Amount: {total_amount} - User: {request.user.email}"
             )
             
-            # Build callback URL
-            callback_url = request.build_absolute_uri('/api/payment/verify/')
-            
+            # Build callback URL - point to FRONTEND (not backend API)
+            frontend_callback_url = request.data.get('callback_url')
+            if not frontend_callback_url:
+                frontend_callback_url = f"{settings.FRONTEND_URL}/payment/verify"
+
             # Initialize payment with Paystack
             response = initialize_payment(
                 amount=payment.amount,
                 email=payment.email,
                 reference=payment.reference,
-                callback_url=callback_url,
+                callback_url=frontend_callback_url,
                 metadata={
                     'orders': [str(order.id) for order in orders],
                     'customer_name': f"{first_order.first_name} {first_order.last_name}",
@@ -134,85 +138,60 @@ class InitiatePaymentView(views.APIView):
 @extend_schema(tags=['Payment'])
 class VerifyPaymentView(views.APIView):
     """
-    Verify payment status
-    Called after user completes payment on Paystack
+    Verify payment status - Pure status check endpoint.
+
+    This is a read-only endpoint that checks the current payment status.
+    The actual payment processing (marking paid, sending emails) is handled
+    by the webhook endpoint which receives server-to-server calls from Paystack.
+
+    Frontend flow:
+    1. Paystack redirects user to frontend with reference
+    2. Frontend calls this endpoint to check if payment was processed
+    3. Webhook (separately) handles the actual payment processing
     """
     permission_classes = [permissions.AllowAny]
-    
+
     @extend_schema(
-        description="Verify payment status using reference",
+        description="Check payment status using reference. This is a read-only status check - the webhook handles actual payment processing.",
         parameters=[VerifyPaymentSerializer],
         responses={
             200: PaymentStatusSerializer,
-            400: {'description': 'Verification failed'}
+            404: {'description': 'Payment not found'}
         }
     )
     def get(self, request):
         reference = request.query_params.get('reference')
-        
+
         if not reference:
             return Response({
                 'error': 'Payment reference is required'
             }, status=status.HTTP_400_BAD_REQUEST)
-        
+
         try:
-            payment = PaymentTransaction.objects.get(reference=reference)
+            payment = PaymentTransaction.objects.prefetch_related('orders').get(reference=reference)
         except PaymentTransaction.DoesNotExist:
             return Response({
                 'error': 'Payment not found'
             }, status=status.HTTP_404_NOT_FOUND)
-        
-        # Verify with Paystack
-        response = verify_payment(reference)
-        
-        if not response or not response.get('status'):
-            return Response({
-                'reference': reference,
-                'status': 'failed',
-                'amount': float(payment.amount),
-                'paid': False,
-                'message': 'Payment verification failed'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Check payment status
-        if response['data']['status'] == 'success':
-            # Update payment status
-            if payment.status != 'success':
-                payment.status = 'success'
-                payment.save()
-                
-                # Update orders
-                for order in payment.orders.all():
-                    order.paid = True
-                    order.save()
-                
-                # Clear pending orders from session
-                request.session.pop('pending_orders', None)
-                
-                # Send payment receipt asynchronously
-                send_payment_receipt_email_async(str(payment.id))
-                generate_payment_receipt_pdf_task(str(payment.id))
-                
-                logger.info(f"Payment verified successfully: {reference}")
-            
-            return Response({
-                'reference': reference,
-                'status': 'success',
-                'amount': float(payment.amount),
-                'paid': True,
-                'message': 'Payment successful'
-            }, status=status.HTTP_200_OK)
-        else:
-            payment.status = 'failed'
-            payment.save()
-            
-            return Response({
-                'reference': reference,
-                'status': 'failed',
-                'amount': float(payment.amount),
-                'paid': False,
-                'message': 'Payment was not successful'
-            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Pure status check - just return current state from database
+        # The webhook handles actual payment verification and updates
+        is_paid = payment.status == 'success'
+
+        # Get first order for additional context
+        first_order = payment.orders.first()
+
+        return Response({
+            'reference': reference,
+            'status': payment.status,
+            'amount': float(payment.amount),
+            'paid': is_paid,
+            'email': payment.email,
+            'customer_name': f"{first_order.first_name} {first_order.last_name}" if first_order else None,
+            'order_count': payment.orders.count(),
+            'created_at': payment.created,
+            'message': 'Payment successful' if is_paid else 'Payment pending or failed'
+        }, status=status.HTTP_200_OK)
 
 
 
@@ -270,33 +249,35 @@ def payment_webhook(request):
             return HttpResponse(status=400)
         
         try:
-            payment = PaymentTransaction.objects.get(reference=reference)
-            
-            # Idempotency check - don't process if already successful
-            if payment.status == 'success':
-                logger.info(f"Webhook: Payment {reference} already processed")
-                return HttpResponse(status=200)
-            
-            # Update payment status
-            payment.status = 'success'
-            payment.save()
-            
-            # Update orders
-            for order in payment.orders.all():
-                if not order.paid:
-                    order.paid = True
-                    order.save()
-            
-            # Send payment receipt
+            # Use transaction.atomic with select_for_update for race condition safety
+            with transaction.atomic():
+                payment = PaymentTransaction.objects.select_for_update().get(reference=reference)
+
+                # Idempotency check - don't process if already successful
+                if payment.status == 'success':
+                    logger.info(f"Webhook: Payment {reference} already processed")
+                    return HttpResponse(status=200)
+
+                # Update payment status
+                payment.status = 'success'
+                payment.save(update_fields=['status', 'modified'])
+
+                # Update orders
+                for order in payment.orders.select_for_update():
+                    if not order.paid:
+                        order.paid = True
+                        order.save(update_fields=['paid', 'updated'])
+
+            # Send payment receipt (outside transaction for performance)
             send_payment_receipt_email_async(str(payment.id))
             generate_payment_receipt_pdf_task(str(payment.id))
-            
+
             logger.info(f"Webhook: Payment {reference} processed successfully")
-            
+
         except PaymentTransaction.DoesNotExist:
             logger.error(f"Webhook: Payment not found for reference {reference}")
             return HttpResponse(status=404)
-        
+
         return HttpResponse(status=200)
         
     except json.JSONDecodeError:

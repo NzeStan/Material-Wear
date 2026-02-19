@@ -23,7 +23,7 @@ PRODUCT_TYPE_CHOICES = [
 CATEGORY_NAME_CHOICES = [
     ("NYSC KIT", "NYSC KIT"),
     ("NYSC TOUR", "NYSC TOUR"),
-    ("CHURCH PROG", "CHURCH PROG"),
+    ("CHURCH PROGRAMME", "CHURCH PROGRAMME"),
 ]
 
 # ============================================================================
@@ -1024,13 +1024,14 @@ LGAS = {
 # HELPER FUNCTIONS
 # ============================================================================
 
+
 def get_lgas_for_state(state_name):
     """
     Get LGA choices for a specific state
-    
+
     Args:
         state_name (str): Name of the state
-        
+
     Returns:
         list: List of tuples (value, display) for LGAs
     """
@@ -1040,7 +1041,7 @@ def get_lgas_for_state(state_name):
 def get_all_states_list():
     """
     Get list of all states (without empty option)
-    
+
     Returns:
         list: List of state names
     """
@@ -1050,7 +1051,7 @@ def get_all_states_list():
 def get_all_lgas_list():
     """
     Get flat list of all LGAs across all states
-    
+
     Returns:
         list: List of all LGA names
     """
@@ -1065,10 +1066,10 @@ def get_all_lgas_list():
 def get_size_display(size_code):
     """
     Get display name for a size code
-    
+
     Args:
         size_code (str): Size code (e.g., 'M', 'XL')
-        
+
     Returns:
         str: Display name or the code itself if not found
     """
@@ -1081,11 +1082,11 @@ def get_size_display(size_code):
 def validate_state_lga_pair(state, lga):
     """
     Validate that an LGA belongs to the given state
-    
+
     Args:
         state (str): State name
         lga (str): LGA name
-        
+
     Returns:
         bool: True if valid pair, False otherwise
     """

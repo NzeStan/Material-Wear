@@ -327,19 +327,29 @@ class InitiatePaymentViewTests(APITestCase):
 # ============================================================================
 
 class VerifyPaymentViewTests(APITestCase):
-    """Test VerifyPaymentView (GET /api/payment/verify/)"""
-    
+    """Test VerifyPaymentView (GET /api/payment/verify/)
+
+    Note: VerifyPaymentView is now a PURE STATUS CHECK endpoint.
+    It does NOT:
+    - Call Paystack to verify payment
+    - Update payment/order status
+    - Send emails or trigger background tasks
+
+    The webhook handles all actual payment processing.
+    This endpoint just returns the current state from the database.
+    """
+
     def setUp(self):
         """Set up test fixtures"""
         self.client = APIClient()
         self.url = reverse('payment:verify')
-        
+
         self.user = User.objects.create_user(
             username='testuser',
             email='test@example.com',
             password='testpass123'
         )
-        
+
         self.order = BaseOrder.objects.create(
             user=self.user,
             first_name='John',
@@ -349,7 +359,7 @@ class VerifyPaymentViewTests(APITestCase):
             total_cost=Decimal('10000.00'),
             paid=False
         )
-        
+
         self.payment = PaymentTransaction.objects.create(
             reference='JMW-TEST1234',
             amount=Decimal('10000.00'),
@@ -357,132 +367,83 @@ class VerifyPaymentViewTests(APITestCase):
             status='pending'
         )
         self.payment.orders.add(self.order)
-    
+
     def test_verify_payment_allows_anonymous_access(self):
         """Test that verify payment allows anonymous access (AllowAny)"""
         response = self.client.get(self.url, {'reference': 'JMW-TEST1234'})
-        
-        # Should not return 401 (it will return 400 for missing Paystack response)
+
+        # Should not return 401
         self.assertNotEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-    
+
     def test_verify_payment_missing_reference(self):
         """Test verify payment without reference parameter"""
         response = self.client.get(self.url)
-        
+
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('error', response.data)
         self.assertIn('reference is required', response.data['error'])
-    
+
     def test_verify_payment_nonexistent_payment(self):
         """Test verify payment with non-existent reference"""
         response = self.client.get(self.url, {'reference': 'NONEXISTENT'})
-        
+
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertIn('error', response.data)
         self.assertIn('Payment not found', response.data['error'])
-    
-    @patch('payment.api_views.verify_payment')
-    def test_verify_payment_paystack_verification_failed(self, mock_verify):
-        """Test verify payment when Paystack verification fails"""
-        mock_verify.return_value = None
-        
+
+    def test_verify_payment_returns_pending_status(self):
+        """Test verify payment returns pending status for unprocessed payment"""
         response = self.client.get(self.url, {'reference': 'JMW-TEST1234'})
-        
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('status', response.data)
-        self.assertEqual(response.data['status'], 'failed')
-        self.assertIn('Payment verification failed', response.data['message'])
-    
-    @patch('payment.api_views.verify_payment')
-    def test_verify_payment_paystack_invalid_response(self, mock_verify):
-        """Test verify payment with invalid Paystack response"""
-        mock_verify.return_value = {'status': False}
-        
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['status'], 'pending')
+        self.assertEqual(response.data['reference'], 'JMW-TEST1234')
+        self.assertFalse(response.data['paid'])
+        self.assertIn('pending', response.data['message'].lower())
+
+    def test_verify_payment_returns_success_status(self):
+        """Test verify payment returns success status when payment is processed"""
+        # Set payment to successful (as webhook would do)
+        self.payment.status = 'success'
+        self.payment.save()
+
         response = self.client.get(self.url, {'reference': 'JMW-TEST1234'})
-        
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    
-    @patch('payment.api_views.generate_payment_receipt_pdf_task')
-    @patch('payment.api_views.send_payment_receipt_email_async')
-    @patch('payment.api_views.verify_payment')
-    def test_verify_payment_success(self, mock_verify, mock_email, mock_pdf):
-        """Test successful payment verification"""
-        # Mock successful Paystack verification
-        mock_verify.return_value = {
-            'status': True,
-            'data': {
-                'status': 'success',
-                'amount': 1000000,  # In kobo
-                'reference': 'JMW-TEST1234'
-            }
-        }
-        
-        # Set up session with pending_orders
-        session = self.client.session
-        session['pending_orders'] = [str(self.order.id)]
-        session.save()
-        
-        response = self.client.get(self.url, {'reference': 'JMW-TEST1234'})
-        
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['status'], 'success')
         self.assertEqual(response.data['reference'], 'JMW-TEST1234')
         self.assertTrue(response.data['paid'])
-        
-        # Verify payment status was updated
-        self.payment.refresh_from_db()
-        self.assertEqual(self.payment.status, 'success')
-        
-        # Verify order was marked as paid
-        self.order.refresh_from_db()
-        self.assertTrue(self.order.paid)
-        
-        # Verify session was cleared
-        self.assertNotIn('pending_orders', self.client.session)
-        
-        # Verify async tasks were triggered
-        mock_email.assert_called_once()
-        mock_pdf.assert_called_once()
-    
-    @patch('payment.api_views.verify_payment')
-    def test_verify_payment_already_successful(self, mock_verify):
-        """Test verify payment when payment is already successful"""
-        # Set payment to already successful
-        self.payment.status = 'success'
-        self.payment.save()
-        
-        mock_verify.return_value = {
-            'status': True,
-            'data': {'status': 'success'}
-        }
-        
+        self.assertIn('successful', response.data['message'].lower())
+
+    def test_verify_payment_includes_order_details(self):
+        """Test verify payment includes order count and customer info"""
         response = self.client.get(self.url, {'reference': 'JMW-TEST1234'})
-        
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['status'], 'success')
-    
-    @patch('payment.api_views.verify_payment')
-    def test_verify_payment_failed_status(self, mock_verify):
-        """Test verify payment when Paystack returns failed status"""
-        mock_verify.return_value = {
-            'status': True,
-            'data': {'status': 'failed'}
-        }
-        
+        self.assertIn('order_count', response.data)
+        self.assertEqual(response.data['order_count'], 1)
+        self.assertIn('customer_name', response.data)
+        self.assertEqual(response.data['customer_name'], 'John Doe')
+        self.assertIn('email', response.data)
+
+    def test_verify_payment_does_not_modify_database(self):
+        """Test that verify endpoint does NOT modify payment or orders"""
+        # Get initial state
+        initial_payment_status = self.payment.status
+        initial_order_paid = self.order.paid
+
         response = self.client.get(self.url, {'reference': 'JMW-TEST1234'})
-        
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data['status'], 'failed')
-        self.assertFalse(response.data['paid'])
-        
-        # Verify payment status was updated to failed
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Verify nothing changed in database
         self.payment.refresh_from_db()
-        self.assertEqual(self.payment.status, 'failed')
-    
-    @patch('payment.api_views.send_payment_receipt_email_async')
-    @patch('payment.api_views.verify_payment')
-    def test_verify_payment_multiple_orders(self, mock_verify, mock_email):
-        """Test verify payment with multiple orders"""
+        self.order.refresh_from_db()
+        self.assertEqual(self.payment.status, initial_payment_status)
+        self.assertEqual(self.order.paid, initial_order_paid)
+
+    def test_verify_payment_multiple_orders(self):
+        """Test verify payment with multiple orders returns correct count"""
         # Create another order
         order2 = BaseOrder.objects.create(
             user=self.user,
@@ -494,21 +455,11 @@ class VerifyPaymentViewTests(APITestCase):
             paid=False
         )
         self.payment.orders.add(order2)
-        
-        mock_verify.return_value = {
-            'status': True,
-            'data': {'status': 'success'}
-        }
-        
+
         response = self.client.get(self.url, {'reference': 'JMW-TEST1234'})
-        
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
-        # Verify both orders were marked as paid
-        self.order.refresh_from_db()
-        order2.refresh_from_db()
-        self.assertTrue(self.order.paid)
-        self.assertTrue(order2.paid)
+        self.assertEqual(response.data['order_count'], 2)
 
 
 # ============================================================================
@@ -759,15 +710,15 @@ class PaymentWebhookTests(TestCase):
         self.assertTrue(self.order.paid)
         self.assertTrue(order2.paid)
     
-    @patch('payment.api_views.PaymentTransaction.objects.get')
+    @patch('payment.api_views.transaction.atomic')
     @patch('payment.api_views.verify_paystack_signature')
-    def test_webhook_exception_handling(self, mock_verify_sig, mock_get_payment):
+    def test_webhook_exception_handling(self, mock_verify_sig, mock_atomic):
         """Test webhook exception handling"""
         mock_verify_sig.return_value = True
-        
-        # Mock exception during payment processing (not validation)
-        mock_get_payment.side_effect = Exception("Database error")
-        
+
+        # Mock exception during transaction processing
+        mock_atomic.side_effect = Exception("Database error")
+
         payload = self._create_webhook_payload()
         request = self.factory.post(
             self.url,
@@ -775,9 +726,9 @@ class PaymentWebhookTests(TestCase):
             content_type='application/json',
             HTTP_X_PAYSTACK_SIGNATURE='valid_signature'
         )
-        
+
         response = payment_webhook(request)
-        
+
         self.assertEqual(response.status_code, 500)
 
 
@@ -977,18 +928,27 @@ class PaymentTransactionViewSetTests(APITestCase):
 # ============================================================================
 
 class PaymentFlowIntegrationTests(APITestCase):
-    """Test complete payment flow"""
-    
+    """Test complete payment flow
+
+    The payment flow is now split between two channels:
+    1. User-facing: initiate → Paystack → frontend redirect → verify (status check)
+    2. Server-to-server: Paystack webhook → update payment/orders → send emails
+
+    The verify endpoint is now a PURE STATUS CHECK - it doesn't update anything.
+    The webhook handles all actual payment processing.
+    """
+
     def setUp(self):
         """Set up test fixtures"""
         self.client = APIClient()
-        
+        self.factory = RequestFactory()
+
         self.user = User.objects.create_user(
             username='testuser',
             email='test@example.com',
             password='testpass123'
         )
-        
+
         self.order = BaseOrder.objects.create(
             user=self.user,
             first_name='John',
@@ -998,13 +958,13 @@ class PaymentFlowIntegrationTests(APITestCase):
             total_cost=Decimal('50000.00'),
             paid=False
         )
-    
+
     @patch('payment.api_views.generate_payment_receipt_pdf_task')
     @patch('payment.api_views.send_payment_receipt_email_async')
-    @patch('payment.api_views.verify_payment')
+    @patch('payment.api_views.verify_paystack_signature')
     @patch('payment.api_views.initialize_payment')
-    def test_complete_payment_flow(self, mock_init, mock_verify, mock_email, mock_pdf):
-        """Test complete payment flow from initiate to verify"""
+    def test_complete_payment_flow(self, mock_init, mock_verify_sig, mock_email, mock_pdf):
+        """Test complete payment flow: initiate → webhook → verify"""
         # Step 1: Initiate payment
         mock_init.return_value = {
             'status': True,
@@ -1014,45 +974,62 @@ class PaymentFlowIntegrationTests(APITestCase):
                 'reference': 'JMW-FLOW'
             }
         }
-        
+
         self.client.force_authenticate(user=self.user)
-        
+
         session = self.client.session
         session['pending_orders'] = [str(self.order.id)]
         session.save()
-        
+
         initiate_url = reverse('payment:initiate')
         init_response = self.client.post(initiate_url)
-        
+
         self.assertEqual(init_response.status_code, status.HTTP_200_OK)
         reference = init_response.data['reference']
-        
-        # Verify payment was created
+
+        # Verify payment was created with pending status
         payment = PaymentTransaction.objects.get(reference=reference)
         self.assertEqual(payment.status, 'pending')
-        
-        # Step 2: Verify payment
-        mock_verify.return_value = {
-            'status': True,
-            'data': {'status': 'success'}
+
+        # Step 2: Webhook processes payment (server-to-server)
+        mock_verify_sig.return_value = True
+
+        webhook_payload = {
+            'event': 'charge.success',
+            'data': {
+                'reference': reference,
+                'amount': 5000000,
+                'status': 'success'
+            }
         }
-        
-        verify_url = reverse('payment:verify')
-        verify_response = self.client.get(verify_url, {'reference': reference})
-        
-        self.assertEqual(verify_response.status_code, status.HTTP_200_OK)
-        self.assertTrue(verify_response.data['paid'])
-        
-        # Verify payment and order status
+
+        webhook_request = self.factory.post(
+            reverse('payment:webhook'),
+            data=json.dumps(webhook_payload),
+            content_type='application/json',
+            HTTP_X_PAYSTACK_SIGNATURE='valid_signature'
+        )
+
+        webhook_response = payment_webhook(webhook_request)
+        self.assertEqual(webhook_response.status_code, 200)
+
+        # Verify payment and order were updated by webhook
         payment.refresh_from_db()
         self.order.refresh_from_db()
-        
         self.assertEqual(payment.status, 'success')
         self.assertTrue(self.order.paid)
-        
-        # Verify async tasks were called
+
+        # Verify async tasks were called by webhook
         mock_email.assert_called_once()
         mock_pdf.assert_called_once()
+
+        # Step 3: Frontend calls verify to check status (pure status check)
+        verify_url = reverse('payment:verify')
+        verify_response = self.client.get(verify_url, {'reference': reference})
+
+        self.assertEqual(verify_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(verify_response.data['paid'])
+        self.assertEqual(verify_response.data['status'], 'success')
 
 
 # ============================================================================

@@ -725,7 +725,7 @@ class ExcelInitializePaymentActionTest(APITestCase):
 
     @patch('excel_bulk_orders.views.initialize_payment')
     def test_initialize_payment_callback_url(self, mock_initialize):
-        """Test that callback URL is properly constructed"""
+        """Test that callback URL points to frontend (not backend API)"""
         mock_initialize.return_value = {
             'status': True,
             'data': {
@@ -740,14 +740,29 @@ class ExcelInitializePaymentActionTest(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        # Verify initialize_payment was called with callback_url
+        # Verify initialize_payment was called with callback_url pointing to frontend
         call_args = mock_initialize.call_args
         self.assertIn('callback_url', call_args[1])
-        self.assertIn('verify-payment', call_args[1]['callback_url'])
+        # Callback should point to frontend URL, not backend API
+        callback_url = call_args[1]['callback_url']
+        self.assertIn('payment/verify', callback_url)
+        # Should NOT contain 'api/excel-bulk-orders' (old backend pattern)
+        self.assertNotIn('api/excel-bulk-orders', callback_url)
 
 
 class ExcelVerifyPaymentActionTest(APITestCase):
-    """Test verify payment action"""
+    """Test verify payment action
+
+    Note: verify_payment is now a PURE STATUS CHECK endpoint (GET only).
+    It does NOT:
+    - Call Paystack to verify payment
+    - Create participants
+    - Update payment status
+    - Send emails
+
+    The webhook handles all actual payment processing.
+    This endpoint just returns the current state from the database.
+    """
 
     def setUp(self):
         """Set up test data"""
@@ -770,164 +785,76 @@ class ExcelVerifyPaymentActionTest(APITestCase):
             code='TEST123'
         )
 
-    def create_test_excel_file(self):
-        """Helper to create a test Excel file with participants"""
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = 'Participants'
-
-        # Header
-        ws.append(['S/N', 'Full Name', 'Size', 'Coupon Code'])
-
-        # Participants
-        ws.append([1, 'John Doe', 'Medium', ''])
-        ws.append([2, 'Jane Smith', 'Large', ''])
-        ws.append([3, 'Bob Johnson', 'Small', 'TEST123'])
-
-        buffer = BytesIO()
-        wb.save(buffer)
-        buffer.seek(0)
-
-        return buffer.getvalue()
-
-    @patch('excel_bulk_orders.views.send_bulk_order_confirmation_email')
-    @patch('excel_bulk_orders.views.create_participants_from_excel')
-    @patch('requests.get')
-    @patch('excel_bulk_orders.views.verify_payment')
-    def test_verify_payment_success(
-        self, mock_verify, mock_requests_get, mock_create_participants, mock_send_email
-    ):
-        """Test successful payment verification and participant creation"""
-        # Mock payment verification
-        mock_verify.return_value = {
-            'status': True,
-            'data': {
-                'status': 'success',
-                'amount': 2500000,  # 25000.00 in kobo
-                'reference': self.bulk_order.reference
-            }
-        }
-
-        # Mock Excel file download
-        mock_response = Mock()
-        mock_response.content = self.create_test_excel_file()
-        mock_requests_get.return_value = mock_response
-
-        # Mock participant creation
-        mock_create_participants.return_value = 3
-
-        url = f'/api/excel-bulk-orders/{self.bulk_order.id}/verify-payment/'
-        response = self.client.post(url)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('message', response.data)
-
-        # Verify bulk order was updated
-        self.bulk_order.refresh_from_db()
-        self.assertTrue(self.bulk_order.payment_status)
-        self.assertEqual(self.bulk_order.validation_status, 'completed')
-        self.assertEqual(self.bulk_order.paystack_reference, self.bulk_order.reference)
-
-        # Verify participants were created
-        mock_create_participants.assert_called_once()
-
-        # Email is sent asynchronously via background task, not directly
-        # So we can't assert on the mock - it's queued for later processing
-        # mock_send_email.assert_called_once()
-
-    @patch('excel_bulk_orders.views.verify_payment')
-    def test_verify_payment_already_verified(self, mock_verify):
-        """Test verifying payment that's already verified"""
-        self.bulk_order.payment_status = True
-        self.bulk_order.save()
-
-        url = f'/api/excel-bulk-orders/{self.bulk_order.id}/verify-payment/'
-        response = self.client.post(url)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('already verified', response.data['message'])
-
-        # verify_payment should not be called
-        mock_verify.assert_not_called()
-
-    @patch('excel_bulk_orders.views.verify_payment')
-    def test_verify_payment_failed_verification(self, mock_verify):
-        """Test handling of failed payment verification"""
-        mock_verify.return_value = {
-            'status': False
-        }
-
-        url = f'/api/excel-bulk-orders/{self.bulk_order.id}/verify-payment/'
-        response = self.client.post(url)
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('error', response.data)
-
-    @patch('excel_bulk_orders.views.verify_payment')
-    def test_verify_payment_unsuccessful_status(self, mock_verify):
-        """Test handling of unsuccessful payment status"""
-        mock_verify.return_value = {
-            'status': True,
-            'data': {
-                'status': 'failed',
-                'reference': self.bulk_order.reference
-            }
-        }
-
-        url = f'/api/excel-bulk-orders/{self.bulk_order.id}/verify-payment/'
-        response = self.client.post(url)
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('error', response.data)
-
-    @patch('excel_bulk_orders.views.create_participants_from_excel')
-    @patch('requests.get')
-    @patch('excel_bulk_orders.views.verify_payment')
-    def test_verify_payment_participant_creation_failure(
-        self, mock_verify, mock_requests_get, mock_create_participants
-    ):
-        """Test handling of participant creation failure"""
-        # Mock successful payment verification
-        mock_verify.return_value = {
-            'status': True,
-            'data': {
-                'status': 'success',
-                'reference': self.bulk_order.reference
-            }
-        }
-
-        # Mock file download
-        mock_response = Mock()
-        mock_response.content = self.create_test_excel_file()
-        mock_requests_get.return_value = mock_response
-
-        # Mock participant creation failure
-        mock_create_participants.side_effect = Exception('Participant creation failed')
-
-        url = f'/api/excel-bulk-orders/{self.bulk_order.id}/verify-payment/'
-        response = self.client.post(url)
-
-        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
-        self.assertIn('error', response.data)
-
-    @patch('excel_bulk_orders.views.verify_payment')
-    def test_verify_payment_with_reference_parameter(self, mock_verify):
-        """Test verify payment with reference in query params"""
-        mock_verify.return_value = {
-            'status': False
-        }
-
-        custom_reference = 'CUSTOM-REF-123'
-        url = f'/api/excel-bulk-orders/{self.bulk_order.id}/verify-payment/?reference={custom_reference}'
-        response = self.client.post(url)
-
-        # Verify that custom reference was used
-        mock_verify.assert_called_once_with(custom_reference)
-
-    def test_verify_payment_get_method_allowed(self):
-        """Test that GET method is also allowed for verify payment"""
+    def test_verify_payment_returns_pending_status(self):
+        """Test verify payment returns pending status for unprocessed payment"""
         url = f'/api/excel-bulk-orders/{self.bulk_order.id}/verify-payment/'
         response = self.client.get(url)
 
-        # Should not return 405 Method Not Allowed
-        self.assertNotEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['paid'])
+        self.assertEqual(response.data['reference'], self.bulk_order.reference)
+        self.assertIn('pending', response.data['message'].lower())
+
+    def test_verify_payment_returns_success_status(self):
+        """Test verify payment returns success status when payment is processed"""
+        # Set payment to successful (as webhook would do)
+        self.bulk_order.payment_status = True
+        self.bulk_order.validation_status = 'completed'
+        self.bulk_order.paystack_reference = self.bulk_order.reference
+        self.bulk_order.save()
+
+        # Create some participants (as webhook would do)
+        ExcelParticipant.objects.create(
+            bulk_order=self.bulk_order,
+            full_name='John Doe',
+            size='M',
+            row_number=2
+        )
+
+        url = f'/api/excel-bulk-orders/{self.bulk_order.id}/verify-payment/'
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['paid'])
+        self.assertEqual(response.data['validation_status'], 'completed')
+        self.assertEqual(response.data['participants_count'], 1)
+        self.assertIn('successful', response.data['message'].lower())
+
+    def test_verify_payment_does_not_modify_database(self):
+        """Test that verify endpoint does NOT modify bulk order"""
+        # Get initial state
+        initial_payment_status = self.bulk_order.payment_status
+        initial_validation_status = self.bulk_order.validation_status
+
+        url = f'/api/excel-bulk-orders/{self.bulk_order.id}/verify-payment/'
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Verify nothing changed in database
+        self.bulk_order.refresh_from_db()
+        self.assertEqual(self.bulk_order.payment_status, initial_payment_status)
+        self.assertEqual(self.bulk_order.validation_status, initial_validation_status)
+
+    def test_verify_payment_includes_bulk_order_details(self):
+        """Test verify payment includes bulk order serialized data"""
+        url = f'/api/excel-bulk-orders/{self.bulk_order.id}/verify-payment/'
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('bulk_order', response.data)
+        self.assertIn('title', response.data)
+        self.assertIn('coordinator_email', response.data)
+        self.assertIn('total_amount', response.data)
+
+    def test_verify_payment_get_method_only(self):
+        """Test that only GET method is allowed for verify payment"""
+        url = f'/api/excel-bulk-orders/{self.bulk_order.id}/verify-payment/'
+
+        # GET should work
+        get_response = self.client.get(url)
+        self.assertEqual(get_response.status_code, status.HTTP_200_OK)
+
+        # POST should return 405 Method Not Allowed
+        post_response = self.client.post(url)
+        self.assertEqual(post_response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)

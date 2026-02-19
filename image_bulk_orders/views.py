@@ -283,11 +283,16 @@ class ImageOrderEntryViewSet(viewsets.ModelViewSet):
         
         try:
             # Initialize Paystack payment
+            # Callback URL points to FRONTEND (not backend API)
+            frontend_callback_url = request.data.get('callback_url')
+            if not frontend_callback_url:
+                frontend_callback_url = f"{settings.FRONTEND_URL}/payment/verify"
+
             result = initialize_payment(
                 amount=order_entry.bulk_order.price_per_item,
                 email=order_entry.email,
                 reference=order_entry.reference,
-                callback_url=request.data.get('callback_url')
+                callback_url=frontend_callback_url
             )
             
             if result and result.get('status'):

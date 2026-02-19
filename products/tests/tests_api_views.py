@@ -86,7 +86,11 @@ class CategoryViewSetTest(APITestCase):
 
     def test_category_create_not_allowed(self):
         """Test that creating categories via API is not allowed (ReadOnly)"""
-        data = {"name": "CHURCH PROG", "slug": "church-prog", "product_type": "church"}
+        data = {
+            "name": "CHURCH PROGRAMME",
+            "slug": "church-prog",
+            "product_type": "church",
+        }
         response = self.client.post(self.list_url, data)
 
         # ReadOnlyModelViewSet should not allow POST
@@ -436,7 +440,7 @@ class ChurchViewSetTest(APITestCase):
         self.client = APIClient()
 
         self.category = Category.objects.create(
-            name="CHURCH PROG", slug="church-prog", product_type="church"
+            name="CHURCH PROGRAMME", slug="church-prog", product_type="church"
         )
 
         self.church1 = Church.objects.create(
@@ -553,7 +557,7 @@ class DropdownAPIViewsTest(APITestCase):
 
         # The API requires a state parameter, so it should return 400 without it
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('error', response.data)
+        self.assertIn("error", response.data)
 
     def test_lgas_dropdown_with_state_parameter(self):
         """Test LGAs endpoint with state parameter"""
@@ -572,8 +576,8 @@ class DropdownAPIViewsTest(APITestCase):
 
         # Should return 404 for invalid state
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertIn('error', response.data)
-        
+        self.assertIn("error", response.data)
+
     def test_sizes_dropdown_endpoint(self):
         """Test GET /api/products/sizes/"""
         url = reverse("products:sizes-list")
@@ -665,11 +669,13 @@ class APIEdgeCasesTest(APITestCase):
         # The API returns 400 for invalid filter parameters (which is correct)
         # OR it returns 200 with empty results (if filter is ignored)
         # Update test to accept either behavior
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_400_BAD_REQUEST])
-        
+        self.assertIn(
+            response.status_code, [status.HTTP_200_OK, status.HTTP_400_BAD_REQUEST]
+        )
+
         # If 200, should return empty results or all results
         if response.status_code == status.HTTP_200_OK:
-            self.assertTrue('results' in response.data)
+            self.assertTrue("results" in response.data)
 
     def test_multiple_filters_combined(self):
         """Test combining multiple filters"""

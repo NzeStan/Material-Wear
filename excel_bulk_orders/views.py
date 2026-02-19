@@ -297,15 +297,16 @@ class ExcelBulkOrderViewSet(viewsets.ModelViewSet):
         
         try:
             # Initialize payment with Paystack
-            callback_url = request.build_absolute_uri(
-                f'/api/excel-bulk-orders/{bulk_order.id}/verify-payment/'
-            )
-            
+            # Callback URL points to FRONTEND (not backend API)
+            frontend_callback_url = request.data.get('callback_url')
+            if not frontend_callback_url:
+                frontend_callback_url = f"{settings.FRONTEND_URL}/payment/verify"
+
             payment_data = initialize_payment(
                 email=bulk_order.coordinator_email,
                 amount=bulk_order.total_amount,
                 reference=bulk_order.reference,
-                callback_url=callback_url
+                callback_url=frontend_callback_url
             )
             
             if payment_data.get('status'):
@@ -332,115 +333,43 @@ class ExcelBulkOrderViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
-    @action(detail=True, methods=['post', 'get'], url_path='verify-payment')
+    @action(detail=True, methods=['get'], url_path='verify-payment')
     def verify_payment(self, request, pk=None):
         """
-        Verify payment and create participants.
-        
-        Called by Paystack callback or manually by frontend.
+        Verify payment status - Pure status check endpoint.
+
+        This is a read-only endpoint that checks the current payment status.
+        The actual payment processing (creating participants, sending emails)
+        is handled by the webhook endpoint which receives server-to-server
+        calls from Paystack.
+
+        Frontend flow:
+        1. Paystack redirects user to frontend with reference
+        2. Frontend calls this endpoint to check if payment was processed
+        3. Webhook (separately) handles the actual payment processing
         """
         bulk_order = self.get_object()
-        
-        if bulk_order.payment_status:
-            return Response(
-                {"message": "Payment already verified"},
-                status=status.HTTP_200_OK
-            )
-        
-        # Get reference from query params or use bulk_order reference
-        reference = request.query_params.get('reference', bulk_order.reference)
-        
-        try:
-            # Verify payment with Paystack
-            verification = verify_payment(reference)
-            
-            if verification.get('status') and verification['data']['status'] == 'success':
-                # Payment successful - create participants
-                with transaction.atomic():
-                    # Download Excel file
-                    import requests
-                    from io import BytesIO
-                    
-                    response = requests.get(bulk_order.uploaded_file)
-                    excel_file = BytesIO(response.content)  # Wrap bytes in BytesIO
-                    
-                    # Create participants
-                    participants_count = create_participants_from_excel(
-                        bulk_order,
-                        excel_file
-                    )
-                    
-                    # Update bulk order
-                    bulk_order.payment_status = True
-                    bulk_order.paystack_reference = reference
-                    bulk_order.validation_status = 'completed'
-                    bulk_order.save()
-                    
-                    logger.info(
-                        f"Payment verified for {bulk_order.reference}. "
-                        f"Created {participants_count} participants."
-                    )
-                
-                # Send confirmation email to coordinator (not a background task)
-                from jmw.background_utils import send_email_async
-                
-                context = {
-                    'bulk_order': bulk_order,
-                    'participants_count': participants_count,
-                    'company_name': settings.COMPANY_NAME,
-                    'company_email': settings.COMPANY_EMAIL,
-                }
-                
-                # Simple text email for now (can create HTML template later)
-                email_subject = f'Payment Confirmed - {bulk_order.title}'
-                email_message = f"""
-Dear {bulk_order.coordinator_name},
 
-Thank you for your payment!
+        # Get participant count if payment is complete
+        participants_count = bulk_order.participants.count() if bulk_order.payment_status else 0
 
-Order Details:
-- Reference: {bulk_order.reference}
-- Campaign: {bulk_order.title}
-- Participants: {participants_count}
-- Amount Paid: ₦{bulk_order.total_amount:,.2f}
+        serializer = ExcelBulkOrderDetailSerializer(
+            bulk_order,
+            context={'request': request}
+        )
 
-Your order has been successfully processed.
-
-Best regards,
-{settings.COMPANY_NAME}
-                """.strip()
-                
-                send_email_async(
-                    subject=email_subject,
-                    message=email_message,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[bulk_order.coordinator_email]
-                )
-                
-                logger.info(f"Confirmation email queued for {bulk_order.coordinator_email}")
-                
-                serializer = ExcelBulkOrderDetailSerializer(
-                    bulk_order,
-                    context={'request': request}
-                )
-                
-                return Response({
-                    'message': 'Payment verified successfully',
-                    'participants_created': participants_count,
-                    'bulk_order': serializer.data
-                })
-            else:
-                return Response(
-                    {"error": "Payment verification failed"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-                
-        except Exception as e:
-            logger.error(f"Error verifying payment: {str(e)}")
-            return Response(
-                {"error": f"Payment verification failed: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        return Response({
+            'reference': bulk_order.reference,
+            'title': bulk_order.title,
+            'coordinator_email': bulk_order.coordinator_email,
+            'paid': bulk_order.payment_status,
+            'validation_status': bulk_order.validation_status,
+            'total_amount': float(bulk_order.total_amount),
+            'participants_count': participants_count,
+            'paystack_reference': bulk_order.paystack_reference,
+            'message': 'Payment successful' if bulk_order.payment_status else 'Payment pending',
+            'bulk_order': serializer.data
+        })
     
     @action(detail=True, methods=['get'], url_path='download-template')
     def download_template(self, request, pk=None):
