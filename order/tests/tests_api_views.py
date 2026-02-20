@@ -734,9 +734,19 @@ class CheckoutViewMultipleProductTypesTests(TestCase):
         payment = PaymentTransaction.objects.first()
         self.assertEqual(payment.orders.count(), 2)
         
-        # ✅ NEW: Verify total amount is sum of both orders
-        total = sum(float(order['total_price']) for order in response.data['orders'])
-        self.assertEqual(float(response.data['total_amount']), total)
+        # ✅ NEW: Verify subtotal is sum of both orders
+        subtotal = sum(float(order['total_price']) for order in response.data['orders'])
+        self.assertEqual(float(response.data['subtotal']), subtotal)
+
+        # ✅ NEW: Verify total amount includes VAT (7.5%)
+        vat_amount = subtotal * 0.075
+        expected_total = subtotal + round(vat_amount, 2)
+        self.assertAlmostEqual(float(response.data['total_amount']), expected_total, places=2)
+
+        # ✅ NEW: Verify VAT fields are present
+        self.assertIn('vat_amount', response.data)
+        self.assertIn('vat_rate', response.data)
+        self.assertEqual(response.data['vat_rate'], 7.5)
 
 
 class CheckoutViewEdgeCasesTests(TestCase):

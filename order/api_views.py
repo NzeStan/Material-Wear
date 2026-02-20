@@ -16,6 +16,7 @@ from jmw.throttling import CheckoutRateThrottle
 from decimal import Decimal
 from cart.cart import Cart
 from jmw.background_utils import send_order_confirmation_email_async, generate_order_confirmation_pdf_task
+from payment.utils import get_vat_breakdown
 import logging
 
 logger = logging.getLogger(__name__)
@@ -172,21 +173,23 @@ class CheckoutView(views.APIView):
             # ✅ NEW: Initialize payment with Paystack immediately after order creation
             from payment.models import PaymentTransaction
             from payment.utils import initialize_payment
-            
-            # Calculate total amount
-            total_amount = sum(order.total_cost for order in orders_created)
+
+            # Calculate total amount with VAT
+            subtotal = sum(order.total_cost for order in orders_created)
+            vat_breakdown = get_vat_breakdown(subtotal)
+            total_amount = vat_breakdown['total_amount']
             first_order = orders_created[0]
-            
-            # Create payment transaction
+
+            # Create payment transaction (store total with VAT)
             payment = PaymentTransaction.objects.create(
                 amount=total_amount,
                 email=first_order.email
             )
             payment.orders.set(orders_created)
-            
+
             # Build callback URL for Paystack redirect
             callback_url = request.build_absolute_uri('/api/payment/verify/')
-            
+
             # Initialize payment with Paystack
             paystack_response = initialize_payment(
                 amount=payment.amount,
@@ -196,7 +199,10 @@ class CheckoutView(views.APIView):
                 metadata={
                     'orders': [str(order.id) for order in orders_created],
                     'customer_name': f"{first_order.first_name} {first_order.last_name}",
-                    'user_id': str(request.user.id)
+                    'user_id': str(request.user.id),
+                    'subtotal': float(subtotal),
+                    'vat_amount': float(vat_breakdown['vat_amount']),
+                    'vat_rate': vat_breakdown['vat_rate']
                 }
             )
             
@@ -234,6 +240,9 @@ class CheckoutView(views.APIView):
             # ✅ Return orders + payment URL in single response
             return Response({
                 'message': 'Orders created successfully',
+                'subtotal': str(subtotal),
+                'vat_amount': str(vat_breakdown['vat_amount']),
+                'vat_rate': vat_breakdown['vat_rate'],
                 'total_amount': str(total_amount),
                 'order_count': len(orders_created),
                 'orders': [

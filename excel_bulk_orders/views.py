@@ -36,7 +36,7 @@ from .utils import (
     validate_excel_file,
     create_participants_from_excel,
 )
-from payment.utils import initialize_payment, verify_payment
+from payment.utils import initialize_payment, verify_payment, calculate_amount_with_vat, get_vat_breakdown
 from payment.security import verify_paystack_signature
 from jmw.background_utils import send_email_async
 logger = logging.getLogger(__name__)
@@ -302,23 +302,32 @@ class ExcelBulkOrderViewSet(viewsets.ModelViewSet):
             if not frontend_callback_url:
                 frontend_callback_url = f"{settings.FRONTEND_URL}/payment/verify"
 
+            # Calculate amount with VAT
+            base_amount = bulk_order.total_amount
+            vat_breakdown = get_vat_breakdown(base_amount)
+            amount_with_vat = vat_breakdown['total_amount']
+
             payment_data = initialize_payment(
                 email=bulk_order.coordinator_email,
-                amount=bulk_order.total_amount,
+                amount=amount_with_vat,
                 reference=bulk_order.reference,
                 callback_url=frontend_callback_url
             )
-            
+
             if payment_data.get('status'):
                 bulk_order.validation_status = 'processing'
                 bulk_order.save()
-                
+
                 logger.info(f"Payment initialized for {bulk_order.reference}")
-                
+
                 return Response({
                     'authorization_url': payment_data['data']['authorization_url'],
                     'access_code': payment_data['data']['access_code'],
-                    'reference': payment_data['data']['reference']
+                    'reference': payment_data['data']['reference'],
+                    'base_amount': float(vat_breakdown['base_amount']),
+                    'vat_amount': float(vat_breakdown['vat_amount']),
+                    'vat_rate': vat_breakdown['vat_rate'],
+                    'total_amount': float(amount_with_vat)
                 })
             else:
                 return Response(
@@ -353,6 +362,9 @@ class ExcelBulkOrderViewSet(viewsets.ModelViewSet):
         # Get participant count if payment is complete
         participants_count = bulk_order.participants.count() if bulk_order.payment_status else 0
 
+        # Calculate VAT breakdown
+        vat_breakdown = get_vat_breakdown(bulk_order.total_amount)
+
         serializer = ExcelBulkOrderDetailSerializer(
             bulk_order,
             context={'request': request}
@@ -364,7 +376,10 @@ class ExcelBulkOrderViewSet(viewsets.ModelViewSet):
             'coordinator_email': bulk_order.coordinator_email,
             'paid': bulk_order.payment_status,
             'validation_status': bulk_order.validation_status,
-            'total_amount': float(bulk_order.total_amount),
+            'base_amount': float(vat_breakdown['base_amount']),
+            'vat_amount': float(vat_breakdown['vat_amount']),
+            'vat_rate': vat_breakdown['vat_rate'],
+            'total_amount': float(vat_breakdown['total_amount']),
             'participants_count': participants_count,
             'paystack_reference': bulk_order.paystack_reference,
             'message': 'Payment successful' if bulk_order.payment_status else 'Payment pending',

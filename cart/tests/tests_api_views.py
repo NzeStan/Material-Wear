@@ -119,8 +119,18 @@ class CartDetailViewTests(TestCase):
         self.assertEqual(response.data["total_items"], 3)  # 1 + 2
         self.assertEqual(len(response.data["items"]), 2)
 
-        # Check total cost
-        expected_total = (Decimal("5000.00") * 1) + (Decimal("3000.00") * 2)
+        # Check subtotal (before VAT)
+        expected_subtotal = (Decimal("5000.00") * 1) + (Decimal("3000.00") * 2)
+        self.assertEqual(Decimal(response.data["subtotal"]), expected_subtotal)
+
+        # Check VAT fields exist
+        self.assertIn("vat_amount", response.data)
+        self.assertIn("vat_rate", response.data)
+        self.assertEqual(response.data["vat_rate"], 7.5)
+
+        # Check total cost includes VAT (subtotal + 7.5% VAT)
+        expected_vat = expected_subtotal * Decimal("0.075")
+        expected_total = expected_subtotal + expected_vat.quantize(Decimal("0.01"))
         self.assertEqual(Decimal(response.data["total_cost"]), expected_total)
 
     def test_cart_grouped_by_type(self):
@@ -242,7 +252,15 @@ class CartSummaryViewTests(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 3)
-        self.assertEqual(response.data["total"], 15000.0)  # 5000 * 3
+        self.assertEqual(response.data["subtotal"], 15000.0)  # 5000 * 3
+
+        # Check VAT fields
+        self.assertIn("vat_amount", response.data)
+        self.assertIn("vat_rate", response.data)
+        self.assertEqual(response.data["vat_rate"], 7.5)
+
+        # Total includes VAT (15000 + 1125 VAT = 16125)
+        self.assertEqual(response.data["total"], 16125.0)
 
     def test_summary_is_lightweight(self):
         """Test summary only returns count and total (no items)"""
@@ -1068,5 +1086,11 @@ class CartAPIEdgeCasesTests(TestCase):
         cart_url = reverse("cart:cart-detail")
         response = self.client.get(cart_url)
 
-        expected_total = Decimal("1234.56") * 3
+        # Check subtotal (before VAT)
+        expected_subtotal = Decimal("1234.56") * 3
+        self.assertEqual(Decimal(response.data["subtotal"]), expected_subtotal)
+
+        # Check total includes VAT
+        expected_vat = expected_subtotal * Decimal("0.075")
+        expected_total = expected_subtotal + expected_vat.quantize(Decimal("0.01"))
         self.assertEqual(Decimal(response.data["total_cost"]), expected_total)

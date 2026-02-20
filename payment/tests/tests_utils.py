@@ -50,7 +50,11 @@ import json
 from payment.utils import (
     get_paystack_keys,
     initialize_payment,
-    verify_payment
+    verify_payment,
+    VAT_RATE,
+    calculate_vat,
+    calculate_amount_with_vat,
+    get_vat_breakdown
 )
 
 
@@ -90,9 +94,127 @@ class GetPaystackKeysTests(TestCase):
     def test_keys_are_strings(self):
         """Test that returned keys are strings"""
         secret, public = get_paystack_keys()
-        
+
         self.assertIsInstance(secret, str)
         self.assertIsInstance(public, str)
+
+
+# ============================================================================
+# VAT CALCULATION TESTS
+# ============================================================================
+
+class VATCalculationTests(TestCase):
+    """Test VAT calculation functions"""
+
+    def test_vat_rate_is_7_5_percent(self):
+        """Test that VAT_RATE is 7.5%"""
+        self.assertEqual(VAT_RATE, Decimal('0.075'))
+
+    def test_calculate_vat_basic(self):
+        """Test basic VAT calculation"""
+        amount = Decimal('10000.00')
+        vat = calculate_vat(amount)
+
+        # 10000 * 0.075 = 750
+        self.assertEqual(vat, Decimal('750.00'))
+
+    def test_calculate_vat_decimal_precision(self):
+        """Test VAT calculation with decimal precision"""
+        amount = Decimal('5000.00')
+        vat = calculate_vat(amount)
+
+        # 5000 * 0.075 = 375
+        self.assertEqual(vat, Decimal('375.00'))
+
+    def test_calculate_vat_rounds_to_two_decimal_places(self):
+        """Test that VAT is rounded to 2 decimal places"""
+        amount = Decimal('1234.56')
+        vat = calculate_vat(amount)
+
+        # 1234.56 * 0.075 = 92.592 -> rounded to 92.59
+        self.assertEqual(vat, Decimal('92.59'))
+
+    def test_calculate_vat_with_string_input(self):
+        """Test VAT calculation accepts string input"""
+        vat = calculate_vat('10000.00')
+        self.assertEqual(vat, Decimal('750.00'))
+
+    def test_calculate_vat_with_integer_input(self):
+        """Test VAT calculation accepts integer input"""
+        vat = calculate_vat(10000)
+        self.assertEqual(vat, Decimal('750.00'))
+
+    def test_calculate_vat_zero_amount(self):
+        """Test VAT calculation with zero amount"""
+        vat = calculate_vat(Decimal('0.00'))
+        self.assertEqual(vat, Decimal('0.00'))
+
+    def test_calculate_amount_with_vat_basic(self):
+        """Test basic amount with VAT calculation"""
+        amount = Decimal('10000.00')
+        total = calculate_amount_with_vat(amount)
+
+        # 10000 + 750 = 10750
+        self.assertEqual(total, Decimal('10750.00'))
+
+    def test_calculate_amount_with_vat_decimal_precision(self):
+        """Test amount with VAT with decimal precision"""
+        amount = Decimal('1234.56')
+        total = calculate_amount_with_vat(amount)
+
+        # 1234.56 + 92.59 = 1327.15
+        self.assertEqual(total, Decimal('1327.15'))
+
+    def test_calculate_amount_with_vat_zero(self):
+        """Test amount with VAT for zero amount"""
+        total = calculate_amount_with_vat(Decimal('0.00'))
+        self.assertEqual(total, Decimal('0.00'))
+
+    def test_get_vat_breakdown_basic(self):
+        """Test VAT breakdown returns correct structure"""
+        breakdown = get_vat_breakdown(Decimal('10000.00'))
+
+        self.assertEqual(breakdown['base_amount'], Decimal('10000.00'))
+        self.assertEqual(breakdown['vat_amount'], Decimal('750.00'))
+        self.assertEqual(breakdown['vat_rate'], 7.5)
+        self.assertEqual(breakdown['total_amount'], Decimal('10750.00'))
+
+    def test_get_vat_breakdown_all_fields_present(self):
+        """Test that VAT breakdown contains all expected fields"""
+        breakdown = get_vat_breakdown(Decimal('5000.00'))
+
+        expected_fields = ['base_amount', 'vat_amount', 'vat_rate', 'total_amount']
+        for field in expected_fields:
+            self.assertIn(field, breakdown)
+
+    def test_get_vat_breakdown_with_string_input(self):
+        """Test VAT breakdown accepts string input"""
+        breakdown = get_vat_breakdown('5000.00')
+
+        self.assertEqual(breakdown['base_amount'], Decimal('5000.00'))
+        self.assertEqual(breakdown['vat_amount'], Decimal('375.00'))
+        self.assertEqual(breakdown['total_amount'], Decimal('5375.00'))
+
+    def test_get_vat_breakdown_large_amount(self):
+        """Test VAT breakdown with large amount"""
+        amount = Decimal('100000.00')
+        breakdown = get_vat_breakdown(amount)
+
+        # 100000 * 0.075 = 7500
+        self.assertEqual(breakdown['vat_amount'], Decimal('7500.00'))
+        self.assertEqual(breakdown['total_amount'], Decimal('107500.00'))
+
+    def test_vat_calculations_are_consistent(self):
+        """Test that all VAT functions return consistent values"""
+        amount = Decimal('8500.00')
+
+        vat = calculate_vat(amount)
+        total = calculate_amount_with_vat(amount)
+        breakdown = get_vat_breakdown(amount)
+
+        self.assertEqual(vat, breakdown['vat_amount'])
+        self.assertEqual(total, breakdown['total_amount'])
+        self.assertEqual(amount + vat, total)
 
 
 # ============================================================================

@@ -20,7 +20,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.template.loader import render_to_string
 from jmw.throttling import BulkOrderWebhookThrottle
-from payment.utils import initialize_payment
+from payment.utils import initialize_payment, get_vat_breakdown
 from payment.security import verify_paystack_signature, sanitize_payment_log_data
 from .models import ImageBulkOrderLink, ImageCouponCode, ImageOrderEntry
 from .serializers import (
@@ -288,19 +288,27 @@ class ImageOrderEntryViewSet(viewsets.ModelViewSet):
             if not frontend_callback_url:
                 frontend_callback_url = f"{settings.FRONTEND_URL}/payment/verify"
 
+            # Calculate amount with VAT
+            base_amount = order_entry.bulk_order.price_per_item
+            vat_breakdown = get_vat_breakdown(base_amount)
+            amount_with_vat = vat_breakdown['total_amount']
+
             result = initialize_payment(
-                amount=order_entry.bulk_order.price_per_item,
+                amount=amount_with_vat,
                 email=order_entry.email,
                 reference=order_entry.reference,
                 callback_url=frontend_callback_url
             )
-            
+
             if result and result.get('status'):
                 return Response({
                     "authorization_url": result['data']['authorization_url'],
                     "reference": result['data']['reference'],
                     "order_reference": order_entry.reference,
-                    "amount": float(order_entry.bulk_order.price_per_item)
+                    "base_amount": float(vat_breakdown['base_amount']),
+                    "vat_amount": float(vat_breakdown['vat_amount']),
+                    "vat_rate": vat_breakdown['vat_rate'],
+                    "amount": float(amount_with_vat)
                 })
             else:
                 return Response(
@@ -319,12 +327,16 @@ class ImageOrderEntryViewSet(viewsets.ModelViewSet):
     def verify_payment(self, request, pk=None):
         """Verify payment status for an ImageOrderEntry - PUBLIC ENDPOINT"""
         order_entry = self.get_object()
-        
+        vat_breakdown = get_vat_breakdown(order_entry.bulk_order.price_per_item)
+
         return Response({
             "order_id": str(order_entry.id),
             "reference": order_entry.reference,
             "paid": order_entry.paid,
-            "amount": float(order_entry.bulk_order.price_per_item),
+            "base_amount": float(vat_breakdown['base_amount']),
+            "vat_amount": float(vat_breakdown['vat_amount']),
+            "vat_rate": vat_breakdown['vat_rate'],
+            "amount": float(vat_breakdown['total_amount']),
             "email": order_entry.email,
             "full_name": order_entry.full_name,
             "organization": order_entry.bulk_order.organization_name,

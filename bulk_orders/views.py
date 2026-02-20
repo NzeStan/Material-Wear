@@ -17,7 +17,7 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse
 from .models import BulkOrderLink, OrderEntry, CouponCode
 from .serializers import BulkOrderLinkSerializer, OrderEntrySerializer, CouponCodeSerializer
 from payment.security import verify_paystack_signature, sanitize_payment_log_data
-from payment.utils import initialize_payment
+from payment.utils import initialize_payment, calculate_amount_with_vat, get_vat_breakdown
 from .utils import (
     generate_coupon_codes,
     generate_bulk_order_pdf,
@@ -445,21 +445,23 @@ class OrderEntryViewSet(viewsets.ModelViewSet):
         
         # Generate payment reference
         reference = f"ORDER-{order_entry.bulk_order.id}-{order_entry.id}"
-        
-        # Calculate amount
-        amount = order_entry.bulk_order.price_per_item
+
+        # Calculate amount with VAT
+        base_amount = order_entry.bulk_order.price_per_item
+        vat_breakdown = get_vat_breakdown(base_amount)
+        amount = vat_breakdown['total_amount']
         email = order_entry.email
-        
+
         # ✅ CRITICAL: Callback URL from settings or request
         frontend_callback_url = request.data.get('callback_url')
-        
+
         if not frontend_callback_url:
             # ✅ Use FRONTEND_URL from settings
             frontend_callback_url = f"{settings.FRONTEND_URL}/payment/verify"
-        
+
         # Initialize payment with Paystack
         result = initialize_payment(amount, email, reference, frontend_callback_url)
-        
+
         if result and result.get('status'):
             logger.info(
                 f"Payment initialized for order {order_entry.reference} "
@@ -470,6 +472,9 @@ class OrderEntryViewSet(viewsets.ModelViewSet):
                 "access_code": result['data']['access_code'],
                 "reference": reference,
                 "order_reference": order_entry.reference,
+                "base_amount": float(vat_breakdown['base_amount']),
+                "vat_amount": float(vat_breakdown['vat_amount']),
+                "vat_rate": vat_breakdown['vat_rate'],
                 "amount": float(amount),
                 "email": email
             })
@@ -499,12 +504,16 @@ class OrderEntryViewSet(viewsets.ModelViewSet):
         4. Frontend shows success/failure message based on response
         """
         order_entry = self.get_object()
-        
+        vat_breakdown = get_vat_breakdown(order_entry.bulk_order.price_per_item)
+
         return Response({
             "order_id": str(order_entry.id),
             "reference": order_entry.reference,
             "paid": order_entry.paid,
-            "amount": float(order_entry.bulk_order.price_per_item),
+            "base_amount": float(vat_breakdown['base_amount']),
+            "vat_amount": float(vat_breakdown['vat_amount']),
+            "vat_rate": vat_breakdown['vat_rate'],
+            "amount": float(vat_breakdown['total_amount']),
             "email": order_entry.email,
             "full_name": order_entry.full_name,
             "organization": order_entry.bulk_order.organization_name,

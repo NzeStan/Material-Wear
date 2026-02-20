@@ -191,6 +191,9 @@ class CartSerializer(serializers.Serializer):
     """Serializer for the entire cart"""
     items = CartItemSerializer(many=True, read_only=True)
     total_items = serializers.IntegerField(read_only=True)
+    subtotal = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    vat_amount = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    vat_rate = serializers.FloatField(read_only=True)
     total_cost = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     grouped_by_type = serializers.SerializerMethodField()
 

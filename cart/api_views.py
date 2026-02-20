@@ -8,6 +8,7 @@ from .serializers import (
     CartSerializer, AddToCartSerializer, UpdateCartItemSerializer, CartItemSerializer
 )
 from jmw.throttling import CartRateThrottle
+from payment.utils import get_vat_breakdown
 import logging
 logger = logging.getLogger(__name__)
 from .serializers import ClearCartSerializer 
@@ -52,9 +53,10 @@ class CartDetailView(views.APIView):
                 'item_key': item_key
             })
         
-        # Calculate totals
-        total_cost = sum(item['total_price'] for item in items)
-        
+        # Calculate totals with VAT
+        subtotal = sum(item['total_price'] for item in items)
+        vat_breakdown = get_vat_breakdown(subtotal)
+
         # Group by product type
         grouped = {}
         for item in items:
@@ -62,14 +64,17 @@ class CartDetailView(views.APIView):
             if ptype not in grouped:
                 grouped[ptype] = []
             grouped[ptype].append(item)
-        
+
         data = {
             'items': items,
             'total_items': len(cart),
-            'total_cost': total_cost,
+            'subtotal': subtotal,
+            'vat_amount': vat_breakdown['vat_amount'],
+            'vat_rate': vat_breakdown['vat_rate'],
+            'total_cost': vat_breakdown['total_amount'],
             'grouped_by_type': grouped
         }
-        
+
         serializer = CartSerializer(data)
         return Response(serializer.data)
 
@@ -275,6 +280,9 @@ class CartSummaryView(views.APIView):
                 'type': 'object',
                 'properties': {
                     'count': {'type': 'integer'},
+                    'subtotal': {'type': 'number'},
+                    'vat_amount': {'type': 'number'},
+                    'vat_rate': {'type': 'number'},
                     'total': {'type': 'number'}
                 }
             }
@@ -282,12 +290,16 @@ class CartSummaryView(views.APIView):
     )
     def get(self, request):
         cart = Cart(request)
-        
+
         # Calculate total by iterating through cart
-        total_cost = sum(item['total_price'] for item in cart)
-        
+        subtotal = sum(item['total_price'] for item in cart)
+        vat_breakdown = get_vat_breakdown(subtotal)
+
         return Response({
             'count': len(cart),
-            'total': float(total_cost)
+            'subtotal': float(subtotal),
+            'vat_amount': float(vat_breakdown['vat_amount']),
+            'vat_rate': vat_breakdown['vat_rate'],
+            'total': float(vat_breakdown['total_amount'])
         }, status=status.HTTP_200_OK)
 

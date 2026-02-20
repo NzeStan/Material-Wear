@@ -1,11 +1,64 @@
 # payment/utils.py
 import json
 import requests
+from decimal import Decimal
 from django.conf import settings
 from .security import sanitize_payment_log_data  # ✅ ADD THIS
 import logging
 
 logger = logging.getLogger(__name__)
+
+# VAT Configuration
+VAT_RATE = Decimal('0.075')  # 7.5% VAT
+
+
+def calculate_vat(amount):
+    """
+    Calculate VAT amount for a given base amount.
+
+    Args:
+        amount: The base amount (Decimal or convertible to Decimal)
+
+    Returns:
+        Decimal: The VAT amount (7.5% of the base amount)
+    """
+    amount = Decimal(str(amount))
+    return (amount * VAT_RATE).quantize(Decimal('0.01'))
+
+
+def calculate_amount_with_vat(amount):
+    """
+    Calculate total amount including VAT.
+
+    Args:
+        amount: The base amount (Decimal or convertible to Decimal)
+
+    Returns:
+        Decimal: The total amount including 7.5% VAT
+    """
+    amount = Decimal(str(amount))
+    vat = calculate_vat(amount)
+    return amount + vat
+
+
+def get_vat_breakdown(amount):
+    """
+    Get a detailed VAT breakdown for an amount.
+
+    Args:
+        amount: The base amount (Decimal or convertible to Decimal)
+
+    Returns:
+        dict: Contains base_amount, vat_amount, vat_rate, and total_amount
+    """
+    amount = Decimal(str(amount))
+    vat = calculate_vat(amount)
+    return {
+        'base_amount': amount,
+        'vat_amount': vat,
+        'vat_rate': float(VAT_RATE * 100),  # 7.5
+        'total_amount': amount + vat
+    }
 
 
 def get_paystack_keys():
