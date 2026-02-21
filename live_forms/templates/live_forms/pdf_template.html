@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Live Form — {{ live_form.organization_name }}</title>
+  <style>
+    /* ── No CSS variables — WeasyPrint does not support them ────────── */
+    /* Primary green : #064E3B  |  Accent amber : #F59E0B              */
+    /* Light green   : #F0FDF4  |  Border green : #D1FAE5              */
+    /* Muted grey    : #6B7280  |  Body text    : #1F2937              */
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: #1F2937;
+      background: #ffffff;
+      padding: 24px 28px;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    .header {
+      border-bottom: 3px solid #064E3B;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .header-left { float: left; }
+    .header-right { float: right; padding-top: 4px; }
+    .header::after { content: ""; display: table; clear: both; }
+
+    .company-name {
+      font-size: 20px;
+      font-weight: 800;
+      color: #064E3B;
+      letter-spacing: 0.5px;
+    }
+    .company-meta {
+      font-size: 9px;
+      color: #6B7280;
+      margin-top: 3px;
+      line-height: 1.5;
+    }
+    .badge {
+      background: #064E3B;
+      color: #ffffff;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    /* ── Form info block ─────────────────────────────────────────────── */
+    .form-info {
+      background: #F0FDF4;
+      border: 1px solid #D1FAE5;
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+    }
+    .form-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #064E3B;
+      margin-bottom: 6px;
+    }
+    .form-meta-item {
+      font-size: 10px;
+      color: #6B7280;
+      display: inline-block;
+      margin-right: 24px;
+    }
+    .form-meta-item strong {
+      color: #1F2937;
+      font-weight: 600;
+    }
+
+    /* ── Section title ───────────────────────────────────────────────── */
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #064E3B;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-left: 3px solid #F59E0B;
+      padding-left: 8px;
+      margin: 14px 0 8px;
+    }
+
+    /* ── Summary table ───────────────────────────────────────────────── */
+    .summary-table {
+      width: auto;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+    }
+    .summary-table th {
+      background: #F59E0B;
+      color: #1F2937;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 5px 14px;
+      text-align: center;
+      border: 1px solid #D97706;
+    }
+    .summary-table td {
+      padding: 4px 14px;
+      text-align: center;
+      font-size: 10px;
+      border: 1px solid #E5E7EB;
+    }
+    .summary-table tr:nth-child(even) td { background: #F0FDF4; }
+
+    /* ── Entries table ───────────────────────────────────────────────── */
+    .entries-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 4px;
+    }
+    .entries-table th {
+      background: #064E3B;
+      color: #ffffff;
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 6px 8px;
+      text-align: left;
+      border: 1px solid #065F46;
+    }
+    .entries-table td {
+      padding: 5px 8px;
+      font-size: 10px;
+      border: 1px solid #E5E7EB;
+      vertical-align: middle;
+    }
+    .entries-table tr:nth-child(even) td { background: #F0FDF4; }
+
+    .serial { width: 36px; text-align: center; font-weight: 600; color: #6B7280; }
+
+    .size-badge {
+      display: inline-block;
+      background: #064E3B;
+      color: #ffffff;
+      font-size: 8.5px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    /* ── Footer ──────────────────────────────────────────────────────── */
+    .footer {
+      margin-top: 20px;
+      border-top: 1px solid #D1FAE5;
+      padding-top: 8px;
+      overflow: hidden;
+      font-size: 8.5px;
+      color: #6B7280;
+    }
+    .footer-left  { float: left; }
+    .footer-right { float: right; }
+    .footer::after { content: ""; display: table; clear: both; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="company-name">{{ company_name }}</div>
+      <div class="company-meta">
+        {{ company_address }}<br>
+        {{ company_phone }} &bull; {{ company_email }}
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="badge">Live Form Report</span>
+    </div>
+  </div>
+
+  <!-- Form Info -->
+  <div class="form-info">
+    <div class="form-title">{{ live_form.organization_name }}</div>
+    <span class="form-meta-item"><strong>Total Entries:</strong> {{ total_entries }}</span>
+    <span class="form-meta-item"><strong>Expires:</strong> {{ live_form.expires_at|date:"N j, Y — g:i A" }}</span>
+    <span class="form-meta-item"><strong>Custom Branding:</strong> {% if custom_branding_enabled %}Yes{% else %}No{% endif %}</span>
+    <span class="form-meta-item"><strong>Generated:</strong> {{ now|date:"N j, Y — g:i A" }}</span>
+  </div>
+
+  <!-- Size Summary -->
+  <div class="section-title">Summary by Size</div>
+  <table class="summary-table">
+    <thead>
+      <tr>
+        <th>Size</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in size_summary %}
+      <tr>
+        <td>{{ row.size }}</td>
+        <td>{{ row.count }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="2" style="color:#9CA3AF; text-align:center;">No entries yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Custom Names by Size (only when custom_branding_enabled) -->
+  {% if custom_branding_enabled %}
+  <div class="section-title">Custom Names by Size</div>
+  <table class="summary-table">
+    <thead>
+      <tr>
+        <th>Size</th>
+        <th style="text-align:left; padding-left:10px;">Custom Names</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% regroup entries|dictsort:"size" by size as entries_by_size %}
+      {% for group in entries_by_size %}
+      <tr>
+        <td style="font-weight:700; vertical-align:top;">{{ group.grouper }}</td>
+        <td style="text-align:left; padding-left:10px; font-size:9.5px;">
+          {% for entry in group.list %}
+            {{ entry.custom_name|default:"—" }}{% if not forloop.last %}, {% endif %}
+          {% endfor %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="2" style="color:#9CA3AF; text-align:center;">No entries yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <!-- All Entries -->
+  <div class="section-title">All Entries</div>
+  <table class="entries-table">
+    <thead>
+      <tr>
+        <th class="serial">#</th>
+        <th>Full Name</th>
+        {% if custom_branding_enabled %}<th>Custom Name</th>{% endif %}
+        <th>Size</th>
+        <th>Submitted At</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in entries %}
+      <tr>
+        <td class="serial">{{ entry.serial_number }}</td>
+        <td>{{ entry.full_name }}</td>
+        {% if custom_branding_enabled %}
+        <td>{{ entry.custom_name|default:"—" }}</td>
+        {% endif %}
+        <td><span class="size-badge">{{ entry.size }}</span></td>
+        <td>{{ entry.created_at|date:"Y-m-d H:i" }}</td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="{% if custom_branding_enabled %}5{% else %}4{% endif %}"
+            style="text-align:center; color:#9CA3AF; padding:20px;">
+          No entries have been submitted yet.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-left">{{ company_name }} — Confidential</div>
+    <div class="footer-right">Generated {{ now|date:"Y-m-d H:i" }} &bull; Live Form: {{ live_form.slug }}</div>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Submission Confirmed — {{ live_form.organization_name }}</title>
+  <style>
+    /* ── Reset ─────────────────────────────────────────────────────── */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      background-color: #F3F4F6;
+      color: #1F2937;
+      padding: 32px 16px;
+    }
+
+    /* ── Wrapper ─────────────────────────────────────────────────────── */
+    .wrapper {
+      max-width: 580px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    .header {
+      background-color: #064E3B;
+      padding: 28px 32px;
+      text-align: center;
+    }
+    .header .company-name {
+      font-size: 20px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+    }
+    .header .tagline {
+      font-size: 12px;
+      color: #6EE7B7;
+      margin-top: 4px;
+    }
+
+    /* ── Success banner ─────────────────────────────────────────────── */
+    .success-banner {
+      background-color: #ECFDF5;
+      border-bottom: 3px solid #064E3B;
+      padding: 20px 32px;
+      text-align: center;
+    }
+    .success-icon {
+      font-size: 36px;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .success-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #064E3B;
+    }
+    .success-subtitle {
+      font-size: 13px;
+      color: #6B7280;
+      margin-top: 4px;
+    }
+
+    /* ── Body ────────────────────────────────────────────────────────── */
+    .body {
+      padding: 28px 32px;
+    }
+
+    .greeting {
+      font-size: 14px;
+      color: #374151;
+      margin-bottom: 16px;
+      line-height: 1.6;
+    }
+
+    /* ── Entry details card ─────────────────────────────────────────── */
+    .card {
+      background: #F9FAFB;
+      border: 1px solid #E5E7EB;
+      border-radius: 6px;
+      padding: 18px 20px;
+      margin: 20px 0;
+    }
+    .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #6B7280;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #E5E7EB;
+      padding-bottom: 8px;
+    }
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 7px 0;
+      border-bottom: 1px solid #F3F4F6;
+      font-size: 13px;
+    }
+    .detail-row:last-child {
+      border-bottom: none;
+    }
+    .detail-label {
+      color: #6B7280;
+      font-weight: 500;
+    }
+    .detail-value {
+      color: #1F2937;
+      font-weight: 600;
+      text-align: right;
+    }
+    .serial-badge {
+      display: inline-block;
+      background: #064E3B;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 12px;
+    }
+    .size-badge {
+      display: inline-block;
+      background: #F59E0B;
+      color: #1F2937;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 12px;
+    }
+
+    /* ── Form info block ─────────────────────────────────────────────── */
+    .form-info {
+      background: #FFFBEB;
+      border: 1px solid #FDE68A;
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 16px 0;
+      font-size: 13px;
+      color: #92400E;
+      line-height: 1.6;
+    }
+    .form-info strong {
+      color: #78350F;
+    }
+
+    /* ── Deadline / countdown notice ────────────────────────────────── */
+    .deadline-notice {
+      background: #EFF6FF;
+      border-left: 4px solid #3B82F6;
+      border-radius: 0 6px 6px 0;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 13px;
+      color: #1E40AF;
+      line-height: 1.5;
+    }
+
+    /* ── Message ─────────────────────────────────────────────────────── */
+    .message {
+      font-size: 13px;
+      color: #374151;
+      line-height: 1.7;
+      margin: 16px 0;
+    }
+
+    /* ── Footer ─────────────────────────────────────────────────────── */
+    .footer {
+      background: #F9FAFB;
+      border-top: 1px solid #E5E7EB;
+      padding: 18px 32px;
+      text-align: center;
+      font-size: 11px;
+      color: #9CA3AF;
+      line-height: 1.6;
+    }
+    .footer a {
+      color: #064E3B;
+      text-decoration: none;
+    }
+    .footer .company-footer {
+      font-weight: 600;
+      color: #6B7280;
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="wrapper">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="company-name">{{ company_name }}</div>
+      <div class="tagline">{{ company_email }} &bull; {{ company_phone }}</div>
+    </div>
+
+    <!-- Success Banner -->
+    <div class="success-banner">
+      <div class="success-icon">✅</div>
+      <div class="success-title">Entry Submitted Successfully!</div>
+      <div class="success-subtitle">
+        Your entry for <strong>{{ live_form.organization_name }}</strong> has been received.
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="body">
+
+      <p class="greeting">
+        Hello <strong>{{ entry.full_name|title }}</strong>,<br><br>
+        Your submission has been recorded. Here is a summary of the details
+        we received from you.
+      </p>
+
+      <!-- Entry Details Card -->
+      <div class="card">
+        <div class="card-title">Your Submission Details</div>
+
+        <div class="detail-row">
+          <span class="detail-label">Entry Number</span>
+          <span class="detail-value">
+            <span class="serial-badge">#{{ entry.serial_number }}</span>
+          </span>
+        </div>
+
+        <div class="detail-row">
+          <span class="detail-label">Full Name</span>
+          <span class="detail-value">{{ entry.full_name }}</span>
+        </div>
+
+        {% if entry.live_form.custom_branding_enabled and entry.custom_name %}
+        <div class="detail-row">
+          <span class="detail-label">Custom Name</span>
+          <span class="detail-value">{{ entry.custom_name }}</span>
+        </div>
+        {% endif %}
+
+        <div class="detail-row">
+          <span class="detail-label">Size</span>
+          <span class="detail-value">
+            <span class="size-badge">{{ entry.size }}</span>
+          </span>
+        </div>
+
+        <div class="detail-row">
+          <span class="detail-label">Submitted At</span>
+          <span class="detail-value">{{ entry.created_at|date:"N j, Y — g:i A" }}</span>
+        </div>
+      </div>
+
+      <!-- Form Info -->
+      <div class="form-info">
+        <strong>Form:</strong> {{ live_form.organization_name }}<br>
+        <strong>Organised by:</strong> {{ company_name }}
+      </div>
+
+      <!-- Deadline Notice -->
+      <div class="deadline-notice">
+        ⏳ This form closes on
+        <strong>{{ live_form.expires_at|date:"l, N j, Y \a\t g:i A" }}</strong>.
+        Make sure any updates are submitted before then.
+      </div>
+
+      <p class="message">
+        If you believe this submission was made in error or the details above
+        are incorrect, please contact us at
+        <a href="mailto:{{ company_email }}">{{ company_email }}</a> or call
+        {{ company_phone }}.
+      </p>
+
+      <p class="message">
+        Thank you for your participation. We look forward to seeing you!
+      </p>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="company-footer">{{ company_name }}</div>
+      <div>{{ company_address }}</div>
+      <div style="margin-top:6px;">
+        <a href="mailto:{{ company_email }}">{{ company_email }}</a>
+        &bull; {{ company_phone }}
+      </div>
+      <div style="margin-top:10px; font-size:10px; color:#D1D5DB;">
+        This is an automated confirmation email. Please do not reply directly to this message.
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

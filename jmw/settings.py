@@ -131,6 +131,7 @@ INSTALLED_APPS = [
     'excel_bulk_orders.apps.ExcelBulkOrdersConfig',
     'academic_directory.apps.AcademicDirectoryConfig',
     'image_bulk_orders.apps.ImageBulkOrdersConfig',
+    "live_forms.apps.LiveFormsConfig",
 ]
 
 if DEBUG:
@@ -279,6 +280,8 @@ REST_FRAMEWORK = {
         'anon_strict': '50/hour',
         'burst': '20/minute',
         'sustained': '500/hour',
+        'live_form_submit': '30/hour',
+        'live_form_view': '200/hour',
     },
     
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',

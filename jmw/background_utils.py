@@ -757,3 +757,151 @@ def generate_image_payment_receipt_pdf_task(order_entry_id):
 
     except Exception as e:
         logger.error(f"Error generating image payment receipt PDF: {str(e)}")
+
+
+# ============================================================================
+# LIVE FORMS — EMAIL & BACKGROUND TASKS
+# Add this section to the bottom of jmw/background_utils.py
+# ============================================================================
+
+def send_live_form_submission_email_async(entry_id):
+    """
+    No-op guard: LiveFormEntry has no email field by default.
+    This stub exists so views.py can call it unconditionally —
+    if an email field is ever added to LiveFormEntry, update the
+    inner _send() body without touching views.py.
+
+    Uses threading (same as send_order_confirmation_email_async).
+    """
+    def _send():
+        try:
+            from live_forms.models import LiveFormEntry
+
+            entry = LiveFormEntry.objects.select_related("live_form").get(id=entry_id)
+
+            # Guard: no email field yet — nothing to send
+            email = getattr(entry, "email", None)
+            if not email:
+                logger.debug(
+                    f"LiveFormEntry {entry_id} has no email — skipping confirmation."
+                )
+                return
+
+            context = {
+                "entry": entry,
+                "live_form": entry.live_form,
+                "company_name": settings.COMPANY_NAME,
+                "company_address": settings.COMPANY_ADDRESS,
+                "company_phone": settings.COMPANY_PHONE,
+                "company_email": settings.COMPANY_EMAIL,
+            }
+
+            html_message = render_to_string(
+                "live_forms/email_submission_confirmation.html", context
+            )
+
+            subject = (
+                f"Submission Confirmed — {entry.live_form.organization_name} "
+                f"(#{entry.serial_number})"
+            )
+
+            send_email_async(
+                subject=subject,
+                message=f"Your entry #{entry.serial_number} has been received.",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                html_message=html_message,
+            )
+
+            logger.info(
+                f"Submission confirmation email sent for LiveFormEntry: {entry_id}"
+            )
+
+        except Exception as e:
+            logger.error(
+                f"Error sending live form submission email for entry {entry_id}: {str(e)}"
+            )
+
+    thread = Thread(target=_send)
+    thread.daemon = True
+    thread.start()
+    logger.info(f"Live form submission email queued for entry: {entry_id}")
+
+
+@background(schedule=0)
+def generate_live_form_report_task(live_form_id, recipient_email):
+    """
+    Generate a full PDF report for a live form in the background
+    and email it to the requesting admin.
+
+    Heavy task — uses django-background-tasks (same as
+    generate_payment_receipt_pdf_task_bulk).
+
+    Args:
+        live_form_id:    UUID string of LiveFormLink
+        recipient_email: Admin email to deliver the report to
+    """
+    try:
+        from live_forms.models import LiveFormLink
+        from live_forms.utils import generate_live_form_pdf
+        from weasyprint import HTML
+        from django.template.loader import render_to_string
+        from django.db.models import Count
+
+        live_form = LiveFormLink.objects.prefetch_related("entries").get(
+            id=live_form_id
+        )
+        entries = live_form.entries.all().order_by("serial_number")
+        size_summary = (
+            entries.values("size").annotate(count=Count("size")).order_by("size")
+        )
+
+        context = {
+            "live_form": live_form,
+            "entries": entries,
+            "size_summary": size_summary,
+            "total_entries": entries.count(),
+            "custom_branding_enabled": live_form.custom_branding_enabled,
+            "company_name": settings.COMPANY_NAME,
+            "company_address": settings.COMPANY_ADDRESS,
+            "company_phone": settings.COMPANY_PHONE,
+            "company_email": settings.COMPANY_EMAIL,
+            "now": timezone.now(),
+        }
+
+        html_string = render_to_string("live_forms/pdf_template.html", context)
+        html = HTML(string=html_string)
+        pdf = html.write_pdf()
+
+        subject = (
+            f"Live Form Report — {live_form.organization_name} "
+            f"({entries.count()} entries)"
+        )
+        message = (
+            f"Please find attached the full report for "
+            f"'{live_form.organization_name}'."
+        )
+
+        send_email_async(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[recipient_email],
+            attachments=[
+                (
+                    f"live_form_{live_form.slug}_{timezone.now().strftime('%Y%m%d')}.pdf",
+                    pdf,
+                    "application/pdf",
+                )
+            ],
+        )
+
+        logger.info(
+            f"Background PDF report generated for live form: {live_form_id} "
+            f"→ emailed to {recipient_email}"
+        )
+
+    except Exception as e:
+        logger.error(
+            f"Error in generate_live_form_report_task for {live_form_id}: {str(e)}"
+        )

@@ -64,3 +64,27 @@ class SustainedUserRateThrottle(UserRateThrottle):
     """
     rate = '500/hour'
     scope = 'sustained'
+
+# ============================================================================
+# LIVE FORMS — THROTTLE CLASSES
+# Append these to jmw/throttling.py
+# ============================================================================
+
+class LiveFormSubmitThrottle(AnonRateThrottle):
+    """
+    Rate limit for live form entry submission.
+    30 submissions per hour per IP — prevents spam flooding
+    while allowing genuine group submissions from shared networks.
+    """
+    rate = '30/hour'
+    scope = 'live_form_submit'
+
+
+class LiveFormViewThrottle(AnonRateThrottle):
+    """
+    Rate limit for live form polling (live_feed endpoint).
+    200 requests per hour per IP — generous limit to support
+    the 4-second polling interval (900 polls/hour max per tab).
+    """
+    rate = '200/hour'
+    scope = 'live_form_view'

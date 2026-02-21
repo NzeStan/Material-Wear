@@ -53,6 +53,7 @@ urlpatterns = [
     path('api/v1/academic-directory/', include('academic_directory.urls')),
     path('api/', include('image_bulk_orders.urls')),
     path('api/testimonials/', include('testimonials.api.urls')),
+    path("api/live_forms/", include("live_forms.urls")),
 ]
 if settings.DEBUG: # new
     import debug_toolbar
