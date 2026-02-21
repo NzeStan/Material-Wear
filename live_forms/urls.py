@@ -2,7 +2,7 @@
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import LiveFormLinkViewSet, LiveFormEntryViewSet
+from .views import LiveFormLinkViewSet, LiveFormEntryViewSet, sheet_view
 
 app_name = "live_forms"
 
@@ -11,7 +11,14 @@ router.register(r"forms", LiveFormLinkViewSet, basename="form")
 router.register(r"entries", LiveFormEntryViewSet, basename="entry")
 
 urlpatterns = [
-    path("", include(router.urls)),
+    # ── Interactive live sheet page (what participants see) ──────────────
+    # Add this to your ROOT urls.py as:
+    #   path("live-form/", include("live_forms.urls", namespace="live_forms"))
+    # Then /live-form/<slug>/ serves the spreadsheet UI
+    path("<slug:slug>/", sheet_view, name="sheet"),
+
+    # ── DRF API endpoints ────────────────────────────────────────────────
+    path("api/", include(router.urls)),
 ]
 
 # ============================================================================

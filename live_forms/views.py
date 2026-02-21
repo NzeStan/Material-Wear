@@ -19,6 +19,8 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.http import HttpResponse
+from django.shortcuts import render, get_object_or_404
+from django.views.decorators.http import require_GET
 from django.db.models import Count, F
 from django.utils import timezone
 from django.core.cache import cache
@@ -40,6 +42,44 @@ from jmw.background_utils import send_live_form_submission_email_async
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# sheet_view  — serves the interactive live spreadsheet HTML page
+# Route: GET /live-form/<slug>/
+# ---------------------------------------------------------------------------
+
+@require_GET
+def sheet_view(request, slug):
+    """
+    Serves the interactive Google Sheets-style page participants land on.
+    Passes bootstrap data the JS needs:
+      - form metadata (title, expiry, custom_branding_enabled)
+      - initial entries (all existing rows on page load)
+      - size choices for the submission row dropdown
+    The rest is driven by client-side JS polling:
+      GET /api/live_forms/forms/<slug>/live_feed/?since=<ts>
+    """
+    live_form = get_object_or_404(LiveFormLink, slug=slug)
+
+    # Atomic view count increment
+    LiveFormLink.objects.filter(pk=live_form.pk).update(view_count=F("view_count") + 1)
+    live_form.refresh_from_db()
+
+    entries = live_form.entries.all().order_by("serial_number")
+
+    context = {
+        "live_form": live_form,
+        "entries": entries,
+        "is_open": live_form.is_open(),
+        "is_expired": live_form.is_expired(),
+        "seconds_remaining": max(
+            0, int((live_form.expires_at - timezone.now()).total_seconds())
+        ),
+        "total_entries": entries.count(),
+        "size_choices": LiveFormEntry.SIZE_CHOICES,
+    }
+    return render(request, "live_forms/sheet.html", context)
 
 
 # ---------------------------------------------------------------------------

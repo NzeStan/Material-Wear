@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ live_form.organization_name }} — Live Form</title>
+  <style>
+    /* ═══════════════════════════════════════════════════════════════════
+       RESET & TOKENS
+    ═══════════════════════════════════════════════════════════════════ */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --green:       #064E3B;
+      --green-mid:   #065F46;
+      --green-light: #D1FAE5;
+      --green-xlight:#F0FDF4;
+      --amber:       #F59E0B;
+      --amber-light: #FFFBEB;
+      --red:         #DC2626;
+      --red-light:   #FEF2F2;
+      --blue:        #3B82F6;
+      --blue-light:  #EFF6FF;
+      --grey-100:    #F3F4F6;
+      --grey-200:    #E5E7EB;
+      --grey-400:    #9CA3AF;
+      --grey-600:    #6B7280;
+      --grey-800:    #1F2937;
+      --white:       #FFFFFF;
+      --radius:      6px;
+      --shadow:      0 2px 12px rgba(0,0,0,0.08);
+      --shadow-lg:   0 8px 32px rgba(0,0,0,0.14);
+      --font:        "Inter", "Helvetica Neue", Arial, sans-serif;
+    }
+
+    html { font-size: 15px; }
+    body {
+      font-family: var(--font);
+      background: var(--grey-100);
+      color: var(--grey-800);
+      min-height: 100vh;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       TOP HEADER BAR
+    ═══════════════════════════════════════════════════════════════════ */
+    .top-bar {
+      background: var(--green);
+      color: var(--white);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .top-bar-left { display: flex; align-items: center; gap: 14px; }
+    .top-bar-logo {
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+    }
+    .top-bar-divider {
+      width: 1px; height: 22px;
+      background: rgba(255,255,255,0.25);
+    }
+    .top-bar-title {
+      font-size: 14px;
+      font-weight: 500;
+      opacity: 0.9;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 320px;
+    }
+    .live-pill {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+    }
+    .live-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #4ADE80;
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       COUNTDOWN BANNER
+    ═══════════════════════════════════════════════════════════════════ */
+    .countdown-banner {
+      background: var(--green-xlight);
+      border-bottom: 2px solid var(--green-light);
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .countdown-banner.warning {
+      background: var(--amber-light);
+      border-color: #FDE68A;
+      animation: warnPulse 2s ease-in-out infinite;
+    }
+    .countdown-banner.closed {
+      background: var(--red-light);
+      border-color: #FECACA;
+    }
+    @keyframes warnPulse {
+      0%, 100% { background: var(--amber-light); }
+      50%       { background: #FEF3C7; }
+    }
+
+    .countdown-left {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .countdown-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--grey-600);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .countdown-warning .countdown-label { color: #92400E; }
+    .countdown-closed  .countdown-label { color: var(--red); }
+
+    .countdown-timer {
+      display: flex; align-items: center; gap: 6px;
+    }
+    .time-block {
+      display: flex; flex-direction: column; align-items: center;
+      background: var(--white);
+      border: 1px solid var(--green-light);
+      border-radius: 5px;
+      padding: 3px 10px;
+      min-width: 52px;
+    }
+    .countdown-banner.warning .time-block { border-color: #FDE68A; }
+    .countdown-banner.closed  .time-block { border-color: #FECACA; }
+
+    .time-value {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--green);
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+    }
+    .countdown-banner.warning .time-value { color: #92400E; }
+    .countdown-banner.closed  .time-value { color: var(--red); }
+
+    .time-unit {
+      font-size: 9px;
+      font-weight: 600;
+      color: var(--grey-400);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .time-sep {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--grey-400);
+      margin-bottom: 10px;
+    }
+
+    .progress-bar-wrap {
+      flex: 1;
+      min-width: 120px;
+      max-width: 200px;
+      height: 6px;
+      background: var(--grey-200);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--green);
+      border-radius: 3px;
+      transition: width 1s linear;
+    }
+    .countdown-banner.warning .progress-bar-fill { background: var(--amber); }
+    .countdown-banner.closed  .progress-bar-fill { background: var(--red); width: 0 !important; }
+
+    .closed-msg {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--red);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       SOCIAL PROOF STRIP
+    ═══════════════════════════════════════════════════════════════════ */
+    .social-strip {
+      background: var(--white);
+      border-bottom: 1px solid var(--grey-200);
+      padding: 8px 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: var(--grey-600);
+    }
+    .social-item { display: flex; align-items: center; gap: 5px; }
+    .social-item strong { color: var(--grey-800); }
+    .social-divider {
+      width: 1px; height: 14px;
+      background: var(--grey-200);
+    }
+    .recent-names {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--grey-600);
+    }
+    .name-tag {
+      background: var(--green-xlight);
+      color: var(--green);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      border: 1px solid var(--green-light);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       MAIN LAYOUT
+    ═══════════════════════════════════════════════════════════════════ */
+    .main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px 16px 60px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       SPREADSHEET CONTAINER
+    ═══════════════════════════════════════════════════════════════════ */
+    .sheet-container {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      border: 1px solid var(--grey-200);
+    }
+
+    .sheet-header-bar {
+      background: var(--green);
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .sheet-header-bar h2 {
+      color: var(--white);
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .entry-count-badge {
+      background: rgba(255,255,255,0.15);
+      color: var(--white);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 10px;
+    }
+
+    /* ── Table wrapper — horizontal scroll on small screens ── */
+    .table-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    table.sheet {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    /* ── Column headers ── */
+    table.sheet thead tr {
+      background: var(--grey-100);
+      border-bottom: 2px solid var(--green-light);
+    }
+    table.sheet thead th {
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--grey-600);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+      user-select: none;
+      position: sticky;
+      top: 56px;          /* clears the top-bar */
+      background: var(--grey-100);
+      z-index: 10;
+    }
+    table.sheet thead th.col-serial {
+      width: 52px;
+      text-align: center;
+      background: var(--green);
+      color: var(--white);
+    }
+
+    /* ── Data rows ── */
+    table.sheet tbody tr {
+      border-bottom: 1px solid var(--grey-200);
+      transition: background 0.15s;
+    }
+    table.sheet tbody tr:hover { background: var(--green-xlight); }
+    table.sheet tbody tr.submitted {
+      background: #ECFDF5;
+      animation: rowFlash 0.6s ease-out;
+    }
+    @keyframes rowFlash {
+      0%   { background: #6EE7B7; }
+      100% { background: #ECFDF5; }
+    }
+
+    table.sheet td {
+      padding: 10px 14px;
+      vertical-align: middle;
+    }
+    table.sheet td.col-serial {
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--grey-400);
+      background: var(--grey-100);
+    }
+    .size-chip {
+      display: inline-block;
+      background: var(--green);
+      color: var(--white);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 3px;
+      letter-spacing: 0.3px;
+    }
+    .ts {
+      color: var(--grey-400);
+      font-size: 11px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       INPUT ROW (bottom of the table)
+    ═══════════════════════════════════════════════════════════════════ */
+    .input-row td {
+      background: var(--blue-light);
+      border-top: 2px solid var(--blue);
+      padding: 8px 8px;
+    }
+
+    .cell-input {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid var(--grey-200);
+      border-radius: 4px;
+      font-size: 13px;
+      color: var(--grey-800);
+      background: var(--white);
+      transition: border-color 0.15s, box-shadow 0.15s;
+      font-family: var(--font);
+    }
+    .cell-input:focus {
+      outline: none;
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(6,78,59,0.1);
+    }
+    .cell-input.error {
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px rgba(220,38,38,0.1);
+    }
+    .cell-input:disabled {
+      background: var(--grey-100);
+      color: var(--grey-400);
+      cursor: not-allowed;
+    }
+
+    select.cell-input { cursor: pointer; }
+
+    /* ── Submit button cell ── */
+    .submit-cell { white-space: nowrap; }
+    .btn-submit {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--green);
+      color: var(--white);
+      border: none;
+      border-radius: 4px;
+      padding: 8px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      white-space: nowrap;
+      font-family: var(--font);
+    }
+    .btn-submit:hover:not(:disabled) { background: var(--green-mid); }
+    .btn-submit:active:not(:disabled) { transform: scale(0.97); }
+    .btn-submit:disabled {
+      background: var(--grey-400);
+      cursor: not-allowed;
+    }
+    .btn-submit .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: var(--white);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    .btn-submit.loading .spinner { display: block; }
+    .btn-submit.loading .btn-text { display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       EMPTY STATE
+    ═══════════════════════════════════════════════════════════════════ */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--grey-400);
+    }
+    .empty-state .icon { font-size: 36px; margin-bottom: 10px; }
+    .empty-state p { font-size: 14px; }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       TOAST NOTIFICATIONS
+    ═══════════════════════════════════════════════════════════════════ */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--grey-800);
+      color: var(--white);
+      padding: 12px 18px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      pointer-events: all;
+      animation: toastIn 0.3s ease-out;
+      max-width: 340px;
+    }
+    .toast.success { background: var(--green); }
+    .toast.error   { background: var(--red); }
+    .toast.warning { background: #92400E; }
+    @keyframes toastIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       CLOSED OVERLAY
+    ═══════════════════════════════════════════════════════════════════ */
+    .form-closed-overlay {
+      display: none;
+      background: var(--red-light);
+      border: 1px solid #FECACA;
+      border-radius: var(--radius);
+      padding: 32px;
+      text-align: center;
+      margin-top: 20px;
+    }
+    .form-closed-overlay.visible { display: block; }
+    .form-closed-overlay h3 {
+      color: var(--red);
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+    .form-closed-overlay p { color: var(--grey-600); font-size: 14px; }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       VALIDATION ERROR MESSAGES
+    ═══════════════════════════════════════════════════════════════════ */
+    .field-error {
+      font-size: 11px;
+      color: var(--red);
+      margin-top: 3px;
+      display: none;
+    }
+    .field-error.visible { display: block; }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════════════════════════════════ */
+    @media (max-width: 640px) {
+      .top-bar-title { display: none; }
+      .countdown-banner { padding: 10px 12px; }
+      .social-strip { padding: 8px 12px; }
+      .main { padding: 12px 8px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══ TOP BAR ═══════════════════════════════════════════════════════════ -->
+<header class="top-bar">
+  <div class="top-bar-left">
+    <span class="top-bar-logo">{{ live_form.organization_name }}</span>
+    <div class="top-bar-divider"></div>
+    <span class="top-bar-title">Live Submission Form</span>
+  </div>
+  <div class="live-pill" id="live-pill">
+    <div class="live-dot"></div>
+    <span id="live-label">LIVE</span>
+  </div>
+</header>
+
+
+<!-- ═══ COUNTDOWN BANNER ══════════════════════════════════════════════════ -->
+<div class="countdown-banner" id="countdown-banner">
+  <div class="countdown-left">
+    <span class="countdown-label" id="countdown-label">⏳ Time Remaining</span>
+    <div class="countdown-timer" id="countdown-timer">
+      <div class="time-block"><span class="time-value" id="cd-days">00</span><span class="time-unit">days</span></div>
+      <span class="time-sep">:</span>
+      <div class="time-block"><span class="time-value" id="cd-hours">00</span><span class="time-unit">hrs</span></div>
+      <span class="time-sep">:</span>
+      <div class="time-block"><span class="time-value" id="cd-mins">00</span><span class="time-unit">min</span></div>
+      <span class="time-sep">:</span>
+      <div class="time-block"><span class="time-value" id="cd-secs">00</span><span class="time-unit">sec</span></div>
+    </div>
+  </div>
+  <div id="progress-wrap" class="progress-bar-wrap">
+    <div class="progress-bar-fill" id="progress-fill"></div>
+  </div>
+</div>
+
+
+<!-- ═══ SOCIAL PROOF STRIP ════════════════════════════════════════════════ -->
+<div class="social-strip" id="social-strip">
+  <div class="social-item">
+    👥 <strong id="total-count">{{ total_entries }}</strong>&nbsp;submission{{ total_entries|pluralize }}
+  </div>
+  <div class="social-divider"></div>
+  <div class="social-item">
+    👁️ <strong id="view-count">{{ live_form.view_count }}</strong>&nbsp;views
+  </div>
+  {% if live_form.last_submission_at %}
+  <div class="social-divider"></div>
+  <div class="social-item" id="last-sub-wrap">
+    🕐 Last submission: <strong id="last-sub-time">just now</strong>
+  </div>
+  {% endif %}
+  <div class="social-divider"></div>
+  <div class="recent-names" id="recent-names">
+    {% for entry in entries|slice:":3" %}
+      <span class="name-tag">✅ {{ entry.full_name|title|truncatechars:16 }}</span>
+    {% endfor %}
+  </div>
+</div>
+
+
+<!-- ═══ MAIN ══════════════════════════════════════════════════════════════ -->
+<main class="main">
+
+  <!-- Form-closed overlay (shown when expired / deactivated) -->
+  <div class="form-closed-overlay {% if not is_open %}visible{% endif %}" id="closed-overlay">
+    <h3>🔒 This Form is Closed</h3>
+    <p>
+      {% if is_expired %}
+        The submission deadline for <strong>{{ live_form.organization_name }}</strong>
+        has passed. No further entries are being accepted.
+      {% else %}
+        This form has been deactivated by the administrator.
+      {% endif %}
+    </p>
+  </div>
+
+  <!-- Spreadsheet -->
+  <div class="sheet-container">
+    <div class="sheet-header-bar">
+      <h2>📋 {{ live_form.organization_name }}</h2>
+      <span class="entry-count-badge" id="header-count">
+        {{ total_entries }} entr{{ total_entries|pluralize:"y,ies" }}
+      </span>
+    </div>
+
+    <div class="table-scroll">
+      <table class="sheet" id="sheet-table">
+        <thead>
+          <tr>
+            <th class="col-serial">#</th>
+            <th>Full Name</th>
+            {% if live_form.custom_branding_enabled %}
+            <th>Custom Name</th>
+            {% endif %}
+            <th>Size</th>
+            <th>Submitted</th>
+          </tr>
+        </thead>
+
+        <tbody id="sheet-body">
+          <!-- Existing rows (server-rendered on page load) -->
+          {% for entry in entries %}
+          <tr class="submitted" data-id="{{ entry.id }}">
+            <td class="col-serial">{{ entry.serial_number }}</td>
+            <td>{{ entry.full_name }}</td>
+            {% if live_form.custom_branding_enabled %}
+            <td>{{ entry.custom_name|default:"—" }}</td>
+            {% endif %}
+            <td><span class="size-chip">{{ entry.size }}</span></td>
+            <td class="ts">{{ entry.created_at|date:"M j, H:i" }}</td>
+          </tr>
+          {% endfor %}
+
+          <!-- Empty state (hidden when there are rows) -->
+          {% if not entries %}
+          <tr id="empty-row">
+            <td colspan="{% if live_form.custom_branding_enabled %}5{% else %}4{% endif %}">
+              <div class="empty-state">
+                <div class="icon">📝</div>
+                <p>No entries yet. Be the first to fill in your details!</p>
+              </div>
+            </td>
+          </tr>
+          {% endif %}
+        </tbody>
+
+        <!-- Input row (hidden when form is closed) -->
+        {% if is_open %}
+        <tfoot>
+          <tr class="input-row" id="input-row">
+            <td class="col-serial" style="color:#3B82F6; font-size:12px;">✏️</td>
+
+            <!-- Full Name -->
+            <td>
+              <input
+                class="cell-input"
+                id="inp-full-name"
+                type="text"
+                placeholder="Your full name *"
+                maxlength="255"
+                autocomplete="off"
+              />
+              <div class="field-error" id="err-full-name"></div>
+            </td>
+
+            {% if live_form.custom_branding_enabled %}
+            <!-- Custom Name -->
+            <td>
+              <input
+                class="cell-input"
+                id="inp-custom-name"
+                type="text"
+                placeholder="Custom name *"
+                maxlength="255"
+                autocomplete="off"
+              />
+              <div class="field-error" id="err-custom-name"></div>
+            </td>
+            {% endif %}
+
+            <!-- Size -->
+            <td>
+              <select class="cell-input" id="inp-size">
+                <option value="">— Size *</option>
+                {% for code, label in size_choices %}
+                <option value="{{ code }}">{{ code }} — {{ label }}</option>
+                {% endfor %}
+              </select>
+              <div class="field-error" id="err-size"></div>
+            </td>
+
+            <!-- Submit button -->
+            <td class="submit-cell">
+              <button class="btn-submit" id="btn-submit" type="button">
+                <div class="spinner"></div>
+                <span class="btn-text">✅ Submit</span>
+              </button>
+            </td>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+  </div><!-- /sheet-container -->
+
+</main>
+
+
+<!-- ═══ TOAST CONTAINER ═══════════════════════════════════════════════════ -->
+<div id="toast-container"></div>
+
+
+<!-- ═══ JAVASCRIPT ════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  "use strict";
+
+  /* ── Config injected from Django ───────────────────────────────────── */
+  const SLUG             = "{{ live_form.slug }}";
+  const API_BASE         = "/api/live_forms";        // adjust if mounted elsewhere
+  const TOTAL_DURATION_S = {{ live_form.expires_at|date:"U" }} - Math.floor(Date.now() / 1000)
+                           + {{ seconds_remaining }};
+  let   secondsLeft      = {{ seconds_remaining }};
+  const CUSTOM_BRANDING  = {% if live_form.custom_branding_enabled %}true{% else %}false{% endif %};
+  const COL_COUNT        = CUSTOM_BRANDING ? 5 : 4;
+
+  /* ── State ──────────────────────────────────────────────────────────── */
+  let isOpen         = {% if is_open %}true{% else %}false{% endif %};
+  let lastPollTime   = null;       // ISO string — only fetch rows newer than this
+  let knownIds       = new Set();  // prevent duplicate rows
+  let pollInterval   = null;
+  let totalSubmissions = parseInt(document.getElementById("total-count").textContent) || 0;
+
+  /* Pre-populate knownIds from server-rendered rows */
+  document.querySelectorAll("#sheet-body tr[data-id]").forEach(function (tr) {
+    knownIds.add(tr.dataset.id);
+    lastPollTime = tr.querySelector(".ts") ? new Date().toISOString() : lastPollTime;
+  });
+
+  /* ══════════════════════════════════════════════════════════════════════
+     COUNTDOWN TIMER
+  ══════════════════════════════════════════════════════════════════════ */
+  const banner   = document.getElementById("countdown-banner");
+  const cdDays   = document.getElementById("cd-days");
+  const cdHours  = document.getElementById("cd-hours");
+  const cdMins   = document.getElementById("cd-mins");
+  const cdSecs   = document.getElementById("cd-secs");
+  const progress = document.getElementById("progress-fill");
+  const cdLabel  = document.getElementById("countdown-label");
+
+  function pad(n) { return String(n).padStart(2, "0"); }
+
+  function updateCountdown() {
+    if (secondsLeft <= 0) {
+      lockForm();
+      return;
+    }
+
+    const d = Math.floor(secondsLeft / 86400);
+    const h = Math.floor((secondsLeft % 86400) / 3600);
+    const m = Math.floor((secondsLeft % 3600) / 60);
+    const s = secondsLeft % 60;
+
+    cdDays.textContent  = pad(d);
+    cdHours.textContent = pad(h);
+    cdMins.textContent  = pad(m);
+    cdSecs.textContent  = pad(s);
+
+    /* Progress bar: % of total duration remaining */
+    const totalSeconds = Math.max(1, TOTAL_DURATION_S);
+    const pct = Math.max(0, Math.min(100, (secondsLeft / totalSeconds) * 100));
+    progress.style.width = pct + "%";
+
+    /* State transitions */
+    if (secondsLeft <= 3600 && !banner.classList.contains("warning")) {
+      banner.classList.add("warning");
+      cdLabel.textContent = "⚠️ Less than 1 hour left!";
+    }
+
+    secondsLeft--;
+  }
+
+  updateCountdown();
+  const countdownTimer = setInterval(updateCountdown, 1000);
+
+  function lockForm() {
+    clearInterval(countdownTimer);
+    clearInterval(pollInterval);
+
+    /* Freeze banner */
+    banner.classList.remove("warning");
+    banner.classList.add("closed");
+    cdLabel.textContent = "🔒 Form Closed";
+    cdDays.textContent = cdHours.textContent = cdMins.textContent = cdSecs.textContent = "00";
+    progress.style.width = "0%";
+
+    /* Show closed overlay */
+    document.getElementById("closed-overlay").classList.add("visible");
+
+    /* Disable input row */
+    const inputRow = document.getElementById("input-row");
+    if (inputRow) {
+      inputRow.querySelectorAll("input, select, button").forEach(function (el) {
+        el.disabled = true;
+      });
+    }
+
+    /* Update live pill */
+    document.getElementById("live-label").textContent = "CLOSED";
+    document.querySelector(".live-dot").style.background = "#EF4444";
+
+    isOpen = false;
+    showToast("This form has now closed.", "warning");
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     TOAST NOTIFICATIONS
+  ══════════════════════════════════════════════════════════════════════ */
+  function showToast(msg, type) {
+    type = type || "success";
+    const tc   = document.getElementById("toast-container");
+    const toast = document.createElement("div");
+    toast.className = "toast " + type;
+    toast.textContent = msg;
+    tc.appendChild(toast);
+    setTimeout(function () {
+      toast.style.opacity = "0";
+      toast.style.transform = "translateY(10px)";
+      toast.style.transition = "all 0.3s";
+      setTimeout(function () { tc.removeChild(toast); }, 300);
+    }, 3500);
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     APPEND A NEW ROW TO THE TABLE
+  ══════════════════════════════════════════════════════════════════════ */
+  function appendRow(entry, highlight) {
+    if (knownIds.has(entry.id)) return;
+    knownIds.add(entry.id);
+
+    /* Remove empty-state row if present */
+    const emptyRow = document.getElementById("empty-row");
+    if (emptyRow) emptyRow.remove();
+
+    const tbody = document.getElementById("sheet-body");
+    const tr    = document.createElement("tr");
+    tr.dataset.id = entry.id;
+    if (highlight) tr.classList.add("submitted");
+
+    /* Format submitted date */
+    const dt  = new Date(entry.created_at);
+    const ts  = dt.toLocaleString("en-GB", { month: "short", day: "numeric",
+                                             hour: "2-digit", minute: "2-digit" });
+
+    let html = `<td class="col-serial">${entry.serial_number}</td>`;
+    html    += `<td>${escHtml(entry.full_name)}</td>`;
+    if (CUSTOM_BRANDING) {
+      html  += `<td>${escHtml(entry.custom_name || "—")}</td>`;
+    }
+    html    += `<td><span class="size-chip">${escHtml(entry.size)}</span></td>`;
+    html    += `<td class="ts">${ts}</td>`;
+
+    tr.innerHTML = html;
+    tbody.appendChild(tr);
+
+    totalSubmissions++;
+    updateCounters();
+    updateRecentNames(entry.full_name);
+    lastPollTime = entry.created_at;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     UPDATE SOCIAL PROOF COUNTERS
+  ══════════════════════════════════════════════════════════════════════ */
+  function updateCounters() {
+    const el = document.getElementById("total-count");
+    if (el) el.textContent = totalSubmissions;
+
+    const hd = document.getElementById("header-count");
+    if (hd) {
+      hd.textContent = totalSubmissions + " entr" + (totalSubmissions === 1 ? "y" : "ies");
+    }
+  }
+
+  function updateRecentNames(name) {
+    const container = document.getElementById("recent-names");
+    if (!container) return;
+    const tag   = document.createElement("span");
+    tag.className = "name-tag";
+    tag.textContent = "✅ " + truncate(toTitleCase(name), 16);
+    container.prepend(tag);
+    /* Keep only 5 */
+    while (container.children.length > 5) {
+      container.removeChild(container.lastChild);
+    }
+  }
+
+  function updateLastSubmission() {
+    const wrap = document.getElementById("last-sub-wrap");
+    if (!wrap) return;
+    wrap.style.display = "";
+    document.getElementById("last-sub-time").textContent = "just now";
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     POLLING  — fetches only NEW rows since lastPollTime
+  ══════════════════════════════════════════════════════════════════════ */
+  function poll() {
+    if (!isOpen) return;
+
+    let url = `${API_BASE}/forms/${SLUG}/live_feed/`;
+    if (lastPollTime) url += `?since=${encodeURIComponent(lastPollTime)}`;
+
+    fetch(url)
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data) return;
+
+        /* Check if form has been closed server-side */
+        if (!data.form.is_open && isOpen) {
+          lockForm();
+          return;
+        }
+
+        /* Append any new entries */
+        (data.entries || []).forEach(function (entry) {
+          appendRow(entry, true);
+        });
+
+        /* Refresh view count */
+        const vc = document.getElementById("view-count");
+        if (vc && data.form.social_proof) {
+          vc.textContent = data.form.social_proof.view_count || vc.textContent;
+        }
+      })
+      .catch(function () { /* silent — no network toast spam */ });
+  }
+
+  pollInterval = setInterval(poll, 4000);
+
+  /* ══════════════════════════════════════════════════════════════════════
+     FORM SUBMISSION
+  ══════════════════════════════════════════════════════════════════════ */
+  const btnSubmit = document.getElementById("btn-submit");
+  if (btnSubmit) {
+    btnSubmit.addEventListener("click", function () {
+      if (!isOpen) return;
+      submitEntry();
+    });
+
+    /* Also allow Enter key in any input to submit */
+    document.getElementById("input-row")
+      .querySelectorAll("input, select")
+      .forEach(function (el) {
+        el.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") submitEntry();
+        });
+      });
+  }
+
+  function submitEntry() {
+    /* Clear previous errors */
+    clearErrors();
+
+    const fullName   = (document.getElementById("inp-full-name")  || {}).value || "";
+    const customName = CUSTOM_BRANDING
+                       ? ((document.getElementById("inp-custom-name") || {}).value || "")
+                       : undefined;
+    const size       = (document.getElementById("inp-size")        || {}).value || "";
+
+    /* Client-side validation */
+    let valid = true;
+    if (!fullName.trim()) {
+      showFieldError("err-full-name", "Full name is required.");
+      valid = false;
+    }
+    if (CUSTOM_BRANDING && !(customName || "").trim()) {
+      showFieldError("err-custom-name", "Custom name is required.");
+      valid = false;
+    }
+    if (!size) {
+      showFieldError("err-size", "Please select a size.");
+      valid = false;
+    }
+    if (!valid) return;
+
+    /* Build payload */
+    const payload = { full_name: fullName.trim(), size: size };
+    if (CUSTOM_BRANDING) payload.custom_name = (customName || "").trim();
+
+    /* Loading state */
+    btnSubmit.classList.add("loading");
+    btnSubmit.disabled = true;
+
+    fetch(`${API_BASE}/forms/${SLUG}/submit/`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json",
+                 "X-CSRFToken": getCsrf() },
+      body:    JSON.stringify(payload),
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        btnSubmit.classList.remove("loading");
+        btnSubmit.disabled = false;
+
+        if (res.ok) {
+          appendRow(res.data, true);
+          updateLastSubmission();
+          clearInputs();
+          showToast("✅ Entry submitted successfully!", "success");
+          /* Scroll new row into view */
+          const lastRow = document.querySelector("#sheet-body tr:last-child");
+          if (lastRow) lastRow.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        } else {
+          /* Show server-side field errors */
+          const errs = res.data;
+          if (errs.full_name)   showFieldError("err-full-name",   errs.full_name[0]);
+          if (errs.custom_name) showFieldError("err-custom-name", errs.custom_name[0]);
+          if (errs.size)        showFieldError("err-size",        errs.size[0]);
+          if (errs.live_form)   showToast(errs.live_form[0] || "This form is no longer accepting submissions.", "error");
+          if (errs.non_field_errors) showToast(errs.non_field_errors[0], "error");
+          if (!errs.full_name && !errs.custom_name && !errs.size && !errs.live_form && !errs.non_field_errors) {
+            showToast("Submission failed. Please try again.", "error");
+          }
+        }
+      })
+      .catch(function () {
+        btnSubmit.classList.remove("loading");
+        btnSubmit.disabled = false;
+        showToast("Network error. Please check your connection.", "error");
+      });
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     HELPERS
+  ══════════════════════════════════════════════════════════════════════ */
+  function showFieldError(id, msg) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add("visible");
+    const inp = el.previousElementSibling;
+    if (inp) inp.classList.add("error");
+  }
+
+  function clearErrors() {
+    document.querySelectorAll(".field-error").forEach(function (el) {
+      el.textContent = "";
+      el.classList.remove("visible");
+    });
+    document.querySelectorAll(".cell-input").forEach(function (el) {
+      el.classList.remove("error");
+    });
+  }
+
+  function clearInputs() {
+    const fn = document.getElementById("inp-full-name");
+    const cn = document.getElementById("inp-custom-name");
+    const sz = document.getElementById("inp-size");
+    if (fn) fn.value = "";
+    if (cn) cn.value = "";
+    if (sz) sz.value = "";
+    if (fn) fn.focus();
+  }
+
+  function getCsrf() {
+    const name = "csrftoken";
+    const cookies = document.cookie.split(";");
+    for (let i = 0; i < cookies.length; i++) {
+      const c = cookies[i].trim();
+      if (c.startsWith(name + "=")) return decodeURIComponent(c.slice(name.length + 1));
+    }
+    return "";
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g,  "&amp;")
+      .replace(/</g,  "&lt;")
+      .replace(/>/g,  "&gt;")
+      .replace(/"/g,  "&quot;");
+  }
+
+  function toTitleCase(str) {
+    return str.toLowerCase().replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+  }
+
+  function truncate(str, n) {
+    return str.length > n ? str.slice(0, n - 1) + "…" : str;
+  }
+
+  /* Focus first input on load */
+  const firstInput = document.getElementById("inp-full-name");
+  if (firstInput && isOpen) firstInput.focus();
+
+})();
+</script>
+
+</body>
+</html>
