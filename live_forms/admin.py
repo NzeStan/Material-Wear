@@ -103,6 +103,7 @@ class IsExpiredFilter(admin.SimpleListFilter):
             return queryset.filter(expires_at__lt=now)
         if self.value() == "no":
             return queryset.filter(expires_at__gte=now)
+        return queryset
 
 
 class HasSubmissionsFilter(admin.SimpleListFilter):
@@ -120,6 +121,7 @@ class HasSubmissionsFilter(admin.SimpleListFilter):
             return queryset.filter(entry_count__gt=0)
         if self.value() == "no":
             return queryset.filter(entry_count=0)
+        return queryset
 
 
 # ---------------------------------------------------------------------------

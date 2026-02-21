@@ -11,7 +11,7 @@ Architecture mirrors bulk_orders A-Z, minus all payment logic.
 """
 import uuid
 from django.db import models, transaction
-from django.db.models import Max
+from django.db.models import F, Max
 from django.conf import settings
 from django.utils import timezone
 from django.utils.text import slugify
@@ -70,6 +70,9 @@ class LiveFormLink(models.Model):
     # Social proof counters — updated atomically via F() / update() on every interaction
     view_count = models.PositiveIntegerField(default=0)
     last_submission_at = models.DateTimeField(null=True, blank=True)
+
+    # Serial number counter — ensures serial numbers are never reused after deletion
+    last_serial_number = models.PositiveIntegerField(default=0)
 
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -205,15 +208,16 @@ class LiveFormEntry(models.Model):
         if self.custom_name:
             self.custom_name = self.custom_name.upper()
 
-        # Auto-increment serial_number — race-condition safe
+        # Auto-increment serial_number — race-condition safe using parent counter
         if not self.serial_number:
             with transaction.atomic():
-                # Lock parent row to prevent concurrent serial collisions
-                LiveFormLink.objects.select_for_update().get(id=self.live_form_id)
-                max_serial = LiveFormEntry.objects.filter(
-                    live_form=self.live_form
-                ).aggregate(Max("serial_number"))["serial_number__max"]
-                self.serial_number = (max_serial or 0) + 1
+                # Lock parent row and increment counter atomically
+                LiveFormLink.objects.filter(id=self.live_form_id).select_for_update().update(
+                    last_serial_number=F("last_serial_number") + 1
+                )
+                # Read the new counter value
+                parent = LiveFormLink.objects.get(id=self.live_form_id)
+                self.serial_number = parent.last_serial_number
 
         try:
             super().save(*args, **kwargs)

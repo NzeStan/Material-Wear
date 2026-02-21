@@ -40,6 +40,7 @@ from .utils import (
 from jmw.throttling import LiveFormSubmitThrottle, LiveFormViewThrottle
 from jmw.background_utils import send_live_form_submission_email_async
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -95,8 +96,16 @@ class LiveFormLinkViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = LiveFormLinkSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     lookup_field = "slug"
+
+    def get_permissions(self):
+        """
+        - list, create, update, destroy require authentication
+        - retrieve, submit, live_feed are public
+        """
+        if self.action in ["retrieve", "submit", "live_feed"]:
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
         if self.request.user.is_staff:
@@ -233,9 +242,12 @@ class LiveFormLinkViewSet(viewsets.ModelViewSet):
 
         if since_raw:
             try:
-                since_dt = timezone.datetime.fromisoformat(
-                    since_raw.replace("Z", "+00:00")
-                )
+                # Handle URL encoding: + is decoded as space in query params
+                # Also handle Z suffix for UTC
+                normalized = since_raw.replace("Z", "+00:00")
+                # Fix space-before-timezone back to +  (e.g., "...T12:00:00 00:00" → "...T12:00:00+00:00")
+                normalized = re.sub(r" (\d{2}:\d{2})$", r"+\1", normalized)
+                since_dt = timezone.datetime.fromisoformat(normalized)
                 entries_qs = entries_qs.filter(created_at__gt=since_dt)
             except (ValueError, TypeError):
                 pass  # bad since param → return all entries
