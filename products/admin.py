@@ -175,10 +175,6 @@ class ChurchAdmin(BaseProductAdmin):
 
 
 # Customize admin site header and title with brand colors
-admin.site.site_header = format_html(
-    '<span style="color: #064E3B;">JMW Accessories Admin</span>'
-)
-admin.site.site_title = 'JMW Admin'
-admin.site.index_title = format_html(
-    '<span style="color: #F59E0B;">Product Management Dashboard</span>'
-)
+admin.site.site_header = "Material Wear Admin Panel"
+admin.site.site_title = "Material Wear Admin"
+admin.site.index_title = "Welcome to Material Wear Administration"

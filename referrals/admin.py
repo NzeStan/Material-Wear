@@ -260,10 +260,6 @@ class PromotionalMediaAdmin(admin.ModelAdmin):
     
 
 # Custom admin site styling
-admin.site.site_header = format_html(
-    '<span style="color: #F59E0B;">JMW Accessories</span> - Referral System'
-)
-admin.site.site_title = 'JMW Referrals Admin'
-admin.site.index_title = format_html(
-    'Welcome to <span style="color: #064E3B; font-weight: bold;">JMW Accessories</span> Referral Management'
-)
+admin.site.site_header = "Material Wear Admin Panel"
+admin.site.site_title = "Material Wear Admin"
+admin.site.index_title = "Welcome to Material Wear Administration"

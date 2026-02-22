@@ -26,9 +26,9 @@ from drf_spectacular.views import (
 from two_factor.urls import urlpatterns as tf_urls
 
 # Harden the default admin site with branding
-admin.site.site_header = "JMW Admin Panel"
-admin.site.site_title = "JMW Admin"
-admin.site.index_title = "Welcome to JMW Administration"
+admin.site.site_header = "Material Wear Admin Panel"
+admin.site.site_title = "Material Wear Admin"
+admin.site.index_title = "Welcome to Material Wear Administration"
 admin.site.site_url = None  # Disable "View Site" link for security
 
 urlpatterns = [
