@@ -23,9 +23,19 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
     SpectacularRedocView,
 )
+from two_factor.urls import urlpatterns as tf_urls
+
+# Harden the default admin site with branding
+admin.site.site_header = "JMW Admin Panel"
+admin.site.site_title = "JMW Admin"
+admin.site.index_title = "Welcome to JMW Administration"
+admin.site.site_url = None  # Disable "View Site" link for security
 
 urlpatterns = [
-    # Django admin
+    # Two-factor authentication (must be before admin)
+    path("", include(tf_urls)),
+
+    # Django admin (protected by 2FA via TWO_FACTOR_PATCH_ADMIN=True)
     path("i_must_win/", admin.site.urls),
 
     # API Documentation (OpenAPI/Swagger)

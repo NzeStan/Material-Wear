@@ -93,21 +93,31 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.sites",
-    
+
+    # Two-Factor Authentication (must be before admin usage)
+    "django_otp",
+    "django_otp.plugins.otp_static",
+    "django_otp.plugins.otp_totp",
+    "two_factor",
+    "two_factor.plugins.phonenumber",  # Optional: for SMS backup
+
+    # Brute-force protection
+    "axes",
+
     # REST Framework & Auth
     "rest_framework",
     "rest_framework.authtoken",
     "dj_rest_auth",
     "dj_rest_auth.registration",
     "rest_framework_simplejwt",
-    
+
     # Social Authentication
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
     "allauth.socialaccount.providers.github",
-    
+
     # Third-party utilities
     "django_filters",
     "drf_spectacular",
@@ -115,7 +125,7 @@ INSTALLED_APPS = [
     "background_task",
     "corsheaders",
     'testimonials',
-    
+
     # Local apps
     "accounts.apps.AccountsConfig",
     "products.apps.ProductsConfig",
@@ -149,8 +159,14 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # OTP verification middleware (required for two-factor auth)
+    "django_otp.middleware.OTPMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Admin IP whitelist (blocks non-whitelisted IPs in production)
+    "jmw.middleware.AdminIPWhitelistMiddleware",
+    # Brute-force protection (must be after AuthenticationMiddleware)
+    "axes.middleware.AxesMiddleware",
     "cart.middleware.CartCleanupMiddleware",
     "allauth.account.middleware.AccountMiddleware",
 ]
@@ -219,6 +235,8 @@ CACHE_TTL_LONG = 60 * 60  # 1 hour
 AUTH_USER_MODEL = "accounts.CustomUser"
 
 AUTHENTICATION_BACKENDS = [
+    # Axes backend must be first for brute-force protection
+    'axes.backends.AxesStandaloneBackend',
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
@@ -648,3 +666,77 @@ TESTIMONIALS_NOTIFICATION_EMAIL = "nnamaniifeanyi10@gmail.com"
 TESTIMONIALS_SEND_EMAIL_NOTIFICATIONS = True
 TESTIMONIALS_SEND_ADMIN_NOTIFICATIONS = True
 TESTIMONIALS_USE_BACKGROUND_TASKS = True
+
+# ==============================================================================
+# ADMIN SECURITY - IP WHITELIST
+# ==============================================================================
+# Only these IPs can access /i_must_win/ (admin) in production
+# Add your trusted IPs here (e.g., office IP, your home IP, etc.)
+ADMIN_URL_PATH = 'i_must_win/'
+ADMIN_IP_WHITELIST = env.list('ADMIN_IP_WHITELIST', default=[
+    # Add your whitelisted IPs here or via environment variable
+    # Example: '102.88.34.56', '41.184.123.45'
+])
+
+# ==============================================================================
+# DJANGO-AXES CONFIGURATION (Brute-Force Protection)
+# ==============================================================================
+# Lockout after N failed login attempts
+AXES_FAILURE_LIMIT = 5
+
+# Lockout duration in hours (1 hour = 3600 seconds)
+AXES_COOLOFF_TIME = 1  # 1 hour
+
+# Lock based on IP + username combination (more secure)
+AXES_LOCKOUT_PARAMETERS = ['ip_address', 'username']
+
+# Use database backend for storing access attempts
+AXES_HANDLER = 'axes.handlers.database.AxesDatabaseHandler'
+
+# Enable verbose logging of access attempts
+AXES_VERBOSE = True
+
+# Custom lockout response
+AXES_LOCKOUT_TEMPLATE = None  # Uses default, or set to 'axes/lockout.html'
+
+# Reset failed attempts on successful login
+AXES_RESET_ON_SUCCESS = True
+
+# Only track POST requests (ignore GET requests to login page)
+AXES_ONLY_USER_FAILURES = False
+
+# IP header for proxy deployments (Render, Heroku, etc.)
+AXES_IPWARE_PROXY_COUNT = 1
+AXES_IPWARE_META_PRECEDENCE_ORDER = [
+    'HTTP_X_FORWARDED_FOR',
+    'X_FORWARDED_FOR',
+    'REMOTE_ADDR',
+]
+
+# Whitelist certain IPs from being locked out (e.g., health checks)
+AXES_NEVER_LOCKOUT_WHITELIST = DEBUG  # Only in development
+
+# ==============================================================================
+# TWO-FACTOR AUTHENTICATION CONFIGURATION
+# ==============================================================================
+# Login URL for two-factor auth
+LOGIN_URL = 'two_factor:login'
+
+# Redirect after successful 2FA login
+LOGIN_REDIRECT_URL = '/i_must_win/'
+
+# Only use TOTP (authenticator apps) - no phone/SMS
+TWO_FACTOR_PATCH_ADMIN = True  # Patch the admin to require 2FA
+
+# QR code generation settings
+TWO_FACTOR_QR_FACTORY = 'qrcode.image.pil.PilImage'
+
+# Issuer name shown in authenticator apps
+TWO_FACTOR_TOTP_DIGITS = 6
+
+# Number of backup tokens to generate
+TWO_FACTOR_REMEMBER_COOKIE_AGE = 60 * 60 * 24 * 30  # 30 days
+
+# Disable phone verification (authenticator app only)
+TWO_FACTOR_CALL_GATEWAY = None
+TWO_FACTOR_SMS_GATEWAY = None
