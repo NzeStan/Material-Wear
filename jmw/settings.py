@@ -239,6 +239,7 @@ AUTHENTICATION_BACKENDS = [
     'axes.backends.AxesStandaloneBackend',
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
+    'django_otp.backends.OtpBackend',
 ]
 
 # ==============================================================================
@@ -702,9 +703,6 @@ AXES_LOCKOUT_TEMPLATE = None  # Uses default, or set to 'axes/lockout.html'
 # Reset failed attempts on successful login
 AXES_RESET_ON_SUCCESS = True
 
-# Only track POST requests (ignore GET requests to login page)
-AXES_ONLY_USER_FAILURES = False
-
 # IP header for proxy deployments (Render, Heroku, etc.)
 AXES_IPWARE_PROXY_COUNT = 1
 AXES_IPWARE_META_PRECEDENCE_ORDER = [
@@ -740,3 +738,5 @@ TWO_FACTOR_REMEMBER_COOKIE_AGE = 60 * 60 * 24 * 30  # 30 days
 # Disable phone verification (authenticator app only)
 TWO_FACTOR_CALL_GATEWAY = None
 TWO_FACTOR_SMS_GATEWAY = None
+
+TWO_FACTOR_SETUP_SUCCESS_URL = '/i_must_win/'
