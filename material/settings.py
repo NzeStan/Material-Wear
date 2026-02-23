@@ -233,7 +233,6 @@ AUTHENTICATION_BACKENDS = [
     "axes.backends.AxesStandaloneBackend",
     "django.contrib.auth.backends.ModelBackend",
     "allauth.account.auth_backends.AuthenticationBackend",
-    "django_otp.backends.OtpBackend",
 ]
 
 # ==============================================================================
@@ -709,7 +708,10 @@ LOGIN_URL = "two_factor:login"
 LOGIN_REDIRECT_URL = "/i_must_win/"
 
 # Only use TOTP (authenticator apps) - no phone/SMS
-TWO_FACTOR_PATCH_ADMIN = True  # Patch the admin to require 2FA
+if DEBUG:
+    TWO_FACTOR_PATCH_ADMIN = False  # Patch the admin to require 2FA
+else:
+    TWO_FACTOR_PATCH_ADMIN = True  # Patch the admin to require 2FA in production
 
 # QR code generation settings
 TWO_FACTOR_QR_FACTORY = "qrcode.image.pil.PilImage"

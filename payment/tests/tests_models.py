@@ -93,7 +93,7 @@ class PaymentTransactionModelCreationTests(TestCase):
 
         self.assertIsNotNone(payment.reference)
         self.assertTrue(payment.reference.startswith("MATERIAL-"))
-        self.assertEqual(len(payment.reference), 12)  # MATERIAL- + 8 chars
+        self.assertEqual(len(payment.reference), 17) 
 
     def test_payment_with_metadata(self):
         """Test payment creation with complex metadata."""
