@@ -2,7 +2,7 @@
 """
 Background Tasks for Academic Directory
 
-This module bridges scheduled work to jmw/background_utils.py.
+This module bridges scheduled work to material/background_utils.py.
 No Celery — uses threading for quick email tasks and
 django-background-tasks for heavy periodic jobs.
 
@@ -12,7 +12,7 @@ Scheduled via management commands (see management/commands/):
   - process_academic_notifications → every 5-10 min via cron
 """
 import logging
-from jmw.background_utils import (
+from material.background_utils import (
     send_new_submission_email_async,
     send_bulk_verification_email_async,
     send_daily_summary_email_async,

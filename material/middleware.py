@@ -1,4 +1,4 @@
-# jmw/middleware.py
+# material/middleware.py
 """
 Admin Security Middleware
 
@@ -31,12 +31,12 @@ class AdminIPWhitelistMiddleware:
         # Only enforce in production
         if not settings.DEBUG:
             # Get admin URL path (default is 'admin/', but we use 'i_must_win/')
-            admin_path = getattr(settings, 'ADMIN_URL_PATH', 'i_must_win/')
+            admin_path = getattr(settings, "ADMIN_URL_PATH", "i_must_win/")
 
             # Check if this is an admin request
-            if request.path.startswith(f'/{admin_path}'):
+            if request.path.startswith(f"/{admin_path}"):
                 client_ip = self.get_client_ip(request)
-                whitelist = getattr(settings, 'ADMIN_IP_WHITELIST', [])
+                whitelist = getattr(settings, "ADMIN_IP_WHITELIST", [])
 
                 if client_ip not in whitelist:
                     logger.warning(
@@ -60,12 +60,12 @@ class AdminIPWhitelistMiddleware:
         behind load balancers like Render, Heroku, etc.
         """
         # Check for proxy headers first
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
             # X-Forwarded-For can contain multiple IPs; the first is the client
-            ip = x_forwarded_for.split(',')[0].strip()
+            ip = x_forwarded_for.split(",")[0].strip()
         else:
             # Fall back to REMOTE_ADDR
-            ip = request.META.get('REMOTE_ADDR', '')
+            ip = request.META.get("REMOTE_ADDR", "")
 
         return ip

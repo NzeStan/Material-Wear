@@ -27,9 +27,12 @@ User = get_user_model()
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def make_user(email="user@example.com", password="pass1234!", **kwargs):
     username = kwargs.pop("username", email)
-    return User.objects.create_user(username=username, email=email, password=password, **kwargs)
+    return User.objects.create_user(
+        username=username, email=email, password=password, **kwargs
+    )
 
 
 def make_admin(email="admin@example.com", password="admin1234!"):
@@ -91,6 +94,7 @@ def share_generate_url():
 # ReferrerProfileViewSet – LIST
 # ---------------------------------------------------------------------------
 
+
 class ReferrerProfileListTests(APITestCase):
 
     def setUp(self):
@@ -129,6 +133,7 @@ class ReferrerProfileListTests(APITestCase):
 # ---------------------------------------------------------------------------
 # ReferrerProfileViewSet – CREATE
 # ---------------------------------------------------------------------------
+
 
 class ReferrerProfileCreateTests(APITestCase):
 
@@ -197,6 +202,7 @@ class ReferrerProfileCreateTests(APITestCase):
 # ReferrerProfileViewSet – RETRIEVE
 # ---------------------------------------------------------------------------
 
+
 class ReferrerProfileRetrieveTests(APITestCase):
 
     def setUp(self):
@@ -229,6 +235,7 @@ class ReferrerProfileRetrieveTests(APITestCase):
 
     def test_retrieve_nonexistent_profile_returns_404(self):
         import uuid
+
         self.client.force_authenticate(user=self.admin)
         response = self.client.get(profile_detail_url(uuid.uuid4()))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -237,6 +244,7 @@ class ReferrerProfileRetrieveTests(APITestCase):
 # ---------------------------------------------------------------------------
 # ReferrerProfileViewSet – UPDATE (PUT / PATCH)
 # ---------------------------------------------------------------------------
+
 
 class ReferrerProfileUpdateTests(APITestCase):
 
@@ -304,6 +312,7 @@ class ReferrerProfileUpdateTests(APITestCase):
 # ReferrerProfileViewSet – DESTROY
 # ---------------------------------------------------------------------------
 
+
 class ReferrerProfileDestroyTests(APITestCase):
 
     def setUp(self):
@@ -329,6 +338,7 @@ class ReferrerProfileDestroyTests(APITestCase):
 
     def test_delete_nonexistent_returns_404(self):
         import uuid
+
         self.client.force_authenticate(user=self.admin)
         response = self.client.delete(profile_detail_url(uuid.uuid4()))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -337,6 +347,7 @@ class ReferrerProfileDestroyTests(APITestCase):
 # ---------------------------------------------------------------------------
 # ReferrerProfileViewSet – GET /profiles/me/
 # ---------------------------------------------------------------------------
+
 
 class GetMyProfileTests(APITestCase):
 
@@ -371,6 +382,7 @@ class GetMyProfileTests(APITestCase):
 # ---------------------------------------------------------------------------
 # ReferrerProfileViewSet – PATCH|PUT /profiles/me/update/
 # ---------------------------------------------------------------------------
+
 
 class UpdateMyProfileTests(APITestCase):
 
@@ -432,6 +444,7 @@ class UpdateMyProfileTests(APITestCase):
 # PromotionalMediaViewSet – LIST
 # ---------------------------------------------------------------------------
 
+
 class PromotionalMediaListTests(APITestCase):
 
     def setUp(self):
@@ -474,6 +487,7 @@ class PromotionalMediaListTests(APITestCase):
 # PromotionalMediaViewSet – RETRIEVE
 # ---------------------------------------------------------------------------
 
+
 class PromotionalMediaRetrieveTests(APITestCase):
 
     def setUp(self):
@@ -508,6 +522,7 @@ class PromotionalMediaRetrieveTests(APITestCase):
 # ---------------------------------------------------------------------------
 # PromotionalMediaViewSet – CREATE
 # ---------------------------------------------------------------------------
+
 
 class PromotionalMediaCreateTests(APITestCase):
 
@@ -562,6 +577,7 @@ class PromotionalMediaCreateTests(APITestCase):
 # PromotionalMediaViewSet – UPDATE / DELETE
 # ---------------------------------------------------------------------------
 
+
 class PromotionalMediaUpdateDeleteTests(APITestCase):
 
     def setUp(self):
@@ -609,6 +625,7 @@ class PromotionalMediaUpdateDeleteTests(APITestCase):
 # ---------------------------------------------------------------------------
 # SharePayloadViewSet – generate
 # ---------------------------------------------------------------------------
+
 
 class SharePayloadGenerateTests(APITestCase):
 
@@ -679,7 +696,7 @@ class SharePayloadGenerateTests(APITestCase):
         self._make_active_profile()
         self.client.force_authenticate(user=self.user)
         response = self.client.get(share_generate_url())
-        self.assertIn("JMW", response.data["share_message"])
+        self.assertIn("MATERIAL", response.data["share_message"])
 
     def test_share_message_combines_all_marketing_texts(self):
         self._make_active_profile()

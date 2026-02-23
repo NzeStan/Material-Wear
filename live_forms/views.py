@@ -37,8 +37,8 @@ from .utils import (
     generate_live_form_word,
     generate_live_form_excel,
 )
-from jmw.throttling import LiveFormSubmitThrottle, LiveFormViewThrottle
-from jmw.background_utils import send_live_form_submission_email_async
+from material.throttling import LiveFormSubmitThrottle, LiveFormViewThrottle
+from material.background_utils import send_live_form_submission_email_async
 import logging
 import re
 
@@ -49,6 +49,7 @@ logger = logging.getLogger(__name__)
 # sheet_view  — serves the interactive live spreadsheet HTML page
 # Route: GET /live-form/<slug>/
 # ---------------------------------------------------------------------------
+
 
 @require_GET
 def sheet_view(request, slug):
@@ -86,6 +87,7 @@ def sheet_view(request, slug):
 # ---------------------------------------------------------------------------
 # LiveFormLinkViewSet  (≡ BulkOrderLinkViewSet)
 # ---------------------------------------------------------------------------
+
 
 class LiveFormLinkViewSet(viewsets.ModelViewSet):
     """
@@ -163,7 +165,10 @@ class LiveFormLinkViewSet(viewsets.ModelViewSet):
 
     @extend_schema(
         request=LiveFormEntrySerializer,
-        responses={201: LiveFormEntrySerializer, 400: OpenApiResponse(description="Validation error")},
+        responses={
+            201: LiveFormEntrySerializer,
+            400: OpenApiResponse(description="Validation error"),
+        },
     )
     @action(
         detail=True,
@@ -199,9 +204,7 @@ class LiveFormLinkViewSet(viewsets.ModelViewSet):
         except Exception as e:
             logger.warning(f"Could not queue submission email: {str(e)}")
 
-        logger.info(
-            f"New LiveFormEntry #{entry.serial_number} submitted to '{slug}'"
-        )
+        logger.info(f"New LiveFormEntry #{entry.serial_number} submitted to '{slug}'")
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     # ── live_feed  (public polling endpoint for real-time rows) ────────
@@ -269,9 +272,7 @@ class LiveFormLinkViewSet(viewsets.ModelViewSet):
                     "is_expired": live_form.is_expired(),
                     "seconds_remaining": max(
                         0,
-                        int(
-                            (live_form.expires_at - timezone.now()).total_seconds()
-                        ),
+                        int((live_form.expires_at - timezone.now()).total_seconds()),
                     ),
                     "social_proof": form_serializer.data.get("social_proof", {}),
                 },
@@ -362,6 +363,7 @@ class LiveFormLinkViewSet(viewsets.ModelViewSet):
 # ---------------------------------------------------------------------------
 # LiveFormEntryViewSet  (≡ OrderEntryViewSet)
 # ---------------------------------------------------------------------------
+
 
 class LiveFormEntryViewSet(viewsets.ModelViewSet):
     """

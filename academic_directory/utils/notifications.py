@@ -2,7 +2,7 @@
 """
 Notifications Utility
 
-Thin wrappers that delegate to jmw/background_utils.py for all
+Thin wrappers that delegate to material/background_utils.py for all
 async email delivery and to the SubmissionNotification model for
 dashboard counters.
 
@@ -20,6 +20,7 @@ User = get_user_model()
 # SUBMISSION NOTIFICATIONS (used from signals + views)
 # ============================================================================
 
+
 def send_new_submission_email(representative, admin_emails: Optional[List[str]] = None):
     """
     Queue an email notification to admins about a new representative submission.
@@ -32,7 +33,8 @@ def send_new_submission_email(representative, admin_emails: Optional[List[str]] 
     Returns:
         None (async — fire and forget)
     """
-    from jmw.background_utils import send_new_submission_email_async
+    from material.background_utils import send_new_submission_email_async
+
     send_new_submission_email_async(representative.id)
 
 
@@ -44,7 +46,8 @@ def send_bulk_verification_email(representatives: List, verifier):
         representatives: List of Representative instances
         verifier: User instance who performed the verification
     """
-    from jmw.background_utils import send_bulk_verification_email_async
+    from material.background_utils import send_bulk_verification_email_async
+
     ids = [r.id for r in representatives]
     send_bulk_verification_email_async(ids, verifier.id)
 
@@ -54,7 +57,8 @@ def send_daily_summary_email():
     Queue daily summary email to admins (called from management command).
     Returns immediately — delivery happens in a daemon thread.
     """
-    from jmw.background_utils import send_daily_summary_email_async
+    from material.background_utils import send_daily_summary_email_async
+
     send_daily_summary_email_async()
 
 
@@ -64,7 +68,8 @@ def process_pending_email_notifications():
     Called from management command every 5-10 minutes.
     Returns immediately — delivery happens in a daemon thread.
     """
-    from jmw.background_utils import process_pending_notifications_async
+    from material.background_utils import process_pending_notifications_async
+
     process_pending_notifications_async()
 
 
@@ -72,9 +77,11 @@ def process_pending_email_notifications():
 # DASHBOARD COUNTER HELPERS
 # ============================================================================
 
+
 def get_unread_notification_count() -> int:
     """Return count of unread submission notifications for dashboard."""
     from academic_directory.models import SubmissionNotification
+
     return SubmissionNotification.get_unread_count()
 
 
@@ -90,6 +97,7 @@ def mark_notification_as_read(notification_id: int, user=None) -> bool:
         bool: True if found and updated, False otherwise
     """
     from academic_directory.models import SubmissionNotification
+
     try:
         notification = SubmissionNotification.objects.get(id=notification_id)
         notification.mark_as_read(user)
@@ -125,6 +133,7 @@ def create_submission_notification(representative):
         SubmissionNotification instance
     """
     from academic_directory.models import SubmissionNotification
+
     notification, _ = SubmissionNotification.objects.get_or_create(
         representative=representative
     )
@@ -134,6 +143,7 @@ def create_submission_notification(representative):
 # ============================================================================
 # TEMPLATE CONTEXT HELPER
 # ============================================================================
+
 
 def get_representative_email_context(representative) -> dict:
     """
@@ -146,34 +156,36 @@ def get_representative_email_context(representative) -> dict:
         dict: Template context
     """
     context = {
-        'representative': representative,
-        'display_name': representative.display_name,
-        'full_name': representative.full_name,
-        'phone_number': representative.phone_number,
-        'email': representative.email,
-        'university': representative.university.name,
-        'faculty': representative.faculty.name,
-        'department': representative.department.name,
-        'role': representative.get_role_display(),
-        'verification_status': representative.get_verification_status_display(),
-        'created_at': representative.created_at,
-        'admin_url': (
+        "representative": representative,
+        "display_name": representative.display_name,
+        "full_name": representative.full_name,
+        "phone_number": representative.phone_number,
+        "email": representative.email,
+        "university": representative.university.name,
+        "faculty": representative.faculty.name,
+        "department": representative.department.name,
+        "role": representative.get_role_display(),
+        "verification_status": representative.get_verification_status_display(),
+        "created_at": representative.created_at,
+        "admin_url": (
             f"{settings.SITE_URL}/admin/academic_directory/representative/"
             f"{representative.id}/change/"
         ),
-        'company_name': getattr(settings, 'COMPANY_NAME', 'Material_Wear'),
-        'primary_color': '#064E3B',
-        'accent_color': '#F59E0B',
+        "company_name": getattr(settings, "COMPANY_NAME", "Material_Wear"),
+        "primary_color": "#064E3B",
+        "accent_color": "#F59E0B",
     }
 
-    if representative.role == 'CLASS_REP':
-        context.update({
-            'current_level': representative.current_level_display,
-            'entry_year': representative.entry_year,
-            'expected_graduation_year': representative.expected_graduation_year,
-            'is_final_year': representative.is_final_year,
-        })
+    if representative.role == "CLASS_REP":
+        context.update(
+            {
+                "current_level": representative.current_level_display,
+                "entry_year": representative.entry_year,
+                "expected_graduation_year": representative.expected_graduation_year,
+                "is_final_year": representative.is_final_year,
+            }
+        )
     else:
-        context.update({'tenure_start_year': representative.tenure_start_year})
+        context.update({"tenure_start_year": representative.tenure_start_year})
 
     return context

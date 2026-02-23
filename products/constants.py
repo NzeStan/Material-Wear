@@ -1,6 +1,6 @@
 # products/constants.py
 """
-Centralized constants for JMW Accessories products
+Centralized constants for MATERIAL Wear products
 All dropdowns are handled here for consistent use across products, cart, order, and orderitem_generation apps
 """
 

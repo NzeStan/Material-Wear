@@ -36,17 +36,22 @@ from .utils import (
     validate_excel_file,
     create_participants_from_excel,
 )
-from payment.utils import initialize_payment, verify_payment, calculate_amount_with_vat, get_vat_breakdown
+from payment.utils import (
+    initialize_payment,
+    verify_payment,
+    calculate_amount_with_vat,
+    get_vat_breakdown,
+)
 from payment.security import verify_paystack_signature
-from jmw.background_utils import send_email_async
-logger = logging.getLogger(__name__)
+from material.background_utils import send_email_async
 
+logger = logging.getLogger(__name__)
 
 
 class ExcelBulkOrderViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Excel Bulk Orders.
-    
+
     Workflow:
     1. POST /excel-bulk-orders/ → Create order & get template
     2. POST /excel-bulk-orders/{id}/upload/ → Upload filled Excel
@@ -54,17 +59,17 @@ class ExcelBulkOrderViewSet(viewsets.ModelViewSet):
     4. POST /excel-bulk-orders/{id}/initialize-payment/ → Start payment
     5. POST /excel-bulk-orders/{id}/verify-payment/ → Verify & complete
     """
-    
+
     queryset = ExcelBulkOrder.objects.all()
     permission_classes = [permissions.AllowAny]
-    
+
     def get_serializer_class(self):
-        if self.action == 'create':
+        if self.action == "create":
             return ExcelBulkOrderCreateSerializer
-        elif self.action == 'list':
+        elif self.action == "list":
             return ExcelBulkOrderListSerializer
         return ExcelBulkOrderDetailSerializer
-    
+
     def get_queryset(self):
         """Filter by created_by for authenticated users"""
         if self.request.user.is_authenticated and self.request.user.is_staff:
@@ -73,134 +78,129 @@ class ExcelBulkOrderViewSet(viewsets.ModelViewSet):
             return ExcelBulkOrder.objects.filter(created_by=self.request.user)
         # Public access for retrieve/payment actions
         return ExcelBulkOrder.objects.all()
-    
+
     def create(self, request, *args, **kwargs):
         """
         Create bulk order and generate Excel template.
-        
+
         Returns template download URL.
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         bulk_order = serializer.save()
-        
+
         # Generate Excel template
         try:
             template_buffer = generate_excel_template(bulk_order)
-            
+
             # Upload to Cloudinary
             template_filename = f"excel_templates/{bulk_order.reference}.xlsx"
             upload_result = cloudinary.uploader.upload(
                 template_buffer,
-                resource_type='raw',
+                resource_type="raw",
                 public_id=template_filename,
-                folder='excel_bulk_orders/templates'
+                folder="excel_bulk_orders/templates",
             )
-            
-            bulk_order.template_file = upload_result['secure_url']
+
+            bulk_order.template_file = upload_result["secure_url"]
             bulk_order.save()
-            
+
             logger.info(f"Created Excel bulk order: {bulk_order.reference}")
-            
+
             # Return full details with template URL
             response_serializer = ExcelBulkOrderDetailSerializer(
-                bulk_order,
-                context={'request': request}
+                bulk_order, context={"request": request}
             )
-            
-            return Response(
-                response_serializer.data,
-                status=status.HTTP_201_CREATED
-            )
-            
+
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
         except Exception as e:
             logger.error(f"Error generating template: {str(e)}")
             bulk_order.delete()
             return Response(
                 {"error": f"Failed to generate template: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-    
-    @action(detail=True, methods=['post'], url_path='upload')
+
+    @action(detail=True, methods=["post"], url_path="upload")
     def upload_excel(self, request, pk=None):
         """
         Upload filled Excel file.
-        
+
         Saves file to Cloudinary and updates status.
         Does NOT validate yet - validation is separate step.
         """
         bulk_order = self.get_object()
-        
+
         if bulk_order.payment_status:
             return Response(
                 {"error": "Payment already completed for this order"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         upload_serializer = ExcelUploadSerializer(data=request.data)
         upload_serializer.is_valid(raise_exception=True)
-        
-        excel_file = upload_serializer.validated_data['excel_file']
-        
+
+        excel_file = upload_serializer.validated_data["excel_file"]
+
         try:
             # Upload to Cloudinary
             upload_filename = f"excel_uploads/{bulk_order.reference}.xlsx"
             upload_result = cloudinary.uploader.upload(
                 excel_file,
-                resource_type='raw',
+                resource_type="raw",
                 public_id=upload_filename,
-                folder='excel_bulk_orders/uploads'
+                folder="excel_bulk_orders/uploads",
             )
-            
-            bulk_order.uploaded_file = upload_result['secure_url']
-            bulk_order.validation_status = 'uploaded'
+
+            bulk_order.uploaded_file = upload_result["secure_url"]
+            bulk_order.validation_status = "uploaded"
             bulk_order.save()
-            
+
             logger.info(f"Excel uploaded for bulk order: {bulk_order.reference}")
-            
+
             serializer = ExcelBulkOrderDetailSerializer(
-                bulk_order,
-                context={'request': request}
+                bulk_order, context={"request": request}
             )
-            
+
             return Response(serializer.data)
-            
+
         except Exception as e:
             logger.error(f"Error uploading Excel: {str(e)}")
             return Response(
                 {"error": f"Failed to upload file: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-    
-    @action(detail=True, methods=['post'], url_path='validate')
+
+    @action(detail=True, methods=["post"], url_path="validate")
     def validate_excel(self, request, pk=None):
         """
         Validate uploaded Excel file.
-        
+
         Returns validation results with detailed errors or success.
         """
         bulk_order = self.get_object()
-        
+
         if not bulk_order.uploaded_file:
             return Response(
                 {"error": "No Excel file uploaded yet"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         if bulk_order.payment_status:
             return Response(
                 {"error": "Payment already completed for this order"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         try:
             # Download file from Cloudinary
             import requests
             from io import BytesIO
-            
+
             response = requests.get(bulk_order.uploaded_file)
             excel_file = BytesIO(response.content)  # Wrap bytes in BytesIO
-            
+
             # Validate
             validation_result = validate_excel_file(bulk_order, excel_file)
 
@@ -208,38 +208,42 @@ class ExcelBulkOrderViewSet(viewsets.ModelViewSet):
             bulk_order.validation_errors = validation_result
 
             # Update bulk order status
-            if validation_result['valid']:
-                bulk_order.validation_status = 'valid'
-                
+            if validation_result["valid"]:
+                bulk_order.validation_status = "valid"
+
                 # Calculate total amount
                 # Reset the file pointer to beginning
                 excel_file.seek(0)
                 import pandas as pd
-                df = pd.read_excel(excel_file, sheet_name='Participants')
-                
+
+                df = pd.read_excel(excel_file, sheet_name="Participants")
+
                 total_participants = len(df)
                 valid_coupons = 0
-                
+
                 # Count valid coupons
                 from .models import ExcelCouponCode
+
                 for idx, row in df.iterrows():
-                    coupon_code = str(row['Coupon Code']).strip() if not pd.isna(row['Coupon Code']) else ''
+                    coupon_code = (
+                        str(row["Coupon Code"]).strip()
+                        if not pd.isna(row["Coupon Code"])
+                        else ""
+                    )
                     if coupon_code:
                         try:
                             coupon = ExcelCouponCode.objects.get(
-                                code=coupon_code,
-                                bulk_order=bulk_order,
-                                is_used=False
+                                code=coupon_code, bulk_order=bulk_order, is_used=False
                             )
                             valid_coupons += 1
                         except ExcelCouponCode.DoesNotExist:
                             pass
-                
+
                 chargeable = total_participants - valid_coupons
                 bulk_order.total_amount = chargeable * bulk_order.price_per_participant
-                
+
             else:
-                bulk_order.validation_status = 'invalid'
+                bulk_order.validation_status = "invalid"
                 bulk_order.total_amount = 0
 
             bulk_order.save()
@@ -252,97 +256,96 @@ class ExcelBulkOrderViewSet(viewsets.ModelViewSet):
 
             # Return validation results
             serializer = ExcelBulkOrderDetailSerializer(
-                bulk_order,
-                context={'request': request}
+                bulk_order, context={"request": request}
             )
 
-            return Response({
-                'validation_result': validation_result,
-                'bulk_order': serializer.data
-            })
-            
+            return Response(
+                {"validation_result": validation_result, "bulk_order": serializer.data}
+            )
+
         except Exception as e:
             logger.error(f"Error validating Excel: {str(e)}")
             return Response(
                 {"error": f"Validation failed: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-    
-    @action(detail=True, methods=['post'], url_path='initialize-payment')
+
+    @action(detail=True, methods=["post"], url_path="initialize-payment")
     def initialize_payment(self, request, pk=None):
         """
         Initialize Paystack payment for the bulk order.
-        
+
         Only works if Excel is validated and ready.
         """
         bulk_order = self.get_object()
-        
-        if bulk_order.validation_status != 'valid':
+
+        if bulk_order.validation_status != "valid":
             return Response(
                 {"error": "Excel file must be validated before payment"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         if bulk_order.payment_status:
             return Response(
                 {"error": "Payment already completed"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         if bulk_order.total_amount <= 0:
             return Response(
-                {"error": "Invalid payment amount"},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Invalid payment amount"}, status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         try:
             # Initialize payment with Paystack
             # Callback URL points to FRONTEND (not backend API)
-            frontend_callback_url = request.data.get('callback_url')
+            frontend_callback_url = request.data.get("callback_url")
             if not frontend_callback_url:
                 frontend_callback_url = f"{settings.FRONTEND_URL}/payment/verify"
 
             # Calculate amount with VAT
             base_amount = bulk_order.total_amount
             vat_breakdown = get_vat_breakdown(base_amount)
-            amount_with_vat = vat_breakdown['total_amount']
+            amount_with_vat = vat_breakdown["total_amount"]
 
             payment_data = initialize_payment(
                 email=bulk_order.coordinator_email,
                 amount=amount_with_vat,
                 reference=bulk_order.reference,
-                callback_url=frontend_callback_url
+                callback_url=frontend_callback_url,
             )
 
-            if payment_data.get('status'):
-                bulk_order.validation_status = 'processing'
+            if payment_data.get("status"):
+                bulk_order.validation_status = "processing"
                 bulk_order.save()
 
                 logger.info(f"Payment initialized for {bulk_order.reference}")
 
-                return Response({
-                    'authorization_url': payment_data['data']['authorization_url'],
-                    'access_code': payment_data['data']['access_code'],
-                    'reference': payment_data['data']['reference'],
-                    'base_amount': float(vat_breakdown['base_amount']),
-                    'vat_amount': float(vat_breakdown['vat_amount']),
-                    'vat_rate': vat_breakdown['vat_rate'],
-                    'total_amount': float(amount_with_vat)
-                })
+                return Response(
+                    {
+                        "authorization_url": payment_data["data"]["authorization_url"],
+                        "access_code": payment_data["data"]["access_code"],
+                        "reference": payment_data["data"]["reference"],
+                        "base_amount": float(vat_breakdown["base_amount"]),
+                        "vat_amount": float(vat_breakdown["vat_amount"]),
+                        "vat_rate": vat_breakdown["vat_rate"],
+                        "total_amount": float(amount_with_vat),
+                    }
+                )
             else:
                 return Response(
                     {"error": "Payment initialization failed"},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
-                
+
         except Exception as e:
             logger.error(f"Error initializing payment: {str(e)}")
             return Response(
                 {"error": f"Payment initialization failed: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-    
-    @action(detail=True, methods=['get'], url_path='verify-payment')
+
+    @action(detail=True, methods=["get"], url_path="verify-payment")
     def verify_payment(self, request, pk=None):
         """
         Verify payment status - Pure status check endpoint.
@@ -360,126 +363,142 @@ class ExcelBulkOrderViewSet(viewsets.ModelViewSet):
         bulk_order = self.get_object()
 
         # Get participant count if payment is complete
-        participants_count = bulk_order.participants.count() if bulk_order.payment_status else 0
+        participants_count = (
+            bulk_order.participants.count() if bulk_order.payment_status else 0
+        )
 
         # Calculate VAT breakdown
         vat_breakdown = get_vat_breakdown(bulk_order.total_amount)
 
         serializer = ExcelBulkOrderDetailSerializer(
-            bulk_order,
-            context={'request': request}
+            bulk_order, context={"request": request}
         )
 
-        return Response({
-            'reference': bulk_order.reference,
-            'title': bulk_order.title,
-            'coordinator_email': bulk_order.coordinator_email,
-            'paid': bulk_order.payment_status,
-            'validation_status': bulk_order.validation_status,
-            'base_amount': float(vat_breakdown['base_amount']),
-            'vat_amount': float(vat_breakdown['vat_amount']),
-            'vat_rate': vat_breakdown['vat_rate'],
-            'total_amount': float(vat_breakdown['total_amount']),
-            'participants_count': participants_count,
-            'paystack_reference': bulk_order.paystack_reference,
-            'message': 'Payment successful' if bulk_order.payment_status else 'Payment pending',
-            'bulk_order': serializer.data
-        })
-    
-    @action(detail=True, methods=['get'], url_path='download-template')
+        return Response(
+            {
+                "reference": bulk_order.reference,
+                "title": bulk_order.title,
+                "coordinator_email": bulk_order.coordinator_email,
+                "paid": bulk_order.payment_status,
+                "validation_status": bulk_order.validation_status,
+                "base_amount": float(vat_breakdown["base_amount"]),
+                "vat_amount": float(vat_breakdown["vat_amount"]),
+                "vat_rate": vat_breakdown["vat_rate"],
+                "total_amount": float(vat_breakdown["total_amount"]),
+                "participants_count": participants_count,
+                "paystack_reference": bulk_order.paystack_reference,
+                "message": (
+                    "Payment successful"
+                    if bulk_order.payment_status
+                    else "Payment pending"
+                ),
+                "bulk_order": serializer.data,
+            }
+        )
+
+    @action(detail=True, methods=["get"], url_path="download-template")
     def download_template(self, request, pk=None):
         """Download the Excel template"""
         bulk_order = self.get_object()
-        
+
         if not bulk_order.template_file:
             return Response(
                 {"error": "Template not generated yet"},
-                status=status.HTTP_404_NOT_FOUND
+                status=status.HTTP_404_NOT_FOUND,
             )
-        
+
         # Redirect to Cloudinary URL
         import requests
+
         response = requests.get(bulk_order.template_file)
-        
+
         http_response = HttpResponse(
             response.content,
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
-        http_response['Content-Disposition'] = f'attachment; filename="{bulk_order.reference}_template.xlsx"'
-        
+        http_response["Content-Disposition"] = (
+            f'attachment; filename="{bulk_order.reference}_template.xlsx"'
+        )
+
         return http_response
-    
-    @action(detail=True, methods=['get'], url_path='paid-participants', permission_classes=[permissions.AllowAny])
+
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path="paid-participants",
+        permission_classes=[permissions.AllowAny],
+    )
     def paid_participants(self, request, pk=None):
         """
         Public page showing all paid participants for social proof.
         Supports both HTML view and JSON API.
-        
+
         Usage:
         - JSON API: GET /api/excel-bulk-orders/{uuid}/paid-participants/
         - HTML View: GET /api/excel-bulk-orders/{uuid}/paid-participants/ (with Accept: text/html)
         """
         bulk_order = self.get_object()
-        
+
         # Check if payment complete
         if not bulk_order.payment_status:
             return Response(
                 {"error": "No paid participants yet. Payment not completed."},
-                status=status.HTTP_404_NOT_FOUND
+                status=status.HTTP_404_NOT_FOUND,
             )
-        
+
         # Get all participants
-        participants = bulk_order.participants.all().order_by('-created_at')
-        
+        participants = bulk_order.participants.all().order_by("-created_at")
+
         # Size summary
         size_summary = list(
-            participants.values("size")
-            .annotate(count=Count("size"))
-            .order_by("size")
+            participants.values("size").annotate(count=Count("size")).order_by("size")
         )
-        
+
         # Check if HTML view requested (browser)
-        if request.accepted_renderer.format == 'html':
+        if request.accepted_renderer.format == "html":
             context = {
-                'bulk_order': bulk_order,
-                'participants': participants[:20],  # First 20 for display
-                'all_participants': participants,  # All for download
-                'size_summary': size_summary,
-                'total_participants': participants.count(),
-                'total_paid': participants.filter(is_coupon_applied=False).count(),
-                'total_free': participants.filter(is_coupon_applied=True).count(),
-                'company_name': settings.COMPANY_NAME,
-                'company_address': settings.COMPANY_ADDRESS,
-                'company_phone': settings.COMPANY_PHONE,
-                'company_email': settings.COMPANY_EMAIL,
-                'now': timezone.now(),
+                "bulk_order": bulk_order,
+                "participants": participants[:20],  # First 20 for display
+                "all_participants": participants,  # All for download
+                "size_summary": size_summary,
+                "total_participants": participants.count(),
+                "total_paid": participants.filter(is_coupon_applied=False).count(),
+                "total_free": participants.filter(is_coupon_applied=True).count(),
+                "company_name": settings.COMPANY_NAME,
+                "company_address": settings.COMPANY_ADDRESS,
+                "company_phone": settings.COMPANY_PHONE,
+                "company_email": settings.COMPANY_EMAIL,
+                "now": timezone.now(),
             }
-            
+
             return Response(
-                context,
-                template_name='excel_bulk_orders/paid_participants_public.html'
+                context, template_name="excel_bulk_orders/paid_participants_public.html"
             )
-        
+
         # JSON response for API
-        return Response({
-            'reference': bulk_order.reference,
-            'title': bulk_order.title,
-            'coordinator': bulk_order.coordinator_name,
-            'total_participants': participants.count(),
-            'total_paid': participants.filter(is_coupon_applied=False).count(),
-            'total_free': participants.filter(is_coupon_applied=True).count(),
-            'size_summary': size_summary,
-            'recent_participants': [
-                {
-                    'full_name': p.full_name,
-                    'size': p.size,
-                    'custom_name': p.custom_name if bulk_order.requires_custom_name else None,
-                    'status': 'Free (Coupon)' if p.is_coupon_applied else 'Paid',
-                    'created_at': p.created_at.isoformat()
-                }
-                for p in participants[:20]
-            ]
-        })
+        return Response(
+            {
+                "reference": bulk_order.reference,
+                "title": bulk_order.title,
+                "coordinator": bulk_order.coordinator_name,
+                "total_participants": participants.count(),
+                "total_paid": participants.filter(is_coupon_applied=False).count(),
+                "total_free": participants.filter(is_coupon_applied=True).count(),
+                "size_summary": size_summary,
+                "recent_participants": [
+                    {
+                        "full_name": p.full_name,
+                        "size": p.size,
+                        "custom_name": (
+                            p.custom_name if bulk_order.requires_custom_name else None
+                        ),
+                        "status": "Free (Coupon)" if p.is_coupon_applied else "Paid",
+                        "created_at": p.created_at.isoformat(),
+                    }
+                    for p in participants[:20]
+                ],
+            }
+        )
 
 
 class ExcelParticipantViewSet(viewsets.ReadOnlyModelViewSet):
@@ -487,29 +506,29 @@ class ExcelParticipantViewSet(viewsets.ReadOnlyModelViewSet):
     ViewSet for viewing participants.
     Read-only access.
     """
-    
+
     queryset = ExcelParticipant.objects.all()
     serializer_class = ExcelParticipantSerializer
     permission_classes = [permissions.AllowAny]
-    
 
     def get_queryset(self):
         """Filter by bulk_order if specified"""
         queryset = ExcelParticipant.objects.all()
-        
-        bulk_order_id = self.request.query_params.get('bulk_order')
+
+        bulk_order_id = self.request.query_params.get("bulk_order")
         if bulk_order_id:
             # Validate UUID format to prevent ValidationError
             try:
                 import uuid
+
                 uuid.UUID(bulk_order_id)  # Will raise ValueError if invalid
                 queryset = queryset.filter(bulk_order_id=bulk_order_id)
             except (ValueError, AttributeError):
                 # Invalid UUID format - return empty queryset
                 queryset = queryset.none()
-        
-        return queryset.select_related('bulk_order', 'coupon')
-    
+
+        return queryset.select_related("bulk_order", "coupon")
+
 
 @csrf_exempt
 def excel_bulk_order_payment_webhook(request):
@@ -518,73 +537,65 @@ def excel_bulk_order_payment_webhook(request):
 
     Reference format: EXL-{unique_code}
     """
-    if request.method != 'POST':
+    if request.method != "POST":
         logger.warning(f"Invalid webhook method: {request.method}")
         return JsonResponse(
-            {'status': 'error', 'message': 'Method not allowed'},
-            status=405
+            {"status": "error", "message": "Method not allowed"}, status=405
         )
 
     try:
         # 🔐 STEP 1: Verify webhook signature
-        signature = request.META.get('HTTP_X_PAYSTACK_SIGNATURE')
+        signature = request.META.get("HTTP_X_PAYSTACK_SIGNATURE")
 
         if not signature:
             logger.error("Excel webhook received without signature")
             return JsonResponse(
-                {'status': 'error', 'message': 'Missing signature'},
-                status=401
+                {"status": "error", "message": "Missing signature"}, status=401
             )
 
         if not verify_paystack_signature(request.body, signature):
             logger.error("Excel webhook signature verification failed")
             return JsonResponse(
-                {'status': 'error', 'message': 'Invalid signature'},
-                status=401
+                {"status": "error", "message": "Invalid signature"}, status=401
             )
 
         # 📦 STEP 2: Parse payload
         payload = json.loads(request.body)
-        event = payload.get('event')
-        data = payload.get('data', {})
+        event = payload.get("event")
+        data = payload.get("data", {})
 
         logger.info(f"Excel webhook received: {event}")
 
         # 🚫 Ignore non-charge events
-        if event != 'charge.success':
+        if event != "charge.success":
             logger.info(f"Ignoring webhook event: {event}")
             return JsonResponse(
-                {'status': 'success', 'message': 'Event ignored'},
-                status=200
+                {"status": "success", "message": "Event ignored"}, status=200
             )
 
         # ❌ IMPORTANT: Check payment status BEFORE touching DB
-        if data.get('status') != 'success':
+        if data.get("status") != "success":
             logger.warning(
                 f"Charge event received but payment not successful: {data.get('status')}"
             )
             return JsonResponse(
-                {'status': 'error', 'message': 'Payment not successful'},
-                status=400
+                {"status": "error", "message": "Payment not successful"}, status=400
             )
 
         # 🔎 STEP 3: Extract and validate reference
-        reference = data.get('reference', '')
+        reference = data.get("reference", "")
 
-        if not reference or not reference.startswith('EXL-'):
+        if not reference or not reference.startswith("EXL-"):
             logger.error(f"Invalid reference format: {reference}")
             return JsonResponse(
-                {'status': 'error', 'message': 'Invalid reference format'},
-                status=400
+                {"status": "error", "message": "Invalid reference format"}, status=400
             )
 
         try:
             # 🔒 STEP 4: Idempotent payment processing
             with transaction.atomic():
-                bulk_order = (
-                    ExcelBulkOrder.objects
-                    .select_for_update()
-                    .get(reference=reference)
+                bulk_order = ExcelBulkOrder.objects.select_for_update().get(
+                    reference=reference
                 )
 
                 # Already processed → idempotent exit
@@ -595,23 +606,25 @@ def excel_bulk_order_payment_webhook(request):
                     )
                     return JsonResponse(
                         {
-                            'status': 'success',
-                            'message': 'Payment already processed',
-                            'reference': reference
+                            "status": "success",
+                            "message": "Payment already processed",
+                            "reference": reference,
                         },
-                        status=200
+                        status=200,
                     )
 
                 # ✅ Mark payment as successful
                 bulk_order.payment_status = True
                 bulk_order.paystack_reference = reference
-                bulk_order.validation_status = 'completed'
-                bulk_order.save(update_fields=[
-                    'payment_status',
-                    'paystack_reference',
-                    'validation_status',
-                    'updated_at'
-                ])
+                bulk_order.validation_status = "completed"
+                bulk_order.save(
+                    update_fields=[
+                        "payment_status",
+                        "paystack_reference",
+                        "validation_status",
+                        "updated_at",
+                    ]
+                )
 
             # 📂 STEP 5: Create participants (outside transaction)
             import requests
@@ -620,20 +633,12 @@ def excel_bulk_order_payment_webhook(request):
             response = requests.get(bulk_order.uploaded_file)
             excel_file = BytesIO(response.content)
 
-            participants_count = create_participants_from_excel(
-                bulk_order,
-                excel_file
-            )
+            participants_count = create_participants_from_excel(bulk_order, excel_file)
 
-            logger.info(
-                f"Created {participants_count} participants for {reference}"
-            )
+            logger.info(f"Created {participants_count} participants for {reference}")
 
             # 📧 STEP 6: Send confirmation email
-            send_bulk_order_confirmation_email(
-                bulk_order,
-                participants_count
-            )
+            send_bulk_order_confirmation_email(bulk_order, participants_count)
 
             logger.info(
                 f"Excel bulk order payment successful: {reference}. "
@@ -642,31 +647,26 @@ def excel_bulk_order_payment_webhook(request):
 
             return JsonResponse(
                 {
-                    'status': 'success',
-                    'message': 'Payment verified, participants created, email sent',
-                    'reference': reference,
-                    'participants_created': participants_count
+                    "status": "success",
+                    "message": "Payment verified, participants created, email sent",
+                    "reference": reference,
+                    "participants_created": participants_count,
                 },
-                status=200
+                status=200,
             )
 
         except ExcelBulkOrder.DoesNotExist:
             logger.error(f"ExcelBulkOrder not found: {reference}")
             return JsonResponse(
-                {'status': 'error', 'message': 'Order not found'},
-                status=404
+                {"status": "error", "message": "Order not found"}, status=404
             )
 
     except json.JSONDecodeError:
         logger.error("Invalid JSON in excel webhook payload")
-        return JsonResponse(
-            {'status': 'error', 'message': 'Invalid JSON'},
-            status=400
-        )
+        return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
 
     except Exception:
         logger.exception("Unexpected error processing excel webhook")
         return JsonResponse(
-            {'status': 'error', 'message': 'Internal server error'},
-            status=500
+            {"status": "error", "message": "Internal server error"}, status=500
         )

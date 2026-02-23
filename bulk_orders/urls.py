@@ -13,16 +13,15 @@ from .views import (
 app_name = "bulk_orders"
 
 router = DefaultRouter()
-router.register(r'links', BulkOrderLinkViewSet, basename='link')
-router.register(r'coupons', CouponCodeViewSet, basename='coupon')
-router.register(r'orders', OrderEntryViewSet, basename='order')
+router.register(r"links", BulkOrderLinkViewSet, basename="link")
+router.register(r"coupons", CouponCodeViewSet, basename="coupon")
+router.register(r"orders", OrderEntryViewSet, basename="order")
 
 urlpatterns = [
     # Webhook endpoint
-    path('payment/callback/', bulk_order_payment_webhook, name='payment-webhook'),
-    
+    path("payment/callback/", bulk_order_payment_webhook, name="payment-webhook"),
     # Router URLs
-    path('', include(router.urls)),
+    path("", include(router.urls)),
 ]
 
 # ============================================================================
@@ -41,10 +40,10 @@ urlpatterns = [
 # GET    /api/bulk_orders/orders/<uuid>/                           # Get specific order (Public)
 # POST   /api/bulk_orders/orders/<uuid>/initialize_payment/        # Initialize payment (Public)
 #        ✅ NEW: Optional request body: { "callback_url": "https://your-frontend.com/payment/verify" }
-#        Returns: { "authorization_url": "...", "reference": "...", "order_reference": "JMW-BULK-1234" }
+#        Returns: { "authorization_url": "...", "reference": "...", "order_reference": "MATERIAL-BULK-1234" }
 #
 # GET    /api/bulk_orders/orders/<uuid>/verify_payment/            # ✅ NEW: Verify payment status (Public)
-#        Returns: { "paid": true/false, "reference": "JMW-BULK-1234", ... }
+#        Returns: { "paid": true/false, "reference": "MATERIAL-BULK-1234", ... }
 #
 # COUPON MANAGEMENT:
 # GET    /api/bulk_orders/coupons/                                 # List coupons (Admin)
@@ -70,7 +69,7 @@ urlpatterns = [
 #      "size": "L",
 #      "coupon_code": "ABC123"  // optional
 #    }
-#    Returns: { "id": "uuid", "reference": "JMW-BULK-1234", ... }
+#    Returns: { "id": "uuid", "reference": "MATERIAL-BULK-1234", ... }
 #
 # 2. FRONTEND STORES ORDER INFO
 #    Save order UUID and reference to state/localStorage
@@ -83,7 +82,7 @@ urlpatterns = [
 #    Returns: {
 #      "authorization_url": "https://paystack.com/...",
 #      "reference": "ORDER-xxx-xxx",
-#      "order_reference": "JMW-BULK-1234",
+#      "order_reference": "MATERIAL-BULK-1234",
 #      "amount": 5000.00
 #    }
 #
@@ -98,7 +97,7 @@ urlpatterns = [
 #
 # 7. FRONTEND CALLS VERIFY ENDPOINT
 #    GET /api/bulk_orders/orders/<uuid>/verify_payment/
-#    Returns: { "paid": true, "reference": "JMW-BULK-1234", ... }
+#    Returns: { "paid": true, "reference": "MATERIAL-BULK-1234", ... }
 #
 # 8. FRONTEND SHOWS SUCCESS/FAILURE
 #    if (response.paid) {
@@ -126,13 +125,13 @@ urlpatterns = [
 #   const [status, setStatus] = useState('loading');
 #   const searchParams = new URLSearchParams(window.location.search);
 #   const reference = searchParams.get('reference');
-#   
+#
 #   useEffect(() => {
 #     if (reference) {
 #       // Extract order UUID from reference: ORDER-{bulk_order_id}-{order_entry_id}
 #       const parts = reference.split('-');
 #       const orderUuid = parts.slice(6, 11).join('-');
-#       
+#
 #       // Verify payment status
 #       fetch(`/api/bulk_orders/orders/${orderUuid}/verify_payment/`)
 #         .then(res => res.json())
@@ -149,7 +148,7 @@ urlpatterns = [
 #         .catch(() => setStatus('error'));
 #     }
 #   }, [reference]);
-#   
+#
 #   return (
 #     <div>
 #       {status === 'loading' && <LoadingSpinner />}
@@ -192,7 +191,7 @@ urlpatterns = [
 #   "custom_name": "PASTOR JOHN",  // Only if custom_branding_enabled=True
 #   "coupon_code": "ABC12345"      // Optional
 # }
-# Response: { "id": "uuid", "reference": "JMW-BULK-1234", ... }
+# Response: { "id": "uuid", "reference": "MATERIAL-BULK-1234", ... }
 
 # EXAMPLE 2: Initialize payment
 # POST /api/bulk_orders/orders/{uuid}/initialize_payment/
@@ -202,14 +201,14 @@ urlpatterns = [
 # Response: {
 #   "authorization_url": "https://checkout.paystack.com/...",
 #   "reference": "ORDER-xxx-xxx",
-#   "order_reference": "JMW-BULK-1234"
+#   "order_reference": "MATERIAL-BULK-1234"
 # }
 
 # EXAMPLE 3: Verify payment (after Paystack redirect)
 # GET /api/bulk_orders/orders/{uuid}/verify_payment/
 # Response: {
 #   "paid": true,
-#   "reference": "JMW-BULK-1234",
+#   "reference": "MATERIAL-BULK-1234",
 #   "amount": 5000.00,
 #   "email": "john@example.com",
 #   ...

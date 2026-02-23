@@ -57,7 +57,7 @@ class Command(BaseCommand):
 
         # Header
         self.stdout.write(self.style.SUCCESS("=" * 80))
-        self.stdout.write(self.style.SUCCESS("  JMW ACCESSORIES - PRODUCT UPLOAD"))
+        self.stdout.write(self.style.SUCCESS("  MATERIAL ACCESSORIES - PRODUCT UPLOAD"))
         self.stdout.write(self.style.SUCCESS("=" * 80))
         self.stdout.write(f"\nProduct Type: {self.style.WARNING(product_type.upper())}")
         self.stdout.write(f"CSV File: {self.style.WARNING(csv_file)}")
@@ -66,7 +66,7 @@ class Command(BaseCommand):
 
         try:
             # Read CSV
-            with open(csv_file, 'r', encoding='utf-8-sig') as file:
+            with open(csv_file, "r", encoding="utf-8-sig") as file:
                 reader = csv.DictReader(file)
                 rows = list(reader)
 

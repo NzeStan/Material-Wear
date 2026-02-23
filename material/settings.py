@@ -1,6 +1,6 @@
-# jmw/settings.py
+# material/settings.py
 """
-Django settings for JMW project - Production-Ready API Architecture
+Django settings for MATERIAL project - Production-Ready API Architecture
 
 Brand Colors:
 - Primary: #064E3B (Dark Green)
@@ -31,14 +31,14 @@ DEBUG = env.bool("DJANGO_DEBUG", default=False)
 
 if not DEBUG:
     ALLOWED_HOSTS = [
-        "jmw-accessories.onrender.com",
-        "www.jumemegawears.com",
-        "jumemegawears.com",
+        "material-wear.onrender.com",
+        "www.materialwear.com",
+        "materialwear.com",
     ]
     CSRF_TRUSTED_ORIGINS = [
-        "https://jmw-accessories.onrender.com",
-        "https://www.jumemegawears.com",
-        "https://jumemegawears.com",
+        "https://material-wear.onrender.com",
+        "https://www.materialwear.com",
+        "https://materialwear.com",
     ]
     # Security settings for production
     SECURE_SSL_REDIRECT = True
@@ -46,7 +46,7 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    X_FRAME_OPTIONS = 'DENY'
+    X_FRAME_OPTIONS = "DENY"
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
@@ -54,7 +54,7 @@ else:
     ALLOWED_HOSTS = [
         "localhost",
         "127.0.0.1",
-        ".ngrok-free.app",          
+        ".ngrok-free.app",
     ]
     CSRF_TRUSTED_ORIGINS = ["https://*.ngrok-free.app"]
 
@@ -63,22 +63,22 @@ else:
 # ==============================================================================
 
 # Brand Colors
-PRIMARY_COLOR = '#064E3B'  # Dark Green
-BACKGROUND_COLOR = '#FFFBEB'  # Cream
-ACCENT_COLOR = '#F59E0B'  # Gold
-TEXT_COLOR = '#1F2937'  # Dark Gray
+PRIMARY_COLOR = "#064E3B"  # Dark Green
+BACKGROUND_COLOR = "#FFFBEB"  # Cream
+ACCENT_COLOR = "#F59E0B"  # Gold
+TEXT_COLOR = "#1F2937"  # Dark Gray
 
 # Company Information
-COMPANY_NAME = 'JUME MEGA WEARS & ACCESSORIES'
-COMPANY_SHORT_NAME = 'JMW'
-COMPANY_EMAIL = 'contact@jumemegawears.com'
-COMPANY_PHONE = '+2348071000804'
-COMPANY_ADDRESS = '16 Emejiaka Street, Ngwa Rd, Aba Abia State'
-COMPANY_LOGO_URL = 'https://res.cloudinary.com/dhhaiy58r/image/upload/v1721420288/Black_White_Minimalist_Clothes_Store_Logo_e1o8ow.png'
+COMPANY_NAME = "MATERIAL WEAR"
+COMPANY_SHORT_NAME = "MATERIAL"
+COMPANY_EMAIL = "contact@materialwear.com"
+COMPANY_PHONE = "+2348071000804"
+COMPANY_ADDRESS = "16 Emejiaka Street, Ngwa Rd, Aba Abia State"
+COMPANY_LOGO_URL = "https://res.cloudinary.com/dhhaiy58r/image/upload/v1721420288/Black_White_Minimalist_Clothes_Store_Logo_e1o8ow.png"
 
 # Currency
-CURRENCY_SYMBOL = '₦'
-CURRENCY_CODE = 'NGN'
+CURRENCY_SYMBOL = "₦"
+CURRENCY_CODE = "NGN"
 
 # ==============================================================================
 # APPLICATIONS
@@ -93,39 +93,33 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.sites",
-
     # Two-Factor Authentication (must be before admin usage)
     "django_otp",
     "django_otp.plugins.otp_static",
     "django_otp.plugins.otp_totp",
     "two_factor",
     "two_factor.plugins.phonenumber",  # Optional: for SMS backup
-
     # Brute-force protection
     "axes",
-
     # REST Framework & Auth
     "rest_framework",
     "rest_framework.authtoken",
     "dj_rest_auth",
     "dj_rest_auth.registration",
     "rest_framework_simplejwt",
-
     # Social Authentication
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
     "allauth.socialaccount.providers.github",
-
     # Third-party utilities
     "django_filters",
     "drf_spectacular",
     "whitenoise.runserver_nostatic",
     "background_task",
     "corsheaders",
-    'testimonials',
-
+    "testimonials",
     # Local apps
     "accounts.apps.AccountsConfig",
     "products.apps.ProductsConfig",
@@ -138,9 +132,9 @@ INSTALLED_APPS = [
     "webhook_router.apps.WebhookRouterConfig",
     "orderitem_generation.apps.OrderitemGenerationConfig",
     "referrals.apps.ReferralsConfig",
-    'excel_bulk_orders.apps.ExcelBulkOrdersConfig',
-    'academic_directory.apps.AcademicDirectoryConfig',
-    'image_bulk_orders.apps.ImageBulkOrdersConfig',
+    "excel_bulk_orders.apps.ExcelBulkOrdersConfig",
+    "academic_directory.apps.AcademicDirectoryConfig",
+    "image_bulk_orders.apps.ImageBulkOrdersConfig",
     "live_forms.apps.LiveFormsConfig",
 ]
 
@@ -164,7 +158,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # Admin IP whitelist (blocks non-whitelisted IPs in production)
-    "jmw.middleware.AdminIPWhitelistMiddleware",
+    "material.middleware.AdminIPWhitelistMiddleware",
     # Brute-force protection (must be after AuthenticationMiddleware)
     "axes.middleware.AxesMiddleware",
     "cart.middleware.CartCleanupMiddleware",
@@ -199,26 +193,26 @@ TEMPLATES = [
 # ==============================================================================
 
 DATABASES = {
-    "default": env.dj_db_url("DATABASE_URL", default="postgresql://localhost/jmw")
+    "default": env.dj_db_url("DATABASE_URL", default="postgresql://localhost/material")
 }
 
 # ==============================================================================
 # CACHING
 # ==============================================================================
-#Production, dummy cache for development
+# Production, dummy cache for development
 if DEBUG:
     CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
+        "default": {
+            "BACKEND": "django.core.cache.backends.dummy.DummyCache",
         }
     }
 else:
     CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
-            'LOCATION': 'django_cache_table',
-            'KEY_PREFIX': 'jmw',
-            'TIMEOUT': 300,
+        "default": {
+            "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+            "LOCATION": "django_cache_table",
+            "KEY_PREFIX": "material",
+            "TIMEOUT": 300,
         }
     }
 
@@ -236,20 +230,20 @@ AUTH_USER_MODEL = "accounts.CustomUser"
 
 AUTHENTICATION_BACKENDS = [
     # Axes backend must be first for brute-force protection
-    'axes.backends.AxesStandaloneBackend',
-    'django.contrib.auth.backends.ModelBackend',
-    'allauth.account.auth_backends.AuthenticationBackend',
-    'django_otp.backends.OtpBackend',
+    "axes.backends.AxesStandaloneBackend",
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
+    "django_otp.backends.OtpBackend",
 ]
 
 # ==============================================================================
 # SESSION & COOKIE SECURITY
 # ==============================================================================
 
-SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_AGE = 1209600  # 2 weeks
 SESSION_SAVE_EVERY_REQUEST = False
-CART_SESSION_ID = 'cart'
+CART_SESSION_ID = "cart"
 
 # ✅ PRODUCTION SECURITY SETTINGS
 if not DEBUG:
@@ -262,11 +256,11 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    
+
     # SameSite cookie settings
-    SESSION_COOKIE_SAMESITE = 'Lax'
-    CSRF_COOKIE_SAMESITE = 'Lax'
-    
+    SESSION_COOKIE_SAMESITE = "Lax"
+    CSRF_COOKIE_SAMESITE = "Lax"
+
     # Only send cookies over HTTPS
     SESSION_COOKIE_HTTPONLY = True
     CSRF_COOKIE_HTTPONLY = True
@@ -281,66 +275,60 @@ else:
 # ==============================================================================
 
 REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
     ],
-    
     # ✅ ADD THROTTLING CONFIGURATION
-    'DEFAULT_THROTTLE_CLASSES': [
-        'jmw.throttling.BurstUserRateThrottle',
-        'jmw.throttling.SustainedUserRateThrottle',
+    "DEFAULT_THROTTLE_CLASSES": [
+        "material.throttling.BurstUserRateThrottle",
+        "material.throttling.SustainedUserRateThrottle",
     ],
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/hour',
-        'user': '1000/hour',
-        'checkout': '10/hour',
-        'payment': '10/hour',
-        'cart': '100/hour',
-        'anon_strict': '50/hour',
-        'burst': '20/minute',
-        'sustained': '500/hour',
-        'live_form_submit': '30/hour',
-        'live_form_view': '200/hour',
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "100/hour",
+        "user": "1000/hour",
+        "checkout": "10/hour",
+        "payment": "10/hour",
+        "cart": "100/hour",
+        "anon_strict": "50/hour",
+        "burst": "20/minute",
+        "sustained": "500/hour",
+        "live_form_submit": "30/hour",
+        "live_form_view": "200/hour",
     },
-    
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
-    
-    'DEFAULT_FILTER_BACKENDS': [
-        'django_filters.rest_framework.DjangoFilterBackend',
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
     ],
-    
     # ✅ SECURITY SETTINGS
-    'DEFAULT_RENDERER_CLASSES': [
-        'rest_framework.renderers.JSONRenderer',
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
     ],
-    
     # Only allow browsable API in debug mode
-    'DEFAULT_PARSER_CLASSES': [
-        'rest_framework.parsers.JSONParser',
-        'rest_framework.parsers.FormParser',
-        'rest_framework.parsers.MultiPartParser',
+    "DEFAULT_PARSER_CLASSES": [
+        "rest_framework.parsers.JSONParser",
+        "rest_framework.parsers.FormParser",
+        "rest_framework.parsers.MultiPartParser",
     ],
 }
 
 # Add browsable API only in DEBUG mode
 if DEBUG:
-    REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'].append(
-        'rest_framework.renderers.BrowsableAPIRenderer'
+    REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"].append(
+        "rest_framework.renderers.BrowsableAPIRenderer"
     )
 
 # Add authentication based on environment
 if DEBUG:
-    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = [
-        'rest_framework.authentication.TokenAuthentication',
-        'rest_framework.authentication.BasicAuthentication',
+    REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"] = [
+        "rest_framework.authentication.TokenAuthentication",
+        "rest_framework.authentication.BasicAuthentication",
     ]
 else:
-    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.TokenAuthentication',
+    REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"] = [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.TokenAuthentication",
     ]
 
 # ==============================================================================
@@ -348,16 +336,16 @@ else:
 # ==============================================================================
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1 if DEBUG else 15),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7 if DEBUG else 1),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
-    'UPDATE_LAST_LOGIN': True,
-    'ALGORITHM': 'HS256',
-    'SIGNING_KEY': SECRET_KEY,
-    'AUTH_HEADER_TYPES': ('Bearer',),
-    'USER_ID_FIELD': 'id',
-    'USER_ID_CLAIM': 'user_id',
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=1 if DEBUG else 15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7 if DEBUG else 1),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
 }
 
 # ==============================================================================
@@ -366,94 +354,84 @@ SIMPLE_JWT = {
 
 SPECTACULAR_SETTINGS = {
     # Basic Info
-    'TITLE': 'JMW Accessories API',
-    'DESCRIPTION': 'Production-ready API for managing NYSC products, church merchandise, and orders',
-    'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,
-    
+    "TITLE": "MATERIAL Wear API",
+    "DESCRIPTION": "Production-ready API for managing NYSC products, church merchandise, and orders",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
     # Server Configuration
-    'SERVERS': [
-        {'url': 'https://jumemegawears.com', 'description': 'Production'},
-        {'url': 'http://localhost:8000', 'description': 'Development'},
+    "SERVERS": [
+        {"url": "https://materialwear.com", "description": "Production"},
+        {"url": "http://localhost:8000", "description": "Development"},
     ],
-    
     # Schema Generation
-    'COMPONENT_SPLIT_REQUEST': True,
-    'SCHEMA_PATH_PREFIX': r'/api/',
-    'DEFAULT_GENERATOR_CLASS': 'drf_spectacular.generators.SchemaGenerator',
-    
-    'ENUM_NAME_OVERRIDES': {
-    # State choices
-    'StateEnum': 'products.constants.STATES',
-    
-    # Size choices - unified since VEST_SIZES and CHURCH_SIZES are identical
-    'ProductSizeEnum': 'products.constants.VEST_SIZES',
-    
-    # Church choices
-    'ChurchDenominationEnum': 'products.constants.CHURCH_CHOICES',
-    
-    # Product type choices
-    'ProductTypeEnum': 'products.constants.PRODUCT_TYPE_CHOICES',
-    
-    # NYSC Kit type choices
-    'NyscKitTypeEnum': 'products.constants.NYSC_KIT_TYPE_CHOICES',
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SCHEMA_PATH_PREFIX": r"/api/",
+    "DEFAULT_GENERATOR_CLASS": "drf_spectacular.generators.SchemaGenerator",
+    "ENUM_NAME_OVERRIDES": {
+        # State choices
+        "StateEnum": "products.constants.STATES",
+        # Size choices - unified since VEST_SIZES and CHURCH_SIZES are identical
+        "ProductSizeEnum": "products.constants.VEST_SIZES",
+        # Church choices
+        "ChurchDenominationEnum": "products.constants.CHURCH_CHOICES",
+        # Product type choices
+        "ProductTypeEnum": "products.constants.PRODUCT_TYPE_CHOICES",
+        # NYSC Kit type choices
+        "NyscKitTypeEnum": "products.constants.NYSC_KIT_TYPE_CHOICES",
     },
-    
     # ✅ ADD THIS to suppress unnecessary blank/null enums
-    'ENUM_ADD_EXPLICIT_BLANK_NULL_CHOICE': False,
-    
+    "ENUM_ADD_EXPLICIT_BLANK_NULL_CHOICE": False,
     # ✅ ADD THIS to generate name from label
-    'ENUM_GENERATE_CHOICE_DESCRIPTION': False,
-    
+    "ENUM_GENERATE_CHOICE_DESCRIPTION": False,
     # ✅ AUTHENTICATION CONFIGURATION
-    'APPEND_COMPONENTS': {
-        'securitySchemes': {
-            'cookieAuth': {
-                'type': 'apiKey',
-                'in': 'cookie',
-                'name': 'sessionid',
-                'description': 'Session-based authentication using Django session cookie'
+    "APPEND_COMPONENTS": {
+        "securitySchemes": {
+            "cookieAuth": {
+                "type": "apiKey",
+                "in": "cookie",
+                "name": "sessionid",
+                "description": "Session-based authentication using Django session cookie",
             },
-            'tokenAuth': {
-                'type': 'apiKey',
-                'in': 'header',
-                'name': 'Authorization',
-                'description': 'Token-based authentication (if using tokens)'
-            }
+            "tokenAuth": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "Authorization",
+                "description": "Token-based authentication (if using tokens)",
+            },
         }
     },
-    'SECURITY': [
-        {'cookieAuth': []},  # Default to cookie auth
+    "SECURITY": [
+        {"cookieAuth": []},  # Default to cookie auth
     ],
-    
     # ✅ SWAGGER UI CONFIGURATION
-    'SWAGGER_UI_SETTINGS': {
-        'deepLinking': True,
-        'persistAuthorization': True,
-        'displayOperationId': True,
-        'filter': True,
-        'defaultModelsExpandDepth': 2,
-        'defaultModelExpandDepth': 2,
+    "SWAGGER_UI_SETTINGS": {
+        "deepLinking": True,
+        "persistAuthorization": True,
+        "displayOperationId": True,
+        "filter": True,
+        "defaultModelsExpandDepth": 2,
+        "defaultModelExpandDepth": 2,
     },
-    
     # Additional Settings
-    'POSTPROCESSING_HOOKS': [
-        'drf_spectacular.hooks.postprocess_schema_enums',
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
     ],
-    'ENUM_ADD_EXPLICIT_BLANK_NULL_CHOICE': False,
-    'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
-    
+    "ENUM_ADD_EXPLICIT_BLANK_NULL_CHOICE": False,
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
     # API Tags
-    'TAGS': [
-        {'name': 'Authentication', 'description': 'User authentication and account management'},
-        {'name': 'Products', 'description': 'Product catalog and details'},
-        {'name': 'Cart', 'description': 'Shopping cart operations'},
-        {'name': 'Order', 'description': 'Order management'},
-        {'name': 'Payment', 'description': 'Payment processing'},
-        {'name': 'Measurement', 'description': 'Body measurements management'},
-        {'name': 'Bulk Orders', 'description': 'Bulk order management'},
-        {'name': 'Feed', 'description': 'Images and videos feed'},
-        {'name': 'Dropdowns', 'description': 'Dropdown data (states, LGAs, sizes)'},
+    "TAGS": [
+        {
+            "name": "Authentication",
+            "description": "User authentication and account management",
+        },
+        {"name": "Products", "description": "Product catalog and details"},
+        {"name": "Cart", "description": "Shopping cart operations"},
+        {"name": "Order", "description": "Order management"},
+        {"name": "Payment", "description": "Payment processing"},
+        {"name": "Measurement", "description": "Body measurements management"},
+        {"name": "Bulk Orders", "description": "Bulk order management"},
+        {"name": "Feed", "description": "Images and videos feed"},
+        {"name": "Dropdowns", "description": "Dropdown data (states, LGAs, sizes)"},
     ],
 }
 
@@ -464,8 +442,8 @@ SPECTACULAR_SETTINGS = {
 REST_AUTH = {
     "USE_JWT": not DEBUG,
     "JWT_AUTH_HTTPONLY": False,
-    "JWT_AUTH_COOKIE": "jmw-auth",
-    "JWT_AUTH_REFRESH_COOKIE": "jmw-refresh",
+    "JWT_AUTH_COOKIE": "material-auth",
+    "JWT_AUTH_REFRESH_COOKIE": "material-refresh",
 }
 
 # ==============================================================================
@@ -475,8 +453,8 @@ REST_AUTH = {
 SITE_ID = 1
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_USERNAME_REQUIRED = False
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
-ACCOUNT_EMAIL_VERIFICATION = 'mandatory' if not DEBUG else 'optional'
+ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_EMAIL_VERIFICATION = "mandatory" if not DEBUG else "optional"
 
 # ==============================================================================
 # CORS CONFIGURATION
@@ -507,25 +485,25 @@ CORS_ALLOW_CREDENTIALS = True
 
 # Allowed HTTP methods
 CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
 ]
 
 # Allowed headers
 CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
 ]
 
 
@@ -548,26 +526,28 @@ cloudinary.config(
     cloud_name=env("CLOUDINARY_CLOUD_NAME"),
     api_key=env("CLOUDINARY_API_KEY"),
     api_secret=env("CLOUDINARY_API_SECRET"),
-    secure=True
+    secure=True,
 )
 
 CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': env("CLOUDINARY_CLOUD_NAME"),
-    'API_KEY': env("CLOUDINARY_API_KEY"),
-    'API_SECRET': env("CLOUDINARY_API_SECRET"),
+    "CLOUD_NAME": env("CLOUDINARY_CLOUD_NAME"),
+    "API_KEY": env("CLOUDINARY_API_KEY"),
+    "API_SECRET": env("CLOUDINARY_API_SECRET"),
 }
 
 # ==============================================================================
 # EMAIL
 # ==============================================================================
 
-EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend")
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend"
+)
 EMAIL_HOST = env("EMAIL_HOST", default="smtp.gmail.com")
 EMAIL_PORT = env.int("EMAIL_PORT", default=587)
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@jumemegawears.com")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@materialwear.com")
 
 # ==============================================================================
 # PAYMENT (PAYSTACK)
@@ -588,29 +568,29 @@ YOUTUBE_CHANNEL_ID = env("YOUTUBE_CHANNEL_ID")
 # ==============================================================================
 
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "style": "{",
         },
     },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
         },
     },
-    'root': {
-        'handlers': ['console'],
-        'level': 'INFO',
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
     },
-    'loggers': {
-        'django': {
-            'handlers': ['console'],
-            'level': 'INFO',
-            'propagate': False,
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
         },
     },
 }
@@ -628,8 +608,8 @@ USE_TZ = True
 # OTHER SETTINGS
 # ==============================================================================
 
-ROOT_URLCONF = "jmw.urls"
-WSGI_APPLICATION = "jmw.wsgi.application"
+ROOT_URLCONF = "material.urls"
+WSGI_APPLICATION = "material.wsgi.application"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Debug toolbar
@@ -643,22 +623,24 @@ BACKGROUND_TASK_RUN_ASYNC = True
 # ==============================================================================
 # Frontend URL
 # ==============================================================================
-FRONTEND_URL = 'https://jumemegawears.com' if not DEBUG else 'http://localhost:3000'
+FRONTEND_URL = "https://materialwear.com" if not DEBUG else "http://localhost:3000"
 
 # ==============================================================================
 # WhatsApp Number
 # ==============================================================================
-WHATSAPP_NUMBER = env.str("WHATSAPP_NUMBER", default="2348071000804") # JMW Contact Number
+WHATSAPP_NUMBER = env.str(
+    "WHATSAPP_NUMBER", default="2348071000804"
+)  # MATERIAL Contact Number
 
 
 # Set SITE_URL based on environment
 if DEBUG:
-    SITE_URL = 'http://127.0.0.1:8000'
+    SITE_URL = "http://127.0.0.1:8000"
 else:
-    SITE_URL = 'https://yourdomain.com'
+    SITE_URL = "https://yourdomain.com"
 
 
-#testimonials
+# testimonials
 TESTIMONIALS_USE_CACHE = True
 TESTIMONIALS_NOTIFICATION_EMAIL = "admin@yoursite.com"
 TESTIMONIALS_USE_UUIDS = True
@@ -673,11 +655,14 @@ TESTIMONIALS_USE_BACKGROUND_TASKS = True
 # ==============================================================================
 # Only these IPs can access /i_must_win/ (admin) in production
 # Add your trusted IPs here (e.g., office IP, your home IP, etc.)
-ADMIN_URL_PATH = 'i_must_win/'
-ADMIN_IP_WHITELIST = env.list('ADMIN_IP_WHITELIST', default=[
-    # Add your whitelisted IPs here or via environment variable
-    # Example: '102.88.34.56', '41.184.123.45'
-])
+ADMIN_URL_PATH = "i_must_win/"
+ADMIN_IP_WHITELIST = env.list(
+    "ADMIN_IP_WHITELIST",
+    default=[
+        # Add your whitelisted IPs here or via environment variable
+        # Example: '102.88.34.56', '41.184.123.45'
+    ],
+)
 
 # ==============================================================================
 # DJANGO-AXES CONFIGURATION (Brute-Force Protection)
@@ -689,10 +674,10 @@ AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 1  # 1 hour
 
 # Lock based on IP + username combination (more secure)
-AXES_LOCKOUT_PARAMETERS = ['ip_address', 'username']
+AXES_LOCKOUT_PARAMETERS = ["ip_address", "username"]
 
 # Use database backend for storing access attempts
-AXES_HANDLER = 'axes.handlers.database.AxesDatabaseHandler'
+AXES_HANDLER = "axes.handlers.database.AxesDatabaseHandler"
 
 # Enable verbose logging of access attempts
 AXES_VERBOSE = True
@@ -706,9 +691,9 @@ AXES_RESET_ON_SUCCESS = True
 # IP header for proxy deployments (Render, Heroku, etc.)
 AXES_IPWARE_PROXY_COUNT = 1
 AXES_IPWARE_META_PRECEDENCE_ORDER = [
-    'HTTP_X_FORWARDED_FOR',
-    'X_FORWARDED_FOR',
-    'REMOTE_ADDR',
+    "HTTP_X_FORWARDED_FOR",
+    "X_FORWARDED_FOR",
+    "REMOTE_ADDR",
 ]
 
 # Whitelist certain IPs from being locked out (e.g., health checks)
@@ -718,16 +703,16 @@ AXES_NEVER_LOCKOUT_WHITELIST = DEBUG  # Only in development
 # TWO-FACTOR AUTHENTICATION CONFIGURATION
 # ==============================================================================
 # Login URL for two-factor auth
-LOGIN_URL = 'two_factor:login'
+LOGIN_URL = "two_factor:login"
 
 # Redirect after successful 2FA login
-LOGIN_REDIRECT_URL = '/i_must_win/'
+LOGIN_REDIRECT_URL = "/i_must_win/"
 
 # Only use TOTP (authenticator apps) - no phone/SMS
 TWO_FACTOR_PATCH_ADMIN = True  # Patch the admin to require 2FA
 
 # QR code generation settings
-TWO_FACTOR_QR_FACTORY = 'qrcode.image.pil.PilImage'
+TWO_FACTOR_QR_FACTORY = "qrcode.image.pil.PilImage"
 
 # Issuer name shown in authenticator apps
 TWO_FACTOR_TOTP_DIGITS = 6
@@ -739,4 +724,4 @@ TWO_FACTOR_REMEMBER_COOKIE_AGE = 60 * 60 * 24 * 30  # 30 days
 TWO_FACTOR_CALL_GATEWAY = None
 TWO_FACTOR_SMS_GATEWAY = None
 
-TWO_FACTOR_SETUP_SUCCESS_URL = '/i_must_win/'
+TWO_FACTOR_SETUP_SUCCESS_URL = "/i_must_win/"

@@ -23,6 +23,7 @@ User = get_user_model()
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def make_user(email="user@example.com", is_staff=False, **kw):
     username = kw.pop("username", email)
     return User.objects.create_user(
@@ -32,7 +33,11 @@ def make_user(email="user@example.com", is_staff=False, **kw):
 
 def make_admin(email="admin@example.com"):
     return User.objects.create_user(
-        username=email, email=email, password="admin1234!", is_staff=True, is_superuser=True
+        username=email,
+        email=email,
+        password="admin1234!",
+        is_staff=True,
+        is_superuser=True,
     )
 
 
@@ -68,10 +73,12 @@ def fake_request(user):
 # ReferrerProfileAdmin – Registration
 # ---------------------------------------------------------------------------
 
+
 class ReferrerProfileAdminRegistrationTests(TestCase):
 
     def test_model_is_registered_with_correct_admin_class(self):
         from django.contrib import admin
+
         self.assertIn(ReferrerProfile, admin.site._registry)
         self.assertIsInstance(
             admin.site._registry[ReferrerProfile], ReferrerProfileAdmin
@@ -82,6 +89,7 @@ class ReferrerProfileAdminRegistrationTests(TestCase):
 # ReferrerProfileAdmin – Configuration
 # ---------------------------------------------------------------------------
 
+
 class ReferrerProfileAdminConfigTests(TestCase):
 
     def setUp(self):
@@ -90,9 +98,15 @@ class ReferrerProfileAdminConfigTests(TestCase):
 
     def test_list_display_columns(self):
         expected = [
-            "id", "colored_full_name", "referral_code_display",
-            "user_email", "phone_number", "bank_name",
-            "account_number", "status_badge", "created_at",
+            "id",
+            "colored_full_name",
+            "referral_code_display",
+            "user_email",
+            "phone_number",
+            "bank_name",
+            "account_number",
+            "status_badge",
+            "created_at",
         ]
         self.assertEqual(self.admin.list_display, expected)
 
@@ -125,6 +139,7 @@ class ReferrerProfileAdminConfigTests(TestCase):
 # ---------------------------------------------------------------------------
 # ReferrerProfileAdmin – Custom display methods
 # ---------------------------------------------------------------------------
+
 
 class ReferrerProfileAdminDisplayMethodTests(TestCase):
 
@@ -187,10 +202,12 @@ class ReferrerProfileAdminDisplayMethodTests(TestCase):
 # PromotionalMediaAdmin – Registration
 # ---------------------------------------------------------------------------
 
+
 class PromotionalMediaAdminRegistrationTests(TestCase):
 
     def test_model_is_registered_with_correct_admin_class(self):
         from django.contrib import admin
+
         self.assertIn(PromotionalMedia, admin.site._registry)
         self.assertIsInstance(
             admin.site._registry[PromotionalMedia], PromotionalMediaAdmin
@@ -201,6 +218,7 @@ class PromotionalMediaAdminRegistrationTests(TestCase):
 # PromotionalMediaAdmin – Configuration
 # ---------------------------------------------------------------------------
 
+
 class PromotionalMediaAdminConfigTests(TestCase):
 
     def setUp(self):
@@ -209,8 +227,14 @@ class PromotionalMediaAdminConfigTests(TestCase):
 
     def test_list_display_columns(self):
         expected = [
-            "id", "media_thumbnail", "colored_title", "media_type_badge",
-            "status_badge", "order", "created_by_display", "created_at",
+            "id",
+            "media_thumbnail",
+            "colored_title",
+            "media_type_badge",
+            "status_badge",
+            "order",
+            "created_by_display",
+            "created_at",
         ]
         self.assertEqual(self.admin.list_display, expected)
 
@@ -237,6 +261,7 @@ class PromotionalMediaAdminConfigTests(TestCase):
 # ---------------------------------------------------------------------------
 # PromotionalMediaAdmin – Custom display methods
 # ---------------------------------------------------------------------------
+
 
 class PromotionalMediaAdminDisplayMethodTests(TestCase):
 
@@ -397,16 +422,20 @@ class PromotionalMediaAdminDisplayMethodTests(TestCase):
 # Admin site header / title customisation
 # ---------------------------------------------------------------------------
 
+
 class AdminSiteHeaderTests(TestCase):
 
-    def test_site_header_contains_jmw(self):
+    def test_site_header_contains_material(self):
         from django.contrib import admin
-        self.assertIn("JMW", str(admin.site.site_header))
+
+        self.assertIn("MATERIAL", str(admin.site.site_header))
 
     def test_site_title_set(self):
         from django.contrib import admin
-        self.assertEqual(admin.site.site_title, "JMW Referrals Admin")
+
+        self.assertEqual(admin.site.site_title, "MATERIAL Referrals Admin")
 
     def test_index_title_contains_referral_management(self):
         from django.contrib import admin
+
         self.assertIn("Referral Management", str(admin.site.index_title))

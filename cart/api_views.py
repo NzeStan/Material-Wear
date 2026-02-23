@@ -5,301 +5,330 @@ from rest_framework.permissions import AllowAny
 from drf_spectacular.utils import extend_schema
 from .cart import Cart
 from .serializers import (
-    CartSerializer, AddToCartSerializer, UpdateCartItemSerializer, CartItemSerializer
+    CartSerializer,
+    AddToCartSerializer,
+    UpdateCartItemSerializer,
+    CartItemSerializer,
 )
-from jmw.throttling import CartRateThrottle
+from material.throttling import CartRateThrottle
 from payment.utils import get_vat_breakdown
 import logging
+
 logger = logging.getLogger(__name__)
-from .serializers import ClearCartSerializer 
+from .serializers import ClearCartSerializer
 
 
-
-@extend_schema(tags=['Cart'])
+@extend_schema(tags=["Cart"])
 class CartDetailView(views.APIView):
     """
     Get cart contents
     Returns all items in the cart with product details
     """
+
     permission_classes = [AllowAny]
-    
+
     @extend_schema(
         description="Retrieve cart contents with all items and totals",
-        responses={200: CartSerializer}
+        responses={200: CartSerializer},
     )
     def get(self, request):
         cart = Cart(request)
-        
+
         # Build cart items list
         items = []
         for item in cart:
             # Find the item_key for this item
             item_key = None
             for key in cart.cart.keys():
-                if str(item['product'].id) in key:
+                if str(item["product"].id) in key:
                     # Verify it's the same item by checking extra_fields
-                    if cart.cart[key].get('extra_fields', {}) == item.get('extra_fields', {}):
+                    if cart.cart[key].get("extra_fields", {}) == item.get(
+                        "extra_fields", {}
+                    ):
                         item_key = key
                         break
-            
-            items.append({
-                'product_type': item['product'].product_type,
-                'product_id': str(item['product'].id),
-                'product': item['product'],
-                'quantity': item['quantity'],
-                'price': item['price'],
-                'total_price': item['total_price'],
-                'extra_fields': item.get('extra_fields', {}),
-                'item_key': item_key
-            })
-        
+
+            items.append(
+                {
+                    "product_type": item["product"].product_type,
+                    "product_id": str(item["product"].id),
+                    "product": item["product"],
+                    "quantity": item["quantity"],
+                    "price": item["price"],
+                    "total_price": item["total_price"],
+                    "extra_fields": item.get("extra_fields", {}),
+                    "item_key": item_key,
+                }
+            )
+
         # Calculate totals with VAT
-        subtotal = sum(item['total_price'] for item in items)
+        subtotal = sum(item["total_price"] for item in items)
         vat_breakdown = get_vat_breakdown(subtotal)
 
         # Group by product type
         grouped = {}
         for item in items:
-            ptype = item['product'].__class__.__name__
+            ptype = item["product"].__class__.__name__
             if ptype not in grouped:
                 grouped[ptype] = []
             grouped[ptype].append(item)
 
         data = {
-            'items': items,
-            'total_items': len(cart),
-            'subtotal': subtotal,
-            'vat_amount': vat_breakdown['vat_amount'],
-            'vat_rate': vat_breakdown['vat_rate'],
-            'total_cost': vat_breakdown['total_amount'],
-            'grouped_by_type': grouped
+            "items": items,
+            "total_items": len(cart),
+            "subtotal": subtotal,
+            "vat_amount": vat_breakdown["vat_amount"],
+            "vat_rate": vat_breakdown["vat_rate"],
+            "total_cost": vat_breakdown["total_amount"],
+            "grouped_by_type": grouped,
         }
 
         serializer = CartSerializer(data)
         return Response(serializer.data)
 
 
-@extend_schema(tags=['Cart'])
+@extend_schema(tags=["Cart"])
 class AddToCartView(views.APIView):
     """
     Add item to cart
     Handles all product types with their specific requirements
     """
+
     permission_classes = [AllowAny]
     throttle_classes = [CartRateThrottle]
+
     @extend_schema(
         description="Add a product to the cart with required fields based on product type",
         request=AddToCartSerializer,
         responses={
-            200: {'description': 'Item added successfully', 'type': 'object'},
-            400: {'description': 'Validation error'}
-        }
+            200: {"description": "Item added successfully", "type": "object"},
+            400: {"description": "Validation error"},
+        },
     )
     def post(self, request):
-        serializer = AddToCartSerializer(data=request.data, context={'request': request})
-        
+        serializer = AddToCartSerializer(
+            data=request.data, context={"request": request}
+        )
+
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+
         validated_data = serializer.validated_data
         cart = Cart(request)
-        
+
         try:
             # Add to cart - unpack extra_fields as **kwargs
             cart.add(
-                product=validated_data['product'],
-                quantity=validated_data['quantity'],
-                override_quantity=validated_data['override'],
-                **validated_data['extra_fields']  # Unpack extra_fields as kwargs
+                product=validated_data["product"],
+                quantity=validated_data["quantity"],
+                override_quantity=validated_data["override"],
+                **validated_data["extra_fields"],  # Unpack extra_fields as kwargs
             )
-            
+
             logger.info(
                 f"Added to cart: {validated_data['product_type']} - "
                 f"{validated_data['product_id']} - "
                 f"Extra fields: {validated_data['extra_fields']}"
             )
-            
-            return Response({
-                'message': f"{validated_data['product'].name} added to cart successfully",
-                'cart_count': len(cart),
-                'item': CartItemSerializer({
-                    'product_type': validated_data['product_type'],
-                    'product_id': validated_data['product_id'],
-                    'product': validated_data['product'],
-                    'quantity': validated_data['quantity'],
-                    'price': validated_data['product'].price,
-                    'extra_fields': validated_data['extra_fields']
-                }).data
-            }, status=status.HTTP_200_OK)
-            
+
+            return Response(
+                {
+                    "message": f"{validated_data['product'].name} added to cart successfully",
+                    "cart_count": len(cart),
+                    "item": CartItemSerializer(
+                        {
+                            "product_type": validated_data["product_type"],
+                            "product_id": validated_data["product_id"],
+                            "product": validated_data["product"],
+                            "quantity": validated_data["quantity"],
+                            "price": validated_data["product"].price,
+                            "extra_fields": validated_data["extra_fields"],
+                        }
+                    ).data,
+                },
+                status=status.HTTP_200_OK,
+            )
+
         except Exception as e:
             logger.error(f"Error adding to cart: {str(e)}", exc_info=True)
-            return Response({
-                'error': f'Failed to add item to cart: {str(e)}'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": f"Failed to add item to cart: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
-@extend_schema(tags=['Cart'])
+@extend_schema(tags=["Cart"])
 class UpdateCartItemView(views.APIView):
     """
     Update cart item quantity or remove item
     """
+
     permission_classes = [AllowAny]
     throttle_classes = [CartRateThrottle]
+
     @extend_schema(
         description="Update quantity of a cart item. Set quantity to 0 to remove item.",
         request=UpdateCartItemSerializer,
         responses={
-            200: {'description': 'Item updated successfully'},
-            404: {'description': 'Item not found in cart'}
-        }
+            200: {"description": "Item updated successfully"},
+            404: {"description": "Item not found in cart"},
+        },
     )
     def patch(self, request, item_key):
         serializer = UpdateCartItemSerializer(data=request.data)
-        
+
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+
         cart = Cart(request)
-        quantity = serializer.validated_data['quantity']
-        
+        quantity = serializer.validated_data["quantity"]
+
         # Check if item exists in cart
         if item_key not in cart.cart:
-            return Response({
-                'error': 'Item not found in cart'
-            }, status=status.HTTP_404_NOT_FOUND)
-        
+            return Response(
+                {"error": "Item not found in cart"}, status=status.HTTP_404_NOT_FOUND
+            )
+
         try:
             if quantity == 0:
                 # Remove item
                 del cart.cart[item_key]
                 cart.save()
-                message = 'Item removed from cart'
+                message = "Item removed from cart"
             else:
                 # Update quantity
-                cart.cart[item_key]['quantity'] = quantity
+                cart.cart[item_key]["quantity"] = quantity
                 cart.save()
-                message = 'Quantity updated successfully'
-            
-            return Response({
-                'message': message,
-                'cart_count': len(cart)
-            }, status=status.HTTP_200_OK)
-            
+                message = "Quantity updated successfully"
+
+            return Response(
+                {"message": message, "cart_count": len(cart)}, status=status.HTTP_200_OK
+            )
+
         except Exception as e:
             logger.error(f"Error updating cart item: {str(e)}", exc_info=True)
-            return Response({
-                'error': 'Failed to update cart item'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": "Failed to update cart item"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
-@extend_schema(tags=['Cart'])
+@extend_schema(tags=["Cart"])
 class RemoveFromCartView(views.APIView):
     """
     Remove specific item from cart
     """
+
     permission_classes = [AllowAny]
     throttle_classes = [CartRateThrottle]
+
     @extend_schema(
         description="Remove a specific item from the cart by item key",
         responses={
-            200: {'description': 'Item removed successfully'},
-            404: {'description': 'Item not found in cart'}
-        }
+            200: {"description": "Item removed successfully"},
+            404: {"description": "Item not found in cart"},
+        },
     )
     def delete(self, request, item_key):
         cart = Cart(request)
-        
+
         if item_key not in cart.cart:
-            return Response({
-                'error': 'Item not found in cart'
-            }, status=status.HTTP_404_NOT_FOUND)
-        
+            return Response(
+                {"error": "Item not found in cart"}, status=status.HTTP_404_NOT_FOUND
+            )
+
         try:
             del cart.cart[item_key]
             cart.save()
-            
+
             logger.info(f"Removed item from cart: {item_key}")
-            
-            return Response({
-                'message': 'Item removed from cart',
-                'cart_count': len(cart)
-            }, status=status.HTTP_200_OK)
-            
+
+            return Response(
+                {"message": "Item removed from cart", "cart_count": len(cart)},
+                status=status.HTTP_200_OK,
+            )
+
         except Exception as e:
             logger.error(f"Error removing from cart: {str(e)}", exc_info=True)
-            return Response({
-                'error': 'Failed to remove item from cart'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": "Failed to remove item from cart"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
-@extend_schema(tags=['Cart'])
+@extend_schema(tags=["Cart"])
 class ClearCartView(views.APIView):
     """
     Clear all items from cart
     """
+
     permission_classes = [AllowAny]
     throttle_classes = [CartRateThrottle]
     serializer_class = ClearCartSerializer  # ✅ ADD THIS LINE
-    
+
     @extend_schema(
         description="Clear all items from the cart",
         responses={
             200: {
-                'type': 'object',
-                'properties': {
-                    'message': {'type': 'string', 'example': 'Cart cleared successfully'}
-                }
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "example": "Cart cleared successfully",
+                    }
+                },
             }
-        }
+        },
     )
     def post(self, request):
         cart = Cart(request)
         cart.clear()
-        
+
         logger.info("Cart cleared")
-        
-        return Response({
-            'message': 'Cart cleared successfully'
-        }, status=status.HTTP_200_OK)
+
+        return Response(
+            {"message": "Cart cleared successfully"}, status=status.HTTP_200_OK
+        )
 
 
-
-@extend_schema(tags=['Cart'])
+@extend_schema(tags=["Cart"])
 class CartSummaryView(views.APIView):
     """
     Get cart summary (count and total only)
     Lightweight endpoint for header/navigation display
     """
+
     permission_classes = [AllowAny]
-    
+
     @extend_schema(
         description="Get quick cart summary - item count and total cost only",
         responses={
             200: {
-                'type': 'object',
-                'properties': {
-                    'count': {'type': 'integer'},
-                    'subtotal': {'type': 'number'},
-                    'vat_amount': {'type': 'number'},
-                    'vat_rate': {'type': 'number'},
-                    'total': {'type': 'number'}
-                }
+                "type": "object",
+                "properties": {
+                    "count": {"type": "integer"},
+                    "subtotal": {"type": "number"},
+                    "vat_amount": {"type": "number"},
+                    "vat_rate": {"type": "number"},
+                    "total": {"type": "number"},
+                },
             }
-        }
+        },
     )
     def get(self, request):
         cart = Cart(request)
 
         # Calculate total by iterating through cart
-        subtotal = sum(item['total_price'] for item in cart)
+        subtotal = sum(item["total_price"] for item in cart)
         vat_breakdown = get_vat_breakdown(subtotal)
 
-        return Response({
-            'count': len(cart),
-            'subtotal': float(subtotal),
-            'vat_amount': float(vat_breakdown['vat_amount']),
-            'vat_rate': vat_breakdown['vat_rate'],
-            'total': float(vat_breakdown['total_amount'])
-        }, status=status.HTTP_200_OK)
-
+        return Response(
+            {
+                "count": len(cart),
+                "subtotal": float(subtotal),
+                "vat_amount": float(vat_breakdown["vat_amount"]),
+                "vat_rate": vat_breakdown["vat_rate"],
+                "total": float(vat_breakdown["total_amount"]),
+            },
+            status=status.HTTP_200_OK,
+        )

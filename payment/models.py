@@ -30,7 +30,7 @@ class PaymentTransaction(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.reference:
-            self.reference = f"JMW-{uuid.uuid4().hex[:8].upper()}"
+            self.reference = f"MATERIAL-{uuid.uuid4().hex[:8].upper()}"
         super().save(*args, **kwargs)
 
     class Meta:

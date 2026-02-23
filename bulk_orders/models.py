@@ -17,7 +17,12 @@ logger = logging.getLogger(__name__)
 
 class BulkOrderLink(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    slug = models.SlugField(max_length=300, unique=True, editable=False, help_text="Auto-generated from organization name")
+    slug = models.SlugField(
+        max_length=300,
+        unique=True,
+        editable=False,
+        help_text="Auto-generated from organization name",
+    )
     organization_name = models.CharField(max_length=255)
     price_per_item = models.DecimalField(max_digits=10, decimal_places=2)
     custom_branding_enabled = models.BooleanField(default=False)
@@ -31,26 +36,28 @@ class BulkOrderLink(models.Model):
         base_slug = slugify(self.organization_name)
         if len(base_slug) > 280:  # Leave room for suffix
             base_slug = base_slug[:280]
-        
+
         # Generate random 4-character suffix
-        suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=4))
+        suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=4))
         slug = f"{base_slug}-{suffix}"
-        
+
         # Ensure uniqueness
         while BulkOrderLink.objects.filter(slug=slug).exists():
-            suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=4))
+            suffix = "".join(
+                random.choices(string.ascii_lowercase + string.digits, k=4)
+            )
             slug = f"{base_slug}-{suffix}"
-        
+
         return slug
 
     def save(self, *args, **kwargs):
         # Generate slug if not set
         if not self.slug:
             self.slug = self._generate_unique_slug()
-        
+
         # Uppercase organization name
         self.organization_name = self.organization_name.upper()
-        
+
         try:
             super().save(*args, **kwargs)
             logger.info(f"BulkOrderLink saved successfully: {self.slug}")
@@ -65,7 +72,7 @@ class BulkOrderLink(models.Model):
         """
         # Option 1: Return the shareable URL path (recommended)
         return self.get_shareable_url()
-        
+
         # Option 2: If you have a URL pattern, uncomment and use:
         # try:
         #     return reverse("bulk_orders:bulk-link-detail", kwargs={"slug": self.slug})
@@ -74,7 +81,7 @@ class BulkOrderLink(models.Model):
 
     def is_expired(self):
         return timezone.now() > self.payment_deadline
-    
+
     def get_shareable_url(self):
         """Returns a clean, shareable URL using the slug"""
         # This would be your frontend URL
@@ -162,7 +169,7 @@ class OrderEntry(models.Model):
     def _generate_unique_reference(self):
         """
         ✅ IMPROVED: Generate unique reference with retry limit
-        
+
         Changes:
         - Uses UUID hex (16M+ possibilities) instead of random.randint (9K possibilities)
         - Has retry limit to prevent infinite loops
@@ -170,18 +177,20 @@ class OrderEntry(models.Model):
         - Better for high traffic scenarios
         """
         max_attempts = 10
-        
+
         for attempt in range(max_attempts):
             # Use first 8 chars of UUID hex (16^8 = 4.3 billion possibilities)
-            ref = f"JMW-BULK-{uuid.uuid4().hex[:8].upper()}"
-            
+            ref = f"MATERIAL-BULK-{uuid.uuid4().hex[:8].upper()}"
+
             # Check if exists (let database enforce uniqueness)
             if not OrderEntry.objects.filter(reference=ref).exists():
                 return ref
-        
+
         # Fallback: use longer UUID if still colliding
-        logger.warning(f"Reference generation needed {max_attempts} attempts, using full UUID")
-        return f"JMW-BULK-{uuid.uuid4().hex[:12].upper()}"
+        logger.warning(
+            f"Reference generation needed {max_attempts} attempts, using full UUID"
+        )
+        return f"MATERIAL-BULK-{uuid.uuid4().hex[:12].upper()}"
 
     def save(self, *args, **kwargs):
         """
@@ -190,7 +199,7 @@ class OrderEntry(models.Model):
         # Generate reference if not exists
         if not self.reference:
             self.reference = self._generate_unique_reference()
-        
+
         # Generate serial number with race condition protection
         if not self.serial_number:
             # Use select_for_update to prevent race conditions
@@ -222,7 +231,9 @@ class OrderEntry(models.Model):
             raise
 
     def __str__(self):
-        return f"{self.reference} - {self.full_name} ({self.bulk_order.organization_name})"
+        return (
+            f"{self.reference} - {self.full_name} ({self.bulk_order.organization_name})"
+        )
 
     class Meta:
         ordering = ["bulk_order", "serial_number"]
@@ -237,6 +248,6 @@ class OrderEntry(models.Model):
             models.Index(fields=["paid"], name="order_paid_idx"),
             models.Index(fields=["size"], name="order_size_idx"),
             models.Index(fields=["created_at"], name="order_created_idx"),
-            models.Index(fields=['updated_at'], name='order_updated_idx'),
-            models.Index(fields=['reference'], name='order_reference_idx'),
+            models.Index(fields=["updated_at"], name="order_updated_idx"),
+            models.Index(fields=["reference"], name="order_reference_idx"),
         ]

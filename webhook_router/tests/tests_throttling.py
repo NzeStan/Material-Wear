@@ -1,6 +1,6 @@
 # webhook_router/tests/tests_throttling.py
 """
-Bulletproof tests for jmw/throttling.py
+Bulletproof tests for material/throttling.py
 Tests all custom rate throttling classes
 
 Test Coverage:
@@ -26,7 +26,7 @@ from unittest.mock import Mock, patch
 import time
 
 # Import all throttle classes
-from jmw.throttling import (
+from material.throttling import (
     CheckoutRateThrottle,
     PaymentRateThrottle,
     BulkOrderWebhookThrottle,
@@ -45,103 +45,114 @@ User = get_user_model()
 # TEST VIEWS FOR THROTTLE TESTING
 # ============================================================================
 
+
 class ThrottledCheckoutView(APIView):
     """Test view with checkout throttle"""
+
     throttle_classes = [CheckoutRateThrottle]
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        return Response({'status': 'ok'})
+        return Response({"status": "ok"})
 
 
 class ThrottledPaymentView(APIView):
     """Test view with payment throttle"""
+
     throttle_classes = [PaymentRateThrottle]
     permission_classes = [AllowAny]
 
     def post(self, request):
-        return Response({'status': 'ok'})
+        return Response({"status": "ok"})
 
 
 class ThrottledBulkWebhookView(APIView):
     """Test view with bulk webhook throttle"""
+
     throttle_classes = [BulkOrderWebhookThrottle]
     permission_classes = [AllowAny]
 
     def post(self, request):
-        return Response({'status': 'ok'})
+        return Response({"status": "ok"})
 
 
 class ThrottledCartView(APIView):
     """Test view with cart throttle"""
+
     throttle_classes = [CartRateThrottle]
     permission_classes = [AllowAny]
 
     def get(self, request):
-        return Response({'status': 'ok'})
+        return Response({"status": "ok"})
 
 
 class ThrottledStrictAnonView(APIView):
     """Test view with strict anon throttle"""
+
     throttle_classes = [StrictAnonRateThrottle]
     permission_classes = [AllowAny]
 
     def get(self, request):
-        return Response({'status': 'ok'})
+        return Response({"status": "ok"})
 
 
 class ThrottledBurstUserView(APIView):
     """Test view with burst user throttle"""
+
     throttle_classes = [BurstUserRateThrottle]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return Response({'status': 'ok'})
+        return Response({"status": "ok"})
 
 
 class ThrottledSustainedUserView(APIView):
     """Test view with sustained user throttle"""
+
     throttle_classes = [SustainedUserRateThrottle]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return Response({'status': 'ok'})
+        return Response({"status": "ok"})
 
 
 class ThrottledLiveFormSubmitView(APIView):
     """Test view with live form submit throttle"""
+
     throttle_classes = [LiveFormSubmitThrottle]
     permission_classes = [AllowAny]
 
     def post(self, request):
-        return Response({'status': 'ok'})
+        return Response({"status": "ok"})
 
 
 class ThrottledLiveFormViewView(APIView):
     """Test view with live form view throttle"""
+
     throttle_classes = [LiveFormViewThrottle]
     permission_classes = [AllowAny]
 
     def get(self, request):
-        return Response({'status': 'ok'})
+        return Response({"status": "ok"})
 
 
 # ============================================================================
 # CHECKOUT RATE THROTTLE TESTS
 # ============================================================================
 
+
 @override_settings(
     CACHES={
-        'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'LOCATION': 'test-cache',
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "test-cache",
         }
     },
     REST_FRAMEWORK={
-        'DEFAULT_THROTTLE_RATES': {
-            'checkout': '5/minute',  # Lower for testing
+        "DEFAULT_THROTTLE_RATES": {
+            "checkout": "5/minute",  # Lower for testing
         }
-    }
+    },
 )
 class CheckoutRateThrottleTests(TestCase):
     """Test CheckoutRateThrottle class"""
@@ -151,9 +162,7 @@ class CheckoutRateThrottleTests(TestCase):
         self.factory = APIRequestFactory()
         self.view = ThrottledCheckoutView.as_view()
         self.user = User.objects.create_user(
-            username='testuser',
-            email='test@example.com',
-            password='testpass123'
+            username="testuser", email="test@example.com", password="testpass123"
         )
         cache.clear()
 
@@ -164,12 +173,12 @@ class CheckoutRateThrottleTests(TestCase):
     def test_throttle_configuration(self):
         """Test throttle is configured correctly"""
         throttle = CheckoutRateThrottle()
-        self.assertEqual(throttle.scope, 'checkout')
-        self.assertEqual(throttle.rate, '10/hour')
+        self.assertEqual(throttle.scope, "checkout")
+        self.assertEqual(throttle.rate, "10/hour")
 
     def test_authenticated_user_within_limit(self):
         """Test authenticated user within rate limit"""
-        request = self.factory.post('/checkout/')
+        request = self.factory.post("/checkout/")
         force_authenticate(request, user=self.user)
 
         # First 5 requests should succeed
@@ -180,27 +189,25 @@ class CheckoutRateThrottleTests(TestCase):
     def test_different_users_separate_limits(self):
         """Test different users have separate rate limits"""
         user2 = User.objects.create_user(
-            username='testuser2',
-            email='test2@example.com',
-            password='testpass123'
+            username="testuser2", email="test2@example.com", password="testpass123"
         )
 
         # User 1 makes 5 requests
-        request1 = self.factory.post('/checkout/')
+        request1 = self.factory.post("/checkout/")
         force_authenticate(request1, user=self.user)
         for i in range(5):
             response = self.view(request1)
             self.assertEqual(response.status_code, 200)
 
         # User 2 should still be able to make requests
-        request2 = self.factory.post('/checkout/')
+        request2 = self.factory.post("/checkout/")
         force_authenticate(request2, user=user2)
         response = self.view(request2)
         self.assertEqual(response.status_code, 200)
 
     def test_unauthenticated_user_rejected(self):
         """Test unauthenticated users are rejected before throttling"""
-        request = self.factory.post('/checkout/')
+        request = self.factory.post("/checkout/")
         response = self.view(request)
 
         # Should get 401/403, not 429
@@ -218,18 +225,19 @@ class CheckoutRateThrottleTests(TestCase):
 # PAYMENT RATE THROTTLE TESTS
 # ============================================================================
 
+
 @override_settings(
     CACHES={
-        'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'LOCATION': 'test-cache',
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "test-cache",
         }
     },
     REST_FRAMEWORK={
-        'DEFAULT_THROTTLE_RATES': {
-            'payment': '5/minute',  # Lower for testing
+        "DEFAULT_THROTTLE_RATES": {
+            "payment": "5/minute",  # Lower for testing
         }
-    }
+    },
 )
 class PaymentRateThrottleTests(TestCase):
     """Test PaymentRateThrottle class"""
@@ -247,14 +255,14 @@ class PaymentRateThrottleTests(TestCase):
     def test_throttle_configuration(self):
         """Test throttle is configured correctly"""
         throttle = PaymentRateThrottle()
-        self.assertEqual(throttle.scope, 'payment')
-        self.assertEqual(throttle.rate, '10/hour')
+        self.assertEqual(throttle.scope, "payment")
+        self.assertEqual(throttle.rate, "10/hour")
 
     def test_anonymous_user_within_limit(self):
         """Test anonymous user within rate limit"""
         # Use same IP for all requests
         for i in range(5):
-            request = self.factory.post('/payment/', REMOTE_ADDR='192.168.1.1')
+            request = self.factory.post("/payment/", REMOTE_ADDR="192.168.1.1")
             response = self.view(request)
             self.assertEqual(response.status_code, 200)
 
@@ -262,12 +270,12 @@ class PaymentRateThrottleTests(TestCase):
         """Test different IPs have separate rate limits"""
         # IP 1 makes 5 requests
         for i in range(5):
-            request = self.factory.post('/payment/', REMOTE_ADDR='192.168.1.1')
+            request = self.factory.post("/payment/", REMOTE_ADDR="192.168.1.1")
             response = self.view(request)
             self.assertEqual(response.status_code, 200)
 
         # IP 2 should still be able to make requests
-        request = self.factory.post('/payment/', REMOTE_ADDR='192.168.1.2')
+        request = self.factory.post("/payment/", REMOTE_ADDR="192.168.1.2")
         response = self.view(request)
         self.assertEqual(response.status_code, 200)
 
@@ -283,18 +291,19 @@ class PaymentRateThrottleTests(TestCase):
 # BULK ORDER WEBHOOK THROTTLE TESTS
 # ============================================================================
 
+
 @override_settings(
     CACHES={
-        'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'LOCATION': 'test-cache',
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "test-cache",
         }
     },
     REST_FRAMEWORK={
-        'DEFAULT_THROTTLE_RATES': {
-            'bulk_webhook': '10/minute',  # Lower for testing
+        "DEFAULT_THROTTLE_RATES": {
+            "bulk_webhook": "10/minute",  # Lower for testing
         }
-    }
+    },
 )
 class BulkOrderWebhookThrottleTests(TestCase):
     """Test BulkOrderWebhookThrottle class"""
@@ -312,14 +321,14 @@ class BulkOrderWebhookThrottleTests(TestCase):
     def test_throttle_configuration(self):
         """Test throttle is configured correctly"""
         throttle = BulkOrderWebhookThrottle()
-        self.assertEqual(throttle.scope, 'bulk_webhook')
-        self.assertEqual(throttle.rate, '100/hour')
+        self.assertEqual(throttle.scope, "bulk_webhook")
+        self.assertEqual(throttle.rate, "100/hour")
 
     def test_high_volume_within_limit(self):
         """Test high volume requests within limit"""
         # Make 10 requests
         for i in range(10):
-            request = self.factory.post('/webhook/', REMOTE_ADDR='192.168.1.1')
+            request = self.factory.post("/webhook/", REMOTE_ADDR="192.168.1.1")
             response = self.view(request)
             self.assertEqual(response.status_code, 200)
 
@@ -335,18 +344,19 @@ class BulkOrderWebhookThrottleTests(TestCase):
 # CART RATE THROTTLE TESTS
 # ============================================================================
 
+
 @override_settings(
     CACHES={
-        'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'LOCATION': 'test-cache',
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "test-cache",
         }
     },
     REST_FRAMEWORK={
-        'DEFAULT_THROTTLE_RATES': {
-            'cart': '10/minute',  # Lower for testing
+        "DEFAULT_THROTTLE_RATES": {
+            "cart": "10/minute",  # Lower for testing
         }
-    }
+    },
 )
 class CartRateThrottleTests(TestCase):
     """Test CartRateThrottle class"""
@@ -364,13 +374,13 @@ class CartRateThrottleTests(TestCase):
     def test_throttle_configuration(self):
         """Test throttle is configured correctly"""
         throttle = CartRateThrottle()
-        self.assertEqual(throttle.scope, 'cart')
-        self.assertEqual(throttle.rate, '100/hour')
+        self.assertEqual(throttle.scope, "cart")
+        self.assertEqual(throttle.rate, "100/hour")
 
     def test_cart_operations_within_limit(self):
         """Test cart operations within limit"""
         for i in range(10):
-            request = self.factory.get('/cart/', REMOTE_ADDR='192.168.1.1')
+            request = self.factory.get("/cart/", REMOTE_ADDR="192.168.1.1")
             response = self.view(request)
             self.assertEqual(response.status_code, 200)
 
@@ -386,18 +396,19 @@ class CartRateThrottleTests(TestCase):
 # STRICT ANON RATE THROTTLE TESTS
 # ============================================================================
 
+
 @override_settings(
     CACHES={
-        'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'LOCATION': 'test-cache',
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "test-cache",
         }
     },
     REST_FRAMEWORK={
-        'DEFAULT_THROTTLE_RATES': {
-            'anon_strict': '5/minute',  # Lower for testing
+        "DEFAULT_THROTTLE_RATES": {
+            "anon_strict": "5/minute",  # Lower for testing
         }
-    }
+    },
 )
 class StrictAnonRateThrottleTests(TestCase):
     """Test StrictAnonRateThrottle class"""
@@ -415,13 +426,13 @@ class StrictAnonRateThrottleTests(TestCase):
     def test_throttle_configuration(self):
         """Test throttle is configured correctly"""
         throttle = StrictAnonRateThrottle()
-        self.assertEqual(throttle.scope, 'anon_strict')
-        self.assertEqual(throttle.rate, '50/hour')
+        self.assertEqual(throttle.scope, "anon_strict")
+        self.assertEqual(throttle.rate, "50/hour")
 
     def test_strict_limit_within_range(self):
         """Test strict anonymous limit within range"""
         for i in range(5):
-            request = self.factory.get('/api/', REMOTE_ADDR='192.168.1.1')
+            request = self.factory.get("/api/", REMOTE_ADDR="192.168.1.1")
             response = self.view(request)
             self.assertEqual(response.status_code, 200)
 
@@ -437,18 +448,19 @@ class StrictAnonRateThrottleTests(TestCase):
 # BURST USER RATE THROTTLE TESTS
 # ============================================================================
 
+
 @override_settings(
     CACHES={
-        'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'LOCATION': 'test-cache',
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "test-cache",
         }
     },
     REST_FRAMEWORK={
-        'DEFAULT_THROTTLE_RATES': {
-            'burst': '5/minute',  # Lower for testing
+        "DEFAULT_THROTTLE_RATES": {
+            "burst": "5/minute",  # Lower for testing
         }
-    }
+    },
 )
 class BurstUserRateThrottleTests(TestCase):
     """Test BurstUserRateThrottle class"""
@@ -458,9 +470,7 @@ class BurstUserRateThrottleTests(TestCase):
         self.factory = APIRequestFactory()
         self.view = ThrottledBurstUserView.as_view()
         self.user = User.objects.create_user(
-            username='testuser',
-            email='test@example.com',
-            password='testpass123'
+            username="testuser", email="test@example.com", password="testpass123"
         )
         cache.clear()
 
@@ -471,12 +481,12 @@ class BurstUserRateThrottleTests(TestCase):
     def test_throttle_configuration(self):
         """Test throttle is configured correctly"""
         throttle = BurstUserRateThrottle()
-        self.assertEqual(throttle.scope, 'burst')
-        self.assertEqual(throttle.rate, '20/minute')
+        self.assertEqual(throttle.scope, "burst")
+        self.assertEqual(throttle.rate, "20/minute")
 
     def test_burst_within_limit(self):
         """Test burst requests within limit"""
-        request = self.factory.get('/api/')
+        request = self.factory.get("/api/")
         force_authenticate(request, user=self.user)
 
         # Make 5 quick requests
@@ -496,18 +506,19 @@ class BurstUserRateThrottleTests(TestCase):
 # SUSTAINED USER RATE THROTTLE TESTS
 # ============================================================================
 
+
 @override_settings(
     CACHES={
-        'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'LOCATION': 'test-cache',
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "test-cache",
         }
     },
     REST_FRAMEWORK={
-        'DEFAULT_THROTTLE_RATES': {
-            'sustained': '50/minute',  # Lower for testing
+        "DEFAULT_THROTTLE_RATES": {
+            "sustained": "50/minute",  # Lower for testing
         }
-    }
+    },
 )
 class SustainedUserRateThrottleTests(TestCase):
     """Test SustainedUserRateThrottle class"""
@@ -517,9 +528,7 @@ class SustainedUserRateThrottleTests(TestCase):
         self.factory = APIRequestFactory()
         self.view = ThrottledSustainedUserView.as_view()
         self.user = User.objects.create_user(
-            username='testuser',
-            email='test@example.com',
-            password='testpass123'
+            username="testuser", email="test@example.com", password="testpass123"
         )
         cache.clear()
 
@@ -530,12 +539,12 @@ class SustainedUserRateThrottleTests(TestCase):
     def test_throttle_configuration(self):
         """Test throttle is configured correctly"""
         throttle = SustainedUserRateThrottle()
-        self.assertEqual(throttle.scope, 'sustained')
-        self.assertEqual(throttle.rate, '500/hour')
+        self.assertEqual(throttle.scope, "sustained")
+        self.assertEqual(throttle.rate, "500/hour")
 
     def test_high_sustained_within_limit(self):
         """Test sustained high usage within limit"""
-        request = self.factory.get('/api/')
+        request = self.factory.get("/api/")
         force_authenticate(request, user=self.user)
 
         # Make 10 requests (testing subset)
@@ -555,18 +564,19 @@ class SustainedUserRateThrottleTests(TestCase):
 # LIVE FORM SUBMIT THROTTLE TESTS
 # ============================================================================
 
+
 @override_settings(
     CACHES={
-        'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'LOCATION': 'test-cache',
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "test-cache",
         }
     },
     REST_FRAMEWORK={
-        'DEFAULT_THROTTLE_RATES': {
-            'live_form_submit': '10/minute',  # Lower for testing
+        "DEFAULT_THROTTLE_RATES": {
+            "live_form_submit": "10/minute",  # Lower for testing
         }
-    }
+    },
 )
 class LiveFormSubmitThrottleTests(TestCase):
     """Test LiveFormSubmitThrottle class"""
@@ -584,13 +594,13 @@ class LiveFormSubmitThrottleTests(TestCase):
     def test_throttle_configuration(self):
         """Test throttle is configured correctly"""
         throttle = LiveFormSubmitThrottle()
-        self.assertEqual(throttle.scope, 'live_form_submit')
-        self.assertEqual(throttle.rate, '30/hour')
+        self.assertEqual(throttle.scope, "live_form_submit")
+        self.assertEqual(throttle.rate, "30/hour")
 
     def test_anonymous_user_within_limit(self):
         """Test anonymous user within rate limit"""
         for i in range(10):
-            request = self.factory.post('/live-form/submit/', REMOTE_ADDR='192.168.1.1')
+            request = self.factory.post("/live-form/submit/", REMOTE_ADDR="192.168.1.1")
             response = self.view(request)
             self.assertEqual(response.status_code, 200)
 
@@ -598,12 +608,12 @@ class LiveFormSubmitThrottleTests(TestCase):
         """Test different IPs have separate rate limits"""
         # IP 1 makes 10 requests
         for i in range(10):
-            request = self.factory.post('/live-form/submit/', REMOTE_ADDR='192.168.1.1')
+            request = self.factory.post("/live-form/submit/", REMOTE_ADDR="192.168.1.1")
             response = self.view(request)
             self.assertEqual(response.status_code, 200)
 
         # IP 2 should still be able to make requests
-        request = self.factory.post('/live-form/submit/', REMOTE_ADDR='192.168.1.2')
+        request = self.factory.post("/live-form/submit/", REMOTE_ADDR="192.168.1.2")
         response = self.view(request)
         self.assertEqual(response.status_code, 200)
 
@@ -619,18 +629,19 @@ class LiveFormSubmitThrottleTests(TestCase):
 # LIVE FORM VIEW THROTTLE TESTS
 # ============================================================================
 
+
 @override_settings(
     CACHES={
-        'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'LOCATION': 'test-cache',
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "test-cache",
         }
     },
     REST_FRAMEWORK={
-        'DEFAULT_THROTTLE_RATES': {
-            'live_form_view': '20/minute',  # Lower for testing
+        "DEFAULT_THROTTLE_RATES": {
+            "live_form_view": "20/minute",  # Lower for testing
         }
-    }
+    },
 )
 class LiveFormViewThrottleTests(TestCase):
     """Test LiveFormViewThrottle class"""
@@ -648,13 +659,13 @@ class LiveFormViewThrottleTests(TestCase):
     def test_throttle_configuration(self):
         """Test throttle is configured correctly"""
         throttle = LiveFormViewThrottle()
-        self.assertEqual(throttle.scope, 'live_form_view')
-        self.assertEqual(throttle.rate, '200/hour')
+        self.assertEqual(throttle.scope, "live_form_view")
+        self.assertEqual(throttle.rate, "200/hour")
 
     def test_high_volume_within_limit(self):
         """Test high volume polling requests within limit"""
         for i in range(20):
-            request = self.factory.get('/live-form/feed/', REMOTE_ADDR='192.168.1.1')
+            request = self.factory.get("/live-form/feed/", REMOTE_ADDR="192.168.1.1")
             response = self.view(request)
             self.assertEqual(response.status_code, 200)
 
@@ -662,12 +673,12 @@ class LiveFormViewThrottleTests(TestCase):
         """Test different IPs have separate rate limits"""
         # IP 1 makes 20 requests
         for i in range(20):
-            request = self.factory.get('/live-form/feed/', REMOTE_ADDR='192.168.1.1')
+            request = self.factory.get("/live-form/feed/", REMOTE_ADDR="192.168.1.1")
             response = self.view(request)
             self.assertEqual(response.status_code, 200)
 
         # IP 2 should still be able to make requests
-        request = self.factory.get('/live-form/feed/', REMOTE_ADDR='192.168.1.2')
+        request = self.factory.get("/live-form/feed/", REMOTE_ADDR="192.168.1.2")
         response = self.view(request)
         self.assertEqual(response.status_code, 200)
 
@@ -683,11 +694,12 @@ class LiveFormViewThrottleTests(TestCase):
 # INTEGRATION & EDGE CASE TESTS
 # ============================================================================
 
+
 @override_settings(
     CACHES={
-        'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'LOCATION': 'test-cache',
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "test-cache",
         }
     }
 )
@@ -698,9 +710,7 @@ class ThrottleIntegrationTests(TestCase):
         """Set up test fixtures"""
         self.factory = APIRequestFactory()
         self.user = User.objects.create_user(
-            username='testuser',
-            email='test@example.com',
-            password='testpass123'
+            username="testuser", email="test@example.com", password="testpass123"
         )
         cache.clear()
 
@@ -715,9 +725,7 @@ class ThrottleIntegrationTests(TestCase):
         # Simulate requests through proxy
         for i in range(5):
             request = self.factory.get(
-                '/cart/',
-                HTTP_X_FORWARDED_FOR='203.0.113.1',
-                REMOTE_ADDR='192.168.1.1'
+                "/cart/", HTTP_X_FORWARDED_FOR="203.0.113.1", REMOTE_ADDR="192.168.1.1"
             )
             response = view(request)
             self.assertEqual(response.status_code, 200)
@@ -727,11 +735,12 @@ class ThrottleIntegrationTests(TestCase):
 # EDGE CASE TESTS
 # ============================================================================
 
+
 @override_settings(
     CACHES={
-        'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'LOCATION': 'test-cache',
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "test-cache",
         }
     }
 )
@@ -751,9 +760,9 @@ class ThrottleEdgeCaseTests(TestCase):
         """Test throttling with IPv6 addresses"""
         view = ThrottledPaymentView.as_view()
 
-        ipv6_addr = '2001:0db8:85a3:0000:0000:8a2e:0370:7334'
+        ipv6_addr = "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
         for i in range(5):
-            request = self.factory.post('/payment/', REMOTE_ADDR=ipv6_addr)
+            request = self.factory.post("/payment/", REMOTE_ADDR=ipv6_addr)
             response = view(request)
             self.assertEqual(response.status_code, 200)
 
@@ -762,7 +771,7 @@ class ThrottleEdgeCaseTests(TestCase):
         view = ThrottledPaymentView.as_view()
 
         for i in range(5):
-            request = self.factory.post('/payment/', REMOTE_ADDR='127.0.0.1')
+            request = self.factory.post("/payment/", REMOTE_ADDR="127.0.0.1")
             response = view(request)
             self.assertEqual(response.status_code, 200)
 
@@ -770,9 +779,9 @@ class ThrottleEdgeCaseTests(TestCase):
         """Test live form throttle with IPv6 addresses"""
         view = ThrottledLiveFormSubmitView.as_view()
 
-        ipv6_addr = '2001:0db8:85a3:0000:0000:8a2e:0370:7334'
+        ipv6_addr = "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
         for i in range(5):
-            request = self.factory.post('/live-form/submit/', REMOTE_ADDR=ipv6_addr)
+            request = self.factory.post("/live-form/submit/", REMOTE_ADDR=ipv6_addr)
             response = view(request)
             self.assertEqual(response.status_code, 200)
 
@@ -780,6 +789,7 @@ class ThrottleEdgeCaseTests(TestCase):
 # ============================================================================
 # DOCUMENTATION & COMPLIANCE TESTS
 # ============================================================================
+
 
 class ThrottleDocumentationTests(TestCase):
     """Test throttle classes have proper documentation"""
@@ -819,7 +829,7 @@ class ThrottleDocumentationTests(TestCase):
         for throttle_class in throttle_classes:
             throttle = throttle_class()
             self.assertIsNotNone(throttle.rate)
-            self.assertIn('/', throttle.rate)  # Format: 'N/period'
+            self.assertIn("/", throttle.rate)  # Format: 'N/period'
 
     def test_all_throttles_have_scope_attribute(self):
         """Test all throttle classes have scope attribute"""
@@ -843,28 +853,28 @@ class ThrottleDocumentationTests(TestCase):
     def test_throttle_rates_are_reasonable(self):
         """Test throttle rates are within reasonable ranges"""
         # Checkout: 10/hour - reasonable for order creation
-        self.assertEqual(CheckoutRateThrottle().rate, '10/hour')
+        self.assertEqual(CheckoutRateThrottle().rate, "10/hour")
 
         # Payment: 10/hour - prevent webhook spam
-        self.assertEqual(PaymentRateThrottle().rate, '10/hour')
+        self.assertEqual(PaymentRateThrottle().rate, "10/hour")
 
         # Bulk webhook: 100/hour - high volume ok
-        self.assertEqual(BulkOrderWebhookThrottle().rate, '100/hour')
+        self.assertEqual(BulkOrderWebhookThrottle().rate, "100/hour")
 
         # Cart: 100/hour - frequent operations ok
-        self.assertEqual(CartRateThrottle().rate, '100/hour')
+        self.assertEqual(CartRateThrottle().rate, "100/hour")
 
         # Strict anon: 50/hour - moderate restriction
-        self.assertEqual(StrictAnonRateThrottle().rate, '50/hour')
+        self.assertEqual(StrictAnonRateThrottle().rate, "50/hour")
 
         # Burst: 20/minute - short bursts allowed
-        self.assertEqual(BurstUserRateThrottle().rate, '20/minute')
+        self.assertEqual(BurstUserRateThrottle().rate, "20/minute")
 
         # Sustained: 500/hour - heavy legitimate usage
-        self.assertEqual(SustainedUserRateThrottle().rate, '500/hour')
+        self.assertEqual(SustainedUserRateThrottle().rate, "500/hour")
 
         # Live form submit: 30/hour - prevent spam while allowing group submissions
-        self.assertEqual(LiveFormSubmitThrottle().rate, '30/hour')
+        self.assertEqual(LiveFormSubmitThrottle().rate, "30/hour")
 
         # Live form view: 200/hour - generous for polling
-        self.assertEqual(LiveFormViewThrottle().rate, '200/hour')
+        self.assertEqual(LiveFormViewThrottle().rate, "200/hour")
