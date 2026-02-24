@@ -10,10 +10,9 @@ Coverage:
 - Permissions and access control
 """
 from decimal import Decimal
-from django.test import TestCase, RequestFactory
+from django.test import TestCase, RequestFactory, Client, override_settings
 from django.contrib.auth import get_user_model
 from django.contrib.admin.sites import AdminSite
-from django.test import Client
 from unittest.mock import Mock, patch
 
 from excel_bulk_orders.models import ExcelBulkOrder, ExcelCouponCode, ExcelParticipant
@@ -26,6 +25,7 @@ from excel_bulk_orders.admin import (
 User = get_user_model()
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class ExcelBulkOrderAdminTest(TestCase):
     """Test ExcelBulkOrderAdmin"""
 

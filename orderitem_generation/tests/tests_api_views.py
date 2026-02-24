@@ -27,7 +27,7 @@ from rest_framework import status
 from unittest.mock import patch, Mock, MagicMock
 from io import BytesIO
 import json
-from order.receipt_utils import upload_pdf_to_cloudinary
+from orderitem_generation.api_views import upload_pdf_to_cloudinary
 from order.models import BaseOrder, NyscKitOrder, NyscTourOrder, ChurchOrder, OrderItem
 from products.models import Category, NyscKit, NyscTour, Church
 from measurement.models import Measurement
@@ -2125,31 +2125,31 @@ class PDFGenerationErrorHandlingTests(TestCase):
 # ============================================================================
 
 @patch('orderitem_generation.api_views.cloudinary.uploader.upload')
-def test_upload_nysc_kit_pdf_to_correct_folder(self, mock_upload):
+def test_upload_nysc_kit_pdf_to_correct_folder(mock_upload):
     """Test NYSC Kit PDFs go to nysc_kit folder"""
     mock_upload.return_value = {'secure_url': 'https://test.url'}
-    
+
     upload_pdf_to_cloudinary(b'test', 'nysc_kit.pdf', pdf_category='nysc_kit')
-    
+
     call_args = mock_upload.call_args
-    self.assertEqual(call_args[1]['folder'], 'order_pdfs/nysc_kit')
+    assert call_args[1]['folder'] == 'order_pdfs/nysc_kit'
 
 @patch('orderitem_generation.api_views.cloudinary.uploader.upload')
-def test_upload_nysc_tour_pdf_to_correct_folder(self, mock_upload):
+def test_upload_nysc_tour_pdf_to_correct_folder(mock_upload):
     """Test NYSC Tour PDFs go to nysc_tour folder"""
     mock_upload.return_value = {'secure_url': 'https://test.url'}
-    
+
     upload_pdf_to_cloudinary(b'test', 'nysc_tour.pdf', pdf_category='nysc_tour')
-    
+
     call_args = mock_upload.call_args
-    self.assertEqual(call_args[1]['folder'], 'order_pdfs/nysc_tour')
+    assert call_args[1]['folder'] == 'order_pdfs/nysc_tour'
 
 @patch('orderitem_generation.api_views.cloudinary.uploader.upload')
-def test_upload_church_pdf_to_correct_folder(self, mock_upload):
+def test_upload_church_pdf_to_correct_folder(mock_upload):
     """Test Church PDFs go to church folder"""
     mock_upload.return_value = {'secure_url': 'https://test.url'}
-    
+
     upload_pdf_to_cloudinary(b'test', 'church.pdf', pdf_category='church')
-    
+
     call_args = mock_upload.call_args
-    self.assertEqual(call_args[1]['folder'], 'order_pdfs/church')
+    assert call_args[1]['folder'] == 'order_pdfs/church'

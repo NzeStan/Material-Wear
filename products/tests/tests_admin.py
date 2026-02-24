@@ -4,7 +4,7 @@ Comprehensive tests for products admin
 Tests admin interfaces, list displays, filters, and custom admin functionality
 """
 
-from django.test import TestCase, Client
+from django.test import TestCase, Client, override_settings
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.urls import reverse
@@ -300,6 +300,7 @@ class ChurchAdminTest(TestCase):
         self.assertIn("description", self.admin.search_fields)
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class AdminIntegrationTest(TestCase):
     """Test admin interface integration with actual Django admin"""
 
@@ -508,6 +509,7 @@ class AdminIntegrationTest(TestCase):
         self.assertFalse(NyscKit.objects.filter(id=kit2.id).exists())
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class AdminPermissionsTest(TestCase):
     """Test admin permissions and access control"""
 
@@ -546,6 +548,7 @@ class AdminPermissionsTest(TestCase):
         self.assertNotEqual(response.status_code, 200)
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class AdminEdgeCasesTest(TestCase):
     """Test edge cases in admin functionality"""
 

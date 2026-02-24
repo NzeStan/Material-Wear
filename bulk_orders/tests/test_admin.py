@@ -8,7 +8,7 @@ Tests cover:
 - CouponCodeInline: display, permissions, filtering
 - Admin actions: PDF/Word/Excel downloads, coupon generation
 """
-from django.test import TestCase, RequestFactory
+from django.test import TestCase, RequestFactory, override_settings
 import unittest
 from django.test import Client
 from django.contrib.admin.sites import AdminSite
@@ -636,6 +636,7 @@ class HasCouponFilterTest(TestCase):
         self.assertIn(self.order_without_coupon, result)
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class AdminIntegrationTest(TestCase):
     """Integration tests for admin interface"""
 

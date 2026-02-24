@@ -250,6 +250,7 @@ class MeasurementAdminQuerysetTests(TestCase):
                 _ = measurement.user.username  # Access related user
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class MeasurementAdminInterfaceTests(TestCase):
     """Test admin interface rendering and functionality."""
 
@@ -260,21 +261,21 @@ class MeasurementAdminInterfaceTests(TestCase):
             email='admin@example.com',
             password='adminpass123'
         )
-        
+
         self.user1 = User.objects.create_user(
             username='testuser',
             email='test@example.com',
             password='testpass123'
         )
-        
+
         self.measurement = Measurement.objects.create(
             user=self.user1,
             chest=Decimal('38.00'),
             waist=Decimal('32.00')
         )
-        
-        # Login as admin
-        self.client.login(username='admin', password='adminpass123')
+
+        # Use force_login to bypass axes authentication backend
+        self.client.force_login(self.admin_user)
 
     def test_admin_changelist_accessible(self):
         """Test that measurement changelist page is accessible."""
@@ -367,6 +368,7 @@ class MeasurementAdminInterfaceTests(TestCase):
         self.assertTrue(self.measurement.is_deleted)
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class MeasurementAdminSearchTests(TestCase):
     """Test admin search functionality."""
 
@@ -377,7 +379,7 @@ class MeasurementAdminSearchTests(TestCase):
             email='admin@example.com',
             password='adminpass123'
         )
-        
+
         self.user1 = User.objects.create_user(
             username='johndoe',
             email='john@example.com',
@@ -388,7 +390,7 @@ class MeasurementAdminSearchTests(TestCase):
             email='jane@example.com',
             password='testpass123'
         )
-        
+
         self.measurement1 = Measurement.objects.create(
             user=self.user1,
             chest=Decimal('38.00')
@@ -397,8 +399,8 @@ class MeasurementAdminSearchTests(TestCase):
             user=self.user2,
             chest=Decimal('40.00')
         )
-        
-        self.client.login(username='admin', password='adminpass123')
+
+        self.client.force_login(self.admin_user)
 
     def test_search_by_username(self):
         """Test searching measurements by username."""
@@ -430,6 +432,7 @@ class MeasurementAdminSearchTests(TestCase):
         self.assertNotIn('janedoe', content)
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class MeasurementAdminFilterTests(TestCase):
     """Test admin filtering functionality."""
 
@@ -440,28 +443,28 @@ class MeasurementAdminFilterTests(TestCase):
             email='admin@example.com',
             password='adminpass123'
         )
-        
+
         self.user = User.objects.create_user(
             username='testuser',
             email='test@example.com',
             password='testpass123'
         )
-        
+
         # Create measurements
         self.measurement1 = Measurement.objects.create(
             user=self.user,
             chest=Decimal('38.00')
         )
-        
+
         import time
         time.sleep(0.01)
-        
+
         self.measurement2 = Measurement.objects.create(
             user=self.user,
             chest=Decimal('40.00')
         )
-        
-        self.client.login(username='admin', password='adminpass123')
+
+        self.client.force_login(self.admin_user)
 
     def test_filter_by_created_at(self):
         """Test filtering by created_at date."""
@@ -494,6 +497,7 @@ class MeasurementAdminFilterTests(TestCase):
         self.assertIn('updated_at', content)
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class MeasurementAdminReadOnlyFieldsTests(TestCase):
     """Test that readonly fields cannot be edited."""
 
@@ -504,19 +508,19 @@ class MeasurementAdminReadOnlyFieldsTests(TestCase):
             email='admin@example.com',
             password='adminpass123'
         )
-        
+
         self.user = User.objects.create_user(
             username='testuser',
             email='test@example.com',
             password='testpass123'
         )
-        
+
         self.measurement = Measurement.objects.create(
             user=self.user,
             chest=Decimal('38.00')
         )
-        
-        self.client.login(username='admin', password='adminpass123')
+
+        self.client.force_login(self.admin_user)
 
     def test_created_at_is_readonly_in_form(self):
         """Test that created_at field is readonly in change form."""
@@ -566,6 +570,7 @@ class MeasurementAdminReadOnlyFieldsTests(TestCase):
         self.assertEqual(self.measurement.created_at, original_created_at)
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class MeasurementAdminPermissionsTests(TestCase):
     """Test admin permissions."""
 
@@ -577,7 +582,7 @@ class MeasurementAdminPermissionsTests(TestCase):
             email='regular@example.com',
             password='testpass123'
         )
-        
+
         # Staff user without permissions
         self.staff_user = User.objects.create_user(
             username='staff',
@@ -585,14 +590,14 @@ class MeasurementAdminPermissionsTests(TestCase):
             password='testpass123',
             is_staff=True
         )
-        
+
         # Admin user
         self.admin_user = User.objects.create_superuser(
             username='admin',
             email='admin@example.com',
             password='adminpass123'
         )
-        
+
         self.measurement = Measurement.objects.create(
             user=self.regular_user,
             chest=Decimal('38.00')
@@ -600,31 +605,32 @@ class MeasurementAdminPermissionsTests(TestCase):
 
     def test_regular_user_cannot_access_admin(self):
         """Test that regular users cannot access admin interface."""
-        self.client.login(username='regular', password='testpass123')
+        self.client.force_login(self.regular_user)
         url = reverse('admin:measurement_measurement_changelist')
         response = self.client.get(url)
-        
+
         # Should redirect to login
         self.assertEqual(response.status_code, 302)
 
     def test_staff_user_can_access_admin(self):
         """Test that staff users can access admin interface."""
-        self.client.login(username='staff', password='testpass123')
+        self.client.force_login(self.staff_user)
         url = reverse('admin:measurement_measurement_changelist')
         response = self.client.get(url)
-        
+
         # Staff users can access admin (even without specific permissions)
         self.assertIn(response.status_code, [200, 302, 403])
 
     def test_admin_user_can_access_admin(self):
         """Test that admin users can access admin interface."""
-        self.client.login(username='admin', password='adminpass123')
+        self.client.force_login(self.admin_user)
         url = reverse('admin:measurement_measurement_changelist')
         response = self.client.get(url)
-        
+
         self.assertEqual(response.status_code, 200)
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class MeasurementAdminDisplayTests(TestCase):
     """Test admin display functionality."""
 
@@ -635,21 +641,21 @@ class MeasurementAdminDisplayTests(TestCase):
             email='admin@example.com',
             password='adminpass123'
         )
-        
+
         self.user = User.objects.create_user(
             username='testuser',
             email='test@example.com',
             password='testpass123'
         )
-        
+
         self.measurement = Measurement.objects.create(
             user=self.user,
             chest=Decimal('38.50'),
             waist=Decimal('32.00'),
             shoulder=Decimal('18.00')
         )
-        
-        self.client.login(username='admin', password='adminpass123')
+
+        self.client.force_login(self.admin_user)
 
     def test_admin_displays_all_measurement_fields(self):
         """Test that admin changelist displays all configured fields."""
@@ -686,15 +692,16 @@ class MeasurementAdminDisplayTests(TestCase):
         self.assertContains(response, '38.5')  # Chest value (may strip trailing 0)
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class MeasurementAdminSoftDeleteTests(TestCase):
     """
     Test admin interaction with soft-deleted measurements.
-    
+
     Note: The current admin implementation does NOT show soft-deleted measurements.
     This is the default behavior using the custom MeasurementManager.
-    
+
     If you want to show soft-deleted measurements in admin, update admin.py:
-    
+
     def get_queryset(self, request):
         # Show all measurements including soft-deleted
         return Measurement.objects.all_with_deleted().select_related("user")
@@ -707,19 +714,19 @@ class MeasurementAdminSoftDeleteTests(TestCase):
             email='admin@example.com',
             password='adminpass123'
         )
-        
+
         self.user = User.objects.create_user(
             username='testuser',
             email='test@example.com',
             password='testpass123'
         )
-        
+
         self.measurement = Measurement.objects.create(
             user=self.user,
             chest=Decimal('38.00')
         )
-        
-        self.client.login(username='admin', password='adminpass123')
+
+        self.client.force_login(self.admin_user)
 
     def test_admin_does_not_show_soft_deleted_measurements_in_list(self):
         """Test that admin list does NOT show soft-deleted measurements by default."""
@@ -758,6 +765,7 @@ class MeasurementAdminSoftDeleteTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class MeasurementAdminOrderingTests(TestCase):
     """Test admin default ordering."""
 
@@ -768,28 +776,28 @@ class MeasurementAdminOrderingTests(TestCase):
             email='admin@example.com',
             password='adminpass123'
         )
-        
+
         self.user = User.objects.create_user(
             username='testuser',
             email='test@example.com',
             password='testpass123'
         )
-        
+
         # Create measurements with slight time differences
         self.measurement1 = Measurement.objects.create(
             user=self.user,
             chest=Decimal('38.00')
         )
-        
+
         import time
         time.sleep(0.01)
-        
+
         self.measurement2 = Measurement.objects.create(
             user=self.user,
             chest=Decimal('40.00')
         )
-        
-        self.client.login(username='admin', password='adminpass123')
+
+        self.client.force_login(self.admin_user)
 
     def test_admin_orders_by_created_at_desc(self):
         """Test that admin lists measurements in reverse chronological order."""

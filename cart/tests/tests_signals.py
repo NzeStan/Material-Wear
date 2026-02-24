@@ -333,14 +333,15 @@ class ClearCartOnLogoutSignalTests(TestCase):
     def test_signal_with_user_without_id(self):
         """Test signal handles user without id attribute"""
         request = self._create_request_with_session()
-        
+
         # Create mock user without id
         mock_user = Mock(is_authenticated=True)
         mock_user.id = None
-        
-        # Should not raise error
+
+        # Call our handler directly to avoid triggering third-party signal receivers
+        # (e.g. axes) that don't support Mock user objects
         try:
-            user_logged_out.send(
+            clear_user_cart_on_logout(
                 sender=User,
                 request=request,
                 user=mock_user

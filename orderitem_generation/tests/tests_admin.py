@@ -12,7 +12,7 @@ Coverage:
 - Permission checks
 """
 from decimal import Decimal
-from django.test import TestCase, RequestFactory, Client
+from django.test import TestCase, RequestFactory, Client, override_settings
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
@@ -124,6 +124,7 @@ class OrderItemGenerationAdminMixinTests(TestCase):
         self.assertIn("order/nysckitorder/", response.url)
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class GeneratePDFViewGetTests(TestCase):
     """Test generate_pdf_view GET requests (form display)"""
 
@@ -203,6 +204,7 @@ class GeneratePDFViewGetTests(TestCase):
         self.assertIn('type="submit"', content)
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class GeneratePDFViewPostTests(TestCase):
     """Test generate_pdf_view POST requests (PDF generation)"""
 
@@ -793,6 +795,7 @@ class GetChurchPDFContextTests(TestCase):
         )
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class AdminIntegrationTests(TestCase):
     """Test integration with actual Order admin classes"""
 
@@ -856,6 +859,7 @@ class AdminIntegrationTests(TestCase):
         self.assertIn(b"Generate PDF Report", response.content)
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class PermissionTests(TestCase):
     """Test permission requirements for PDF generation"""
 
@@ -912,6 +916,7 @@ class PermissionTests(TestCase):
         self.assertIn("/login/", response.url)
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class ErrorHandlingTests(TestCase):
     """Test error handling in admin PDF generation"""
 
@@ -970,6 +975,7 @@ class ErrorHandlingTests(TestCase):
         mock_logger.error.assert_called()
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class EdgeCaseTests(TestCase):
     """Test edge cases in admin PDF generation"""
 

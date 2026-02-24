@@ -38,7 +38,7 @@ Test Coverage:
    - Unicode in video titles
    - Large video lists
 """
-from django.test import TestCase, RequestFactory
+from django.test import TestCase, RequestFactory, override_settings
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
@@ -669,9 +669,10 @@ class YouTubeCacheAdminRefreshCacheTests(TestCase):
 # INTEGRATION TESTS
 # ============================================================================
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class ImageAdminIntegrationTests(TestCase):
     """Test ImageAdmin integration with Django admin"""
-    
+
     def setUp(self):
         """Set up test fixtures"""
         self.user = User.objects.create_superuser(
@@ -679,7 +680,7 @@ class ImageAdminIntegrationTests(TestCase):
             email='admin@test.com',
             password='testpass123'
         )
-        self.client.login(username='admin', password='testpass123')
+        self.client.force_login(self.user)
         
         # Create test image
         self.image = Image.objects.create(
@@ -709,9 +710,10 @@ class ImageAdminIntegrationTests(TestCase):
         self.assertContains(response, 'active')
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class YouTubeCacheAdminIntegrationTests(TestCase):
     """Test YouTubeCacheAdmin integration with Django admin"""
-    
+
     def setUp(self):
         """Set up test fixtures"""
         self.user = User.objects.create_superuser(
@@ -719,7 +721,7 @@ class YouTubeCacheAdminIntegrationTests(TestCase):
             email='admin@test.com',
             password='testpass123'
         )
-        self.client.login(username='admin', password='testpass123')
+        self.client.force_login(self.user)
     
     @patch('feed.admin.VideoCache')
     def test_youtube_cache_changelist_accessible(self, mock_cache):

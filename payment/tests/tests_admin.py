@@ -50,7 +50,7 @@ Test Coverage:
    - Form submission
    - Field widgets
 """
-from django.test import TestCase, RequestFactory
+from django.test import TestCase, RequestFactory, override_settings
 from django.contrib import admin
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
@@ -424,6 +424,7 @@ class PaymentAdminPermissionsTests(TestCase):
 # ============================================================================
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class PaymentAdminChangelistTests(TestCase):
     """Test PaymentTransactionAdmin changelist (list view)"""
 
@@ -513,6 +514,7 @@ class PaymentAdminChangelistTests(TestCase):
 # ============================================================================
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class PaymentAdminChangeViewTests(TestCase):
     """Test PaymentTransactionAdmin change view (edit form)"""
 
@@ -628,6 +630,7 @@ class PaymentAdminChangeViewTests(TestCase):
 # ============================================================================
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class PaymentAdminAddViewTests(TestCase):
     """Test PaymentTransactionAdmin add view"""
 
@@ -666,7 +669,7 @@ class PaymentAdminAddViewTests(TestCase):
         # Verify payment was created with auto-generated reference
         payment = PaymentTransaction.objects.get(email="newpayment@example.com")
         self.assertTrue(payment.reference.startswith("MATERIAL-"))
-        self.assertEqual(len(payment.reference), 12)  # MATERIAL- + 8 hex chars
+        self.assertEqual(len(payment.reference), 17)  # MATERIAL- (9) + 8 hex chars
 
 
 # ============================================================================
@@ -674,6 +677,7 @@ class PaymentAdminAddViewTests(TestCase):
 # ============================================================================
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class PaymentAdminIntegrationTests(TestCase):
     """Test PaymentTransactionAdmin integration with Django admin"""
 
@@ -706,6 +710,7 @@ class PaymentAdminIntegrationTests(TestCase):
 # ============================================================================
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class PaymentAdminEdgeCasesTests(TestCase):
     """Test edge cases in PaymentTransactionAdmin"""
 

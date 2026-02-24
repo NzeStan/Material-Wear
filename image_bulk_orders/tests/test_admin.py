@@ -10,7 +10,7 @@ Tests cover:
 
 Coverage targets: 100% for all admin classes
 """
-from django.test import TestCase, RequestFactory, Client
+from django.test import TestCase, RequestFactory, Client, override_settings
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -511,13 +511,14 @@ class HasCouponFilterTest(TestCase):
         self.assertEqual(filtered.first().id, self.order_without_coupon.id)
 
 
+@override_settings(ADMIN_IP_WHITELIST=['127.0.0.1'])
 class AdminIntegrationTest(TestCase):
     """Integration tests for admin interface"""
 
     def setUp(self):
         """Set up test data"""
         self.client = Client()
-        
+
         self.admin_user = User.objects.create_user(
             username='admin',
             email='admin@example.com',
@@ -525,8 +526,8 @@ class AdminIntegrationTest(TestCase):
             is_staff=True,
             is_superuser=True
         )
-        
-        self.client.login(username='admin', password='adminpass123')
+
+        self.client.force_login(self.admin_user)
 
     def test_bulk_order_admin_accessible(self):
         """Test that bulk order admin page is accessible"""
