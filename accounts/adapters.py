@@ -1,4 +1,4 @@
-# FIXED accounts/adapters.py
+# accounts/adapters.py
 #
 # BUG FOUND: The condition `if not user.pk` doesn't work with UUID primary keys
 # because UUIDs are auto-generated on object creation (before save)
@@ -64,14 +64,16 @@ class CustomAccountAdapter(DefaultAccountAdapter):
 
     def send_welcome_email(self, user):
         """Send welcome email to new users."""
+        # Build the login URL from FRONTEND_URL (the setting that actually exists
+        # in settings.py). Fall back to an empty string so the URL is still valid
+        # even if somehow FRONTEND_URL is missing.
+        frontend_base = getattr(settings, "FRONTEND_URL", "").rstrip("/")
+        login_url = f"{frontend_base}/login"
+
         context = {
             "user": user,
             "site_name": "MATERIAL WEAR",
-            "login_url": (
-                settings.FRONTEND_LOGIN_URL
-                if hasattr(settings, "FRONTEND_LOGIN_URL")
-                else "/login"
-            ),
+            "login_url": login_url,
         }
 
         self.send_mail("account/email/welcome", user.email, context)
@@ -109,7 +111,7 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
                 logger.info(f"Social account linked to existing user: {user.email}")
                 return
 
-        # ✅ FIX: Check if user is new (not yet saved) instead of checking pk
+        # FIX: Check if user is new (not yet saved) instead of checking pk
         # Works with UUID primary keys that auto-generate
         if user._state.adding and not user.username:
             base_username = slugify(user.email.split("@")[0])

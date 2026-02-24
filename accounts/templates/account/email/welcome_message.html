@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+{% load i18n %}<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
@@ -59,6 +59,14 @@
         .content li::marker {
             color: #F59E0B;
         }
+        .section-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #F59E0B;
+            margin: 25px 0 8px 0;
+        }
         .button-wrapper {
             text-align: center;
             margin: 30px 0;
@@ -72,7 +80,6 @@
             border-radius: 6px;
             font-weight: bold;
             font-size: 16px;
-            transition: background-color 0.3s ease;
         }
         .button:hover {
             background-color: #D97706;
@@ -108,28 +115,50 @@
             <div class="content">
                 <p>Hello <span class="highlight">{{ user.first_name|default:"there" }}</span>,</p>
                 
-                <p>Thank you for creating an account with <strong>MATERIAL WEAR</strong>. We're excited to have you join our community!</p>
+                <p>Thank you for creating an account with <strong>MATERIAL WEAR</strong>. We're excited to have you join our growing community of NYSC corps members, church organisations, and institutions across Nigeria!</p>
                 
-                <p>You can now:</p>
+                <p>Here is everything you can do with your new account:</p>
+
+                <p class="section-label">🛍️ Shop & Order</p>
                 <ul>
-                    <li>Browse our latest collections of NYSC uniforms and church merchandise</li>
-                    <li>Save your measurements for quick and accurate ordering</li>
-                    <li>Track your orders from placement to delivery</li>
-                    <li>Receive exclusive offers and early access to new products</li>
+                    <li>Browse and order NYSC uniforms, church merchandise, and branded apparel</li>
+                    <li>Save your measurements for fast, accurate sizing on every order</li>
+                    <li>Track your individual orders from placement through to delivery</li>
+                </ul>
+
+                <p class="section-label">📦 Bulk & Group Orders</p>
+                <ul>
+                    <li>Join coordinator-led bulk orders — submit your details via a shared link and pay individually</li>
+                    <li>Upload photos or images as part of an image bulk order for personalised items</li>
+                    <li>Download your PDF or Word receipt once your group order is confirmed</li>
+                </ul>
+
+                <p class="section-label">📋 Live Forms</p>
+                <ul>
+                    <li>Fill in live collaborative forms shared by your organisation — like Google Sheets, but purpose-built for apparel ordering</li>
+                    <li>Get an instant email confirmation with your submission details and serial number</li>
+                    <li>See a live count of participants as entries roll in</li>
+                </ul>
+
+                <p class="section-label">💳 Payments & Receipts</p>
+                <ul>
+                    <li>Pay securely via Paystack — card, bank transfer, and USSD supported</li>
+                    <li>Receive auto-generated PDF receipts in your inbox the moment your payment is confirmed</li>
+                    <li>Use referral codes to earn rewards on qualifying orders</li>
                 </ul>
                 
                 <div class="button-wrapper">
-                    <a href="{{ login_url }}" class="button">Start Shopping</a>
+                    <a href="{{ login_url }}" class="button">Get Started</a>
                 </div>
                 
-                <p>If you have any questions or need assistance, our support team is here to help. Feel free to reach out to us anytime.</p>
+                <p>If you have any questions or need assistance, our support team is always ready to help. Just reply to this email or reach out through any of our contact channels.</p>
                 
                 <p>Best regards,<br><span class="highlight">The MATERIAL Team</span></p>
             </div>
             
             <div class="footer">
-                <p>&copy; 2025 MATERIAL WEAR</p>
-                <p>Your trusted source for quality NYSC and church merchandise</p>
+                <p>&copy; {% now "Y" %} MATERIAL WEAR</p>
+                <p>Your trusted source for quality NYSC and branded merchandise across Nigeria</p>
             </div>
         </div>
     </div>

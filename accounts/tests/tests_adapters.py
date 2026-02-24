@@ -216,10 +216,10 @@ class CustomAccountAdapterTests(TestCase):
 
     @override_settings(
         EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
-        FRONTEND_LOGIN_URL="https://frontend.com/login",
+        FRONTEND_URL="https://materialwear.com",
     )
     def test_send_welcome_email_with_context(self):
-        """Test send_welcome_email sends with correct context"""
+        """Test send_welcome_email builds login_url correctly from FRONTEND_URL"""
         user = User.objects.create_user(
             username="testuser", email="test@example.com", password="testpass123"
         )
@@ -227,34 +227,50 @@ class CustomAccountAdapterTests(TestCase):
         with patch.object(self.adapter, "send_mail") as mock_send:
             self.adapter.send_welcome_email(user)
 
-        # Check send_mail was called with correct parameters
         mock_send.assert_called_once()
         args = mock_send.call_args
 
         self.assertEqual(args[0][0], "account/email/welcome")  # template_prefix
-        self.assertEqual(args[0][1], "test@example.com")  # email
+        self.assertEqual(args[0][1], "test@example.com")       # email
 
         context = args[0][2]
         self.assertEqual(context["user"], user)
         self.assertEqual(context["site_name"], "MATERIAL WEAR")
-        self.assertEqual(context["login_url"], "https://frontend.com/login")
+        self.assertEqual(context["login_url"], "https://materialwear.com/login")
 
-    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
-    def test_send_welcome_email_default_login_url(self):
-        """Test send_welcome_email uses default login URL if not configured"""
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        FRONTEND_URL="https://materialwear.com/",  # trailing slash variant
+    )
+    def test_send_welcome_email_strips_trailing_slash_from_frontend_url(self):
+        """Test send_welcome_email strips trailing slash from FRONTEND_URL before appending /login"""
         user = User.objects.create_user(
-            username="testuser", email="test@example.com", password="testpass123"
+            username="testuser2", email="test2@example.com", password="testpass123"
         )
 
-        # Remove FRONTEND_LOGIN_URL if it exists
-        with self.settings(FRONTEND_LOGIN_URL=None):
-            with patch.object(self.adapter, "send_mail") as mock_send:
-                # Mock hasattr to return False
-                with patch("accounts.adapters.hasattr", return_value=False):
-                    self.adapter.send_welcome_email(user)
+        with patch.object(self.adapter, "send_mail") as mock_send:
+            self.adapter.send_welcome_email(user)
 
-            context = mock_send.call_args[0][2]
-            self.assertEqual(context["login_url"], "/login")
+        context = mock_send.call_args[0][2]
+        # Should NOT produce https://materialwear.com//login
+        self.assertEqual(context["login_url"], "https://materialwear.com/login")
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_send_welcome_email_fallback_when_frontend_url_missing(self):
+        """Test send_welcome_email produces a safe fallback if FRONTEND_URL is not set"""
+        user = User.objects.create_user(
+            username="testuser3", email="test3@example.com", password="testpass123"
+        )
+
+        with self.settings(FRONTEND_URL=""):
+            with patch.object(self.adapter, "send_mail") as mock_send:
+                self.adapter.send_welcome_email(user)
+
+        context = mock_send.call_args[0][2]
+        # Falls back to "/login" — still a string, not a crash
+        self.assertEqual(context["login_url"], "/login")
+
 
     def test_save_user_with_commit_false(self):
         """Test save_user with commit=False doesn't save to database"""
