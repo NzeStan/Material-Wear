@@ -1,6 +1,7 @@
 # bulk_orders/admin.py
 from django.contrib import admin
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from django.urls import reverse
 from django.http import HttpResponse
 from django.db.models import Count, Q, Prefetch
@@ -87,21 +88,21 @@ class OrderEntryAdmin(admin.ModelAdmin):
         """✅ FIX: Only show custom_name if bulk_order has custom_branding_enabled"""
         if obj.bulk_order.custom_branding_enabled and obj.custom_name:
             return obj.custom_name
-        return format_html('<span style="color: gray;">-</span>')
-    
+        return mark_safe('<span style="color: gray;">-</span>')
+
     custom_name_display.short_description = "Custom Name"
 
     def paid_status(self, obj):
         if obj.paid:
-            return format_html('<span style="color: green; font-weight: bold;">✔ Paid</span>')
-        return format_html('<span style="color: red;">✘ Unpaid</span>')
+            return mark_safe('<span style="color: green; font-weight: bold;">✔ Paid</span>')
+        return mark_safe('<span style="color: red;">✘ Unpaid</span>')
 
     paid_status.short_description = "Payment Status"
 
     def coupon_status(self, obj):
         if obj.coupon_used:
             return format_html('<span style="color: blue; font-weight: bold;">🎟️ {}</span>', obj.coupon_used.code)
-        return format_html('<span style="color: gray;">-</span>')
+        return mark_safe('<span style="color: gray;">-</span>')
 
     coupon_status.short_description = "Coupon"
 
@@ -226,7 +227,7 @@ class BulkOrderLinkAdmin(admin.ModelAdmin):
                 '<span title="Used / Total">{} / {} <small style="color: #666;">used</small></span>',
                 used, total
             )
-        return format_html('<span style="color: #999;">No coupons</span>')
+        return mark_safe('<span style="color: #999;">No coupons</span>')
     coupon_count.short_description = "Coupons"
 
     # Admin Actions

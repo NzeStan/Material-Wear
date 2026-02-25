@@ -1,10 +1,8 @@
 # academic_directory/management/commands/state_data/kano.py
-"""
-Universities in Kano State.
-Add more universities to this list as needed.
-"""
+"""Universities and Polytechnics in Kano State."""
 
 UNIVERSITIES = [
+    # BAYERO UNIVERSITY, KANO
     {
         'name': 'Bayero University, Kano',
         'abbreviation': 'BUK',
@@ -12,55 +10,415 @@ UNIVERSITIES = [
         'type': 'FEDERAL',
         'faculties': [
             {
+                'name': 'Faculty of Agriculture',
+                'abbreviation': 'AGR',
+                'departments': [
+                    {'name': 'Agricultural Economics and Extension', 'abbreviation': 'AEE'},
+                    {'name': 'Agronomy', 'abbreviation': 'AGR'},
+                    {'name': 'Animal Science', 'abbreviation': 'ANS'},
+                    {'name': 'Crop Science', 'abbreviation': 'CPS'},
+                    {'name': 'Fisheries and Aquaculture', 'abbreviation': 'FIS'},
+                    {'name': 'Food Science', 'abbreviation': 'FST'},
+                    {'name': 'Soil Science', 'abbreviation': 'SLS'},
+                ],
+            },
+            {
+                'name': 'Faculty of Arts',
+                'abbreviation': 'ART',
+                'departments': [
+                    {'name': 'Arabic Studies', 'abbreviation': 'ARB'},
+                    {'name': 'English and Literary Studies', 'abbreviation': 'ENG'},
+                    {'name': 'French', 'abbreviation': 'FRN'},
+                    {'name': 'Hausa', 'abbreviation': 'HAU'},
+                    {'name': 'History', 'abbreviation': 'HIS'},
+                    {'name': 'Islamic Studies', 'abbreviation': 'ISL'},
+                    {'name': 'Linguistics and Foreign Languages', 'abbreviation': 'LFL'},
+                    {'name': 'Nigerian Languages', 'abbreviation': 'NIL'},
+                ],
+            },
+            {
+                'name': 'Faculty of Allied Health Sciences',
+                'abbreviation': 'AHS',
+                'departments': [
+                    {'name': 'Medical Laboratory Science', 'abbreviation': 'MLS'},
+                    {'name': 'Nursing', 'abbreviation': 'NRS'},
+                    {'name': 'Physiotherapy', 'abbreviation': 'PHT'},
+                    {'name': 'Radiography', 'abbreviation': 'RAD'},
+                    {'name': 'Environmental Health Science', 'abbreviation': 'EHS'},
+                ],
+            },
+            {
+                'name': 'Faculty of Basic Medical Sciences',
+                'abbreviation': 'BMS',
+                'departments': [
+                    {'name': 'Anatomy', 'abbreviation': 'ANA'},
+                    {'name': 'Biochemistry', 'abbreviation': 'BCH'},
+                    {'name': 'Human Physiology', 'abbreviation': 'PHY'},
+                ],
+            },
+            {
+                'name': 'Faculty of Clinical Sciences',
+                'abbreviation': 'CLS',
+                'departments': [
+                    {'name': 'Anaesthesiology', 'abbreviation': 'ANA'},
+                    {'name': 'Chemical Pathology', 'abbreviation': 'CHP'},
+                    {'name': 'Clinical Pharmacology', 'abbreviation': 'CPH'},
+                    {'name': 'Community Medicine', 'abbreviation': 'COM'},
+                    {'name': 'Haematology and Blood Transfusion', 'abbreviation': 'HBT'},
+                    {'name': 'Histopathology', 'abbreviation': 'HIS'},
+                    {'name': 'Medical Microbiology', 'abbreviation': 'MMB'},
+                    {'name': 'Medicine', 'abbreviation': 'MED'},
+                    {'name': 'Obstetrics and Gynaecology', 'abbreviation': 'OBG'},
+                    {'name': 'Ophthalmology', 'abbreviation': 'OPH'},
+                    {'name': 'Otorhinolaryngology', 'abbreviation': 'ORL'},
+                    {'name': 'Paediatrics', 'abbreviation': 'PAE'},
+                    {'name': 'Psychiatry', 'abbreviation': 'PSY'},
+                    {'name': 'Radiology', 'abbreviation': 'RAD'},
+                    {'name': 'Surgery', 'abbreviation': 'SUR'},
+                ],
+            },
+            {
+                'name': 'Faculty of Communication',
+                'abbreviation': 'COM',
+                'departments': [
+                    {'name': 'Mass Communication', 'abbreviation': 'MAC'},
+                    {'name': 'Theatre Arts and Film', 'abbreviation': 'TAF'},
+                ],
+            },
+            {
+                'name': 'Faculty of Computer Science and Information Technology',
+                'abbreviation': 'CIT',
+                'departments': [
+                    {'name': 'Computer Science', 'abbreviation': 'CSC'},
+                    {'name': 'Forensic Science', 'abbreviation': 'FRS'},
+                    {'name': 'Information Technology', 'abbreviation': 'IT'},
+                    {'name': 'Software Engineering', 'abbreviation': 'SWE'},
+                ],
+            },
+            {
+                'name': 'Faculty of Dentistry',
+                'abbreviation': 'DEN',
+                'departments': [
+                    {'name': 'Child Dental Health', 'abbreviation': 'CDH'},
+                    {'name': 'Oral and Maxillofacial Surgery', 'abbreviation': 'OMS'},
+                    {'name': 'Oral Diagnostic Science', 'abbreviation': 'ODS'},
+                    {'name': 'Preventive Dentistry', 'abbreviation': 'PRD'},
+                    {'name': 'Restorative Dentistry', 'abbreviation': 'RDN'},
+                ],
+            },
+            {
+                'name': 'Faculty of Earth and Environmental Sciences',
+                'abbreviation': 'EES',
+                'departments': [
+                    {'name': 'Architecture', 'abbreviation': 'ARC'},
+                    {'name': 'Environmental Management', 'abbreviation': 'ENV'},
+                    {'name': 'Estate Management', 'abbreviation': 'EST'},
+                    {'name': 'Geography', 'abbreviation': 'GEO'},
+                    {'name': 'Geology', 'abbreviation': 'GEL'},
+                    {'name': 'Quantity Surveying', 'abbreviation': 'QSV'},
+                    {'name': 'Urban and Regional Planning', 'abbreviation': 'URP'},
+                ],
+            },
+            {
+                'name': 'Faculty of Education',
+                'abbreviation': 'EDU',
+                'departments': [
+                    {'name': 'Adult Education and Community Services', 'abbreviation': 'ADE'},
+                    {'name': 'Education', 'abbreviation': 'EDU'},
+                    {'name': 'Education (Agricultural Science)', 'abbreviation': 'EAG'},
+                    {'name': 'Education (Automobile Technology)', 'abbreviation': 'EAT'},
+                    {'name': 'Education (Biology)', 'abbreviation': 'EBIO'},
+                    {'name': 'Education (Building Technology)', 'abbreviation': 'EBT'},
+                    {'name': 'Education (Chemistry)', 'abbreviation': 'ECH'},
+                    {'name': 'Education (Electrical/Electronic Technology)', 'abbreviation': 'EET'},
+                    {'name': 'Education (French)', 'abbreviation': 'EFR'},
+                    {'name': 'Education (Mathematics)', 'abbreviation': 'EMT'},
+                    {'name': 'Education (Metalwork Technology)', 'abbreviation': 'EMT'},
+                    {'name': 'Education (Physics)', 'abbreviation': 'EPH'},
+                    {'name': 'Early Childhood Education', 'abbreviation': 'ECE'},
+                    {'name': 'Library and Information Science', 'abbreviation': 'LIS'},
+                    {'name': 'Physical and Health Education', 'abbreviation': 'PHE'},
+                    {'name': 'Primary Education', 'abbreviation': 'PED'},
+                    {'name': 'Science and Technology Education', 'abbreviation': 'STE'},
+                    {'name': 'Special Education', 'abbreviation': 'SPE'},
+                ],
+            },
+            {
                 'name': 'Faculty of Engineering',
                 'abbreviation': 'ENG',
                 'departments': [
-                    {'name': 'Civil Engineering', 'abbreviation': 'CVE'},
-                    {'name': 'Electrical Engineering', 'abbreviation': 'EEE'},
-                    {'name': 'Mechanical Engineering', 'abbreviation': 'MEE'},
-                    {'name': 'Computer Engineering', 'abbreviation': 'CPE'},
+                    {'name': 'Agricultural and Environmental Engineering', 'abbreviation': 'AEE'},
                     {'name': 'Chemical Engineering', 'abbreviation': 'CHE'},
-                ],
-            },
-            {
-                'name': 'Faculty of Science',
-                'abbreviation': 'SCI',
-                'departments': [
-                    {'name': 'Computer Science', 'abbreviation': 'CSC'},
-                    {'name': 'Mathematics', 'abbreviation': 'MTH'},
-                    {'name': 'Physics', 'abbreviation': 'PHY'},
-                    {'name': 'Chemistry', 'abbreviation': 'CHM'},
-                    {'name': 'Biochemistry', 'abbreviation': 'BCH'},
-                    {'name': 'Microbiology', 'abbreviation': 'MCB'},
-                    {'name': 'Biological Sciences', 'abbreviation': 'BIO'},
-                ],
-            },
-            {
-                'name': 'Faculty of Social and Management Sciences',
-                'abbreviation': 'SMS',
-                'departments': [
-                    {'name': 'Economics', 'abbreviation': 'ECO'},
-                    {'name': 'Political Science', 'abbreviation': 'POS'},
-                    {'name': 'Sociology', 'abbreviation': 'SOC'},
-                    {'name': 'Business Administration', 'abbreviation': 'BAD'},
-                    {'name': 'Accounting', 'abbreviation': 'ACC'},
-                ],
-            },
-            {
-                'name': 'Faculty of Arts and Islamic Studies',
-                'abbreviation': 'AIS',
-                'departments': [
-                    {'name': 'Arabic', 'abbreviation': 'ARB'},
-                    {'name': 'Islamic Studies', 'abbreviation': 'ISL'},
-                    {'name': 'English and French', 'abbreviation': 'ENF'},
-                    {'name': 'History', 'abbreviation': 'HIS'},
+                    {'name': 'Civil Engineering', 'abbreviation': 'CVE'},
+                    {'name': 'Computer Engineering', 'abbreviation': 'CPE'},
+                    {'name': 'Electrical Engineering', 'abbreviation': 'ELE'},
+                    {'name': 'Mechanical Engineering', 'abbreviation': 'MEE'},
+                    {'name': 'Mechatronics Engineering', 'abbreviation': 'MTR'},
+                    {'name': 'Petroleum Engineering', 'abbreviation': 'PEE'},
                 ],
             },
             {
                 'name': 'Faculty of Law',
                 'abbreviation': 'LAW',
                 'departments': [
-                    {'name': 'Law', 'abbreviation': 'LAW'},
+                    {'name': 'Islamic Law', 'abbreviation': 'ISL'},
+                    {'name': 'Private and Commercial Law', 'abbreviation': 'PCL'},
+                    {'name': 'Public and International Law', 'abbreviation': 'PIL'},
+                ],
+            },
+            {
+                'name': 'Faculty of Life Sciences',
+                'abbreviation': 'LFS',
+                'departments': [
+                    {'name': 'Biological Sciences', 'abbreviation': 'BIO'},
+                    {'name': 'Botany', 'abbreviation': 'BOT'},
+                    {'name': 'Microbiology', 'abbreviation': 'MCB'},
+                    {'name': 'Plant Biology', 'abbreviation': 'PLB'},
+                    {'name': 'Zoology', 'abbreviation': 'ZOO'},
+                ],
+            },
+            {
+                'name': 'Faculty of Pharmaceutical Sciences',
+                'abbreviation': 'PHA',
+                'departments': [
+                    {'name': 'Pharmacy', 'abbreviation': 'PHA'},
+                ],
+            },
+            {
+                'name': 'Faculty of Physical Sciences',
+                'abbreviation': 'PHS',
+                'departments': [
+                    {'name': 'Chemistry', 'abbreviation': 'CHM'},
+                    {'name': 'Industrial Chemistry', 'abbreviation': 'ICH'},
+                    {'name': 'Mathematical Sciences', 'abbreviation': 'MTS'},
+                    {'name': 'Physics', 'abbreviation': 'PHY'},
+                    {'name': 'Pure and Industrial Chemistry', 'abbreviation': 'PIC'},
+                ],
+            },
+            {
+                'name': 'Faculty of Social and Management Sciences',
+                'abbreviation': 'SMS',
+                'departments': [
+                    {'name': 'Accounting', 'abbreviation': 'ACC'},
+                    {'name': 'Banking and Finance', 'abbreviation': 'BNF'},
+                    {'name': 'Business Administration', 'abbreviation': 'BAD'},
+                    {'name': 'Economics', 'abbreviation': 'ECO'},
+                    {'name': 'Geography', 'abbreviation': 'GEO'},
+                    {'name': 'Mass Communication', 'abbreviation': 'MAC'},
+                    {'name': 'Meteorology', 'abbreviation': 'MET'},
+                    {'name': 'Political Science', 'abbreviation': 'POL'},
+                    {'name': 'Sociology', 'abbreviation': 'SOC'},
+                ],
+            },
+        ],
+    },
+    
+    # YUSUF MAITAMA SULE FEDERAL UNIVERSITY OF EDUCATION, KANO (formerly Federal College of Education, Kano)
+    {
+        'name': 'Yusuf Maitama Sule Federal University of Education',
+        'abbreviation': 'YUMSUFEK',
+        'state': 'KANO',
+        'type': 'FEDERAL',
+        'faculties': [
+            {
+                'name': 'Faculty of Education',
+                'abbreviation': 'EDU',
+                'departments': [
+                    {'name': 'Adult and Continuing Education', 'abbreviation': 'ACE'},
+                    {'name': 'Early Childhood Education', 'abbreviation': 'ECE'},
+                    {'name': 'Primary Education', 'abbreviation': 'PED'},
+                    {'name': 'Social Studies and Civic Education', 'abbreviation': 'SSC'},
+                    {'name': 'Business Education', 'abbreviation': 'BED'},
+                ],
+            },
+            {
+                'name': 'Faculty of Arts and Humanities Education',
+                'abbreviation': 'ART',
+                'departments': [
+                    {'name': 'Arabic Education', 'abbreviation': 'ARB'},
+                    {'name': 'Christian Religious Studies Education', 'abbreviation': 'CRS'},
+                    {'name': 'English Education', 'abbreviation': 'ENG'},
+                    {'name': 'French Education', 'abbreviation': 'FRN'},
+                    {'name': 'Fulfulde Education', 'abbreviation': 'FUL'},
+                    {'name': 'Hausa Education', 'abbreviation': 'HAU'},
+                    {'name': 'Igbo Education', 'abbreviation': 'IGB'},
+                    {'name': 'Islamic Studies Education', 'abbreviation': 'ISL'},
+                    {'name': 'Yoruba Education', 'abbreviation': 'YOR'},
+                    {'name': 'History Education', 'abbreviation': 'HIS'},
+                    {'name': 'Creative Arts Education', 'abbreviation': 'CRA'},
+                ],
+            },
+            {
+                'name': 'Faculty of Science Education',
+                'abbreviation': 'SCI',
+                'departments': [
+                    {'name': 'Biology Education', 'abbreviation': 'BIO'},
+                    {'name': 'Chemistry Education', 'abbreviation': 'CHM'},
+                    {'name': 'Physics Education', 'abbreviation': 'PHY'},
+                    {'name': 'Mathematics Education', 'abbreviation': 'MTH'},
+                    {'name': 'Computer Science Education', 'abbreviation': 'CSC'},
+                    {'name': 'Integrated Science Education', 'abbreviation': 'ISC'},
+                    {'name': 'Human Kinetics Education', 'abbreviation': 'HKE'},
+                ],
+            },
+            {
+                'name': 'Faculty of Vocational and Technical Education',
+                'abbreviation': 'VTE',
+                'departments': [
+                    {'name': 'Agricultural Education', 'abbreviation': 'AGR'},
+                    {'name': 'Home Economics Education', 'abbreviation': 'HEC'},
+                ],
+            },
+            {
+                'name': 'Faculty of Social Sciences Education',
+                'abbreviation': 'SOC',
+                'departments': [
+                    {'name': 'Economics Education', 'abbreviation': 'ECO'},
+                    {'name': 'Geography Education', 'abbreviation': 'GEO'},
+                    {'name': 'Political Science Education', 'abbreviation': 'POL'},
+                ],
+            },
+        ],
+    },
+    
+    # FEDERAL POLYTECHNIC, KABO
+    {
+        'name': 'Federal Polytechnic, Kabo',
+        'abbreviation': 'FEDPOLYKABO',
+        'state': 'KANO',
+        'type': 'FEDERAL',
+        'faculties': [
+            {
+                'name': 'School of Engineering',
+                'abbreviation': 'ENG',
+                'departments': [
+                    {'name': 'Computer Engineering Technology', 'abbreviation': 'CPE'},
+                    {'name': 'Electrical/Electronic Engineering Technology', 'abbreviation': 'ELE'},
+                ],
+            },
+            {
+                'name': 'School of Health Sciences',
+                'abbreviation': 'HSC',
+                'departments': [
+                    {'name': 'Animal Health and Production Technology', 'abbreviation': 'AHP'},
+                    {'name': 'Dispensing Opticianry', 'abbreviation': 'DOP'},
+                    {'name': 'Environmental Science and Management Technology', 'abbreviation': 'ESM'},
+                    {'name': 'Nutrition and Dietetics', 'abbreviation': 'NDT'},
+                    {'name': 'Orthopaedic Cast Technology', 'abbreviation': 'OCT'},
+                    {'name': 'Pharmaceutical Technology', 'abbreviation': 'PHT'},
+                    {'name': 'Public Health Technology', 'abbreviation': 'PHT'},
+                    {'name': 'Science Laboratory Technology', 'abbreviation': 'SLT'},
+                ],
+            },
+            {
+                'name': 'School of Social and Management Sciences',
+                'abbreviation': 'SMS',
+                'departments': [
+                    {'name': 'Accountancy', 'abbreviation': 'ACC'},
+                    {'name': 'Business Administration and Management', 'abbreviation': 'BAM'},
+                    {'name': 'Microfinance and Entrepreneurship Development', 'abbreviation': 'MED'},
+                    {'name': 'Office Technology and Management', 'abbreviation': 'OTM'},
+                ],
+            },
+            {
+                'name': 'School of Environmental Studies',
+                'abbreviation': 'ENV',
+                'departments': [
+                    {'name': 'Estate Management and Evaluation', 'abbreviation': 'EST'},
+                    {'name': 'Quantity Surveying', 'abbreviation': 'QSV'},
+                ],
+            },
+        ],
+    },
+    
+    # KANO STATE POLYTECHNIC
+    {
+        'name': 'Kano State Polytechnic',
+        'abbreviation': 'KANOPOLY',
+        'state': 'KANO',
+        'type': 'STATE',
+        'faculties': [
+            {
+                'name': 'School of Technology',
+                'abbreviation': 'TEC',
+                'departments': [
+                    {'name': 'Computer Engineering', 'abbreviation': 'CPE'},
+                    {'name': 'Computer Science', 'abbreviation': 'CSC'},
+                    {'name': 'Civil Engineering', 'abbreviation': 'CVE'},
+                    {'name': 'Electrical Engineering', 'abbreviation': 'ELE'},
+                    {'name': 'Fashion and Textile', 'abbreviation': 'FAT'},
+                    {'name': 'Hospitality Management', 'abbreviation': 'HSM'},
+                    {'name': 'Leisure and Tourism', 'abbreviation': 'LTR'},
+                    {'name': 'Mechanical Engineering', 'abbreviation': 'MEE'},
+                    {'name': 'Mechatronic Engineering', 'abbreviation': 'MTR'},
+                    {'name': 'Pharmaceutical Technology', 'abbreviation': 'PHT'},
+                    {'name': 'Printing Technology', 'abbreviation': 'PRT'},
+                    {'name': 'Science Laboratory Technology', 'abbreviation': 'SLT'},
+                    {'name': 'Statistics', 'abbreviation': 'STA'},
+                    {'name': 'Welding and Fabrication', 'abbreviation': 'WLD'},
+                    {'name': 'Art and Industrial Design', 'abbreviation': 'AID'},
+                    {'name': 'Physical Science', 'abbreviation': 'PHS'},
+                    {'name': 'Life Science', 'abbreviation': 'LFS'},
+                ],
+            },
+            {
+                'name': 'School of Management Studies',
+                'abbreviation': 'MGT',
+                'departments': [
+                    {'name': 'Accountancy', 'abbreviation': 'ACC'},
+                    {'name': 'Banking and Finance', 'abbreviation': 'BNF'},
+                    {'name': 'Business Administration and Management', 'abbreviation': 'BAM'},
+                    {'name': 'Cooperative and Economic Management', 'abbreviation': 'CEM'},
+                    {'name': 'Marketing', 'abbreviation': 'MKT'},
+                    {'name': 'Office Technology Management', 'abbreviation': 'OTM'},
+                    {'name': 'Procurement and Supply Chain Management', 'abbreviation': 'PSC'},
+                    {'name': 'Public Administration', 'abbreviation': 'PAD'},
+                ],
+            },
+            {
+                'name': 'School of Environmental Studies',
+                'abbreviation': 'ENV',
+                'departments': [
+                    {'name': 'Architecture', 'abbreviation': 'ARC'},
+                    {'name': 'Building Technology', 'abbreviation': 'BLD'},
+                    {'name': 'Estate Management', 'abbreviation': 'EST'},
+                    {'name': 'Land Surveying and Geo-informatics', 'abbreviation': 'LSG'},
+                    {'name': 'Quantity Surveying', 'abbreviation': 'QSV'},
+                    {'name': 'Urban and Regional Planning', 'abbreviation': 'URP'},
+                ],
+            },
+            {
+                'name': 'School of Rural Technology and Entrepreneurship Development',
+                'abbreviation': 'RTE',
+                'departments': [
+                    {'name': 'Community and Adult Education', 'abbreviation': 'CAE'},
+                    {'name': 'Home and Rural Economics', 'abbreviation': 'HRE'},
+                    {'name': 'Local Government Studies', 'abbreviation': 'LGS'},
+                ],
+            },
+            {
+                'name': 'School of General Studies',
+                'abbreviation': 'GST',
+                'departments': [
+                    {'name': 'Arts and Humanities', 'abbreviation': 'ART'},
+                    {'name': 'Social Development', 'abbreviation': 'SOD'},
+                    {'name': 'Library and Information Sciences', 'abbreviation': 'LIS'},
+                    {'name': 'Mass Communication', 'abbreviation': 'MAC'},
+                    {'name': 'Technical Education', 'abbreviation': 'TED'},
+                ],
+            },
+            {
+                'name': 'School of Continue Education',
+                'abbreviation': 'SCE',
+                'departments': [
+                    {'name': 'Remedial Studies', 'abbreviation': 'REM'},
+                ],
+            },
+            {
+                'name': 'School of Basic and Remedial Studies',
+                'abbreviation': 'BRS',
+                'departments': [
+                    {'name': 'Basic Studies', 'abbreviation': 'BAS'},
                 ],
             },
         ],

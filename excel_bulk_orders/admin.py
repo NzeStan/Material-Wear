@@ -10,6 +10,7 @@ Features:
 """
 from django.contrib import admin
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from django.urls import reverse
 from django.http import HttpResponse
 from django.db.models import Count, Q
@@ -220,7 +221,7 @@ class ExcelBulkOrderAdmin(admin.ModelAdmin):
     def validation_errors_display(self, obj):
         """Display validation errors in readable format"""
         if not obj.validation_errors:
-            return format_html('<span style="color: #10B981;">No errors</span>')
+            return mark_safe('<span style="color: #10B981;">No errors</span>')
         
         summary = obj.get_validation_summary()
         if not summary:
@@ -243,7 +244,7 @@ class ExcelBulkOrderAdmin(admin.ModelAdmin):
             html += f'<tr><td colspan="4" style="text-align: center; padding: 10px; color: #6B7280;">... and {len(summary["errors"]) - 10} more errors</td></tr>'
         
         html += '</table></div>'
-        return format_html(html)
+        return mark_safe(html)
     validation_errors_display.short_description = 'Validation Errors'
     
     def payment_breakdown(self, obj):
@@ -259,8 +260,8 @@ class ExcelBulkOrderAdmin(admin.ModelAdmin):
         html += f'<tr><td>Price per Participant:</td><td>₦{obj.price_per_participant:,.2f}</td></tr>'
         html += f'<tr style="border-top: 2px solid #1F2937;"><td><strong>Total Amount:</strong></td><td><strong style="color: #064E3B;">₦{obj.total_amount:,.2f}</strong></td></tr>'
         html += '</table>'
-        
-        return format_html(html)
+
+        return mark_safe(html)
     payment_breakdown.short_description = 'Payment Breakdown'
     
     # Admin Actions

@@ -5,6 +5,7 @@ IDENTICAL to bulk_orders admin with package download action.
 """
 from django.contrib import admin
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from django.urls import reverse
 from django.http import HttpResponse
 from django.db.models import Count, Q
@@ -93,20 +94,20 @@ class ImageOrderEntryAdmin(admin.ModelAdmin):
 
     def paid_status(self, obj):
         if obj.paid:
-            return format_html('<span style="color: green; font-weight: bold;">✓ Paid</span>')
-        return format_html('<span style="color: orange;">⏳ Pending</span>')
+            return mark_safe('<span style="color: green; font-weight: bold;">✓ Paid</span>')
+        return mark_safe('<span style="color: orange;">⏳ Pending</span>')
     paid_status.short_description = "Payment"
 
     def coupon_status(self, obj):
         if obj.coupon_used:
             return format_html('<span style="color: blue;">🎟️ {}</span>', obj.coupon_used.code)
-        return format_html('<span style="color: gray;">—</span>')
+        return mark_safe('<span style="color: gray;">—</span>')
     coupon_status.short_description = "Coupon"
 
     def custom_name_display(self, obj):
         if obj.custom_name:
             return obj.custom_name
-        return format_html('<span style="color: gray;">—</span>')
+        return mark_safe('<span style="color: gray;">—</span>')
     custom_name_display.short_description = "Custom Name"
 
     def image_thumbnail(self, obj):
@@ -115,7 +116,7 @@ class ImageOrderEntryAdmin(admin.ModelAdmin):
                 '<img src="{}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;" />',
                 obj.image.url
             )
-        return format_html('<span style="color: gray;">No image</span>')
+        return mark_safe('<span style="color: gray;">No image</span>')
     image_thumbnail.short_description = "Image"
 
     def image_preview(self, obj):

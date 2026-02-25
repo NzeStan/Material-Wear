@@ -20,6 +20,7 @@ always points to the real frontend, not the Django admin host.
 """
 from django.contrib import admin
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from django.urls import reverse
 from django.db.models import Count
 from django.contrib import messages
@@ -246,10 +247,10 @@ class LiveFormLinkAdmin(admin.ModelAdmin):
 
     def expiry_status(self, obj):
         if not obj.is_active:
-            return format_html('<span style="color:#6B7280;">⚫ Deactivated</span>')
+            return mark_safe('<span style="color:#6B7280;">⚫ Deactivated</span>')
         if obj.is_expired():
-            return format_html('<span style="color:#DC2626;">🔴 Expired</span>')
-        return format_html('<span style="color:#059669;">🟢 Active</span>')
+            return mark_safe('<span style="color:#DC2626;">🔴 Expired</span>')
+        return mark_safe('<span style="color:#059669;">🟢 Active</span>')
     expiry_status.short_description = "Status"
 
     # ── Admin actions  (≡ BulkOrderLinkAdmin actions) ────────────────────
