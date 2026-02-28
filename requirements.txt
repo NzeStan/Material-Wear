@@ -58,7 +58,7 @@ drf-extensions==0.8.0
 whitenoise==6.8.2
 
 # Server
-gunicorn==23.0.0
+gunicorn==25.1.0
 
 # Development Tools
 django-debug-toolbar==4.4.6
@@ -83,3 +83,5 @@ qrcode==7.4.2
 phonenumbers==8.13.29
 
 django-testimonials==1.0.1
+
+psycopg2==2.9.11
