@@ -8,10 +8,57 @@ from django.db import models
 from django.core.validators import RegexValidator
 import uuid
 
+UNIVERSITY_TYPES = [
+    ('FEDERAL', 'Federal University'),
+    ('STATE', 'State University'),
+    ('PRIVATE', 'Private University'),
+]
+
+NIGERIAN_STATES = [
+    ('ABIA', 'Abia'),
+    ('ADAMAWA', 'Adamawa'),
+    ('AKWA_IBOM', 'Akwa Ibom'),
+    ('ANAMBRA', 'Anambra'),
+    ('BAUCHI', 'Bauchi'),
+    ('BAYELSA', 'Bayelsa'),
+    ('BENUE', 'Benue'),
+    ('BORNO', 'Borno'),
+    ('CROSS_RIVER', 'Cross River'),
+    ('DELTA', 'Delta'),
+    ('EBONYI', 'Ebonyi'),
+    ('EDO', 'Edo'),
+    ('EKITI', 'Ekiti'),
+    ('ENUGU', 'Enugu'),
+    ('FCT', 'Federal Capital Territory'),
+    ('GOMBE', 'Gombe'),
+    ('IMO', 'Imo'),
+    ('JIGAWA', 'Jigawa'),
+    ('KADUNA', 'Kaduna'),
+    ('KANO', 'Kano'),
+    ('KATSINA', 'Katsina'),
+    ('KEBBI', 'Kebbi'),
+    ('KOGI', 'Kogi'),
+    ('KWARA', 'Kwara'),
+    ('LAGOS', 'Lagos'),
+    ('NASARAWA', 'Nasarawa'),
+    ('NIGER', 'Niger'),
+    ('OGUN', 'Ogun'),
+    ('ONDO', 'Ondo'),
+    ('OSUN', 'Osun'),
+    ('OYO', 'Oyo'),
+    ('PLATEAU', 'Plateau'),
+    ('RIVERS', 'Rivers'),
+    ('SOKOTO', 'Sokoto'),
+    ('TARABA', 'Taraba'),
+    ('YOBE', 'Yobe'),
+    ('ZAMFARA', 'Zamfara'),
+]
+
+
 class University(models.Model):
     """
     University model representing Nigerian higher education institutions.
-    
+
     Attributes:
         name: Full official name of the university
         abbreviation: Short form (e.g., UNIBEN, UI, UNILAG)
@@ -21,53 +68,7 @@ class University(models.Model):
         created_at: Timestamp when record was created
         updated_at: Timestamp when record was last updated
     """
-    
-    UNIVERSITY_TYPES = [
-        ('FEDERAL', 'Federal University'),
-        ('STATE', 'State University'),
-        ('PRIVATE', 'Private University'),
-    ]
-    
-    # Nigerian states for validation
-    NIGERIAN_STATES = [
-        ('ABIA', 'Abia'),
-        ('ADAMAWA', 'Adamawa'),
-        ('AKWA_IBOM', 'Akwa Ibom'),
-        ('ANAMBRA', 'Anambra'),
-        ('BAUCHI', 'Bauchi'),
-        ('BAYELSA', 'Bayelsa'),
-        ('BENUE', 'Benue'),
-        ('BORNO', 'Borno'),
-        ('CROSS_RIVER', 'Cross River'),
-        ('DELTA', 'Delta'),
-        ('EBONYI', 'Ebonyi'),
-        ('EDO', 'Edo'),
-        ('EKITI', 'Ekiti'),
-        ('ENUGU', 'Enugu'),
-        ('FCT', 'Federal Capital Territory'),
-        ('GOMBE', 'Gombe'),
-        ('IMO', 'Imo'),
-        ('JIGAWA', 'Jigawa'),
-        ('KADUNA', 'Kaduna'),
-        ('KANO', 'Kano'),
-        ('KATSINA', 'Katsina'),
-        ('KEBBI', 'Kebbi'),
-        ('KOGI', 'Kogi'),
-        ('KWARA', 'Kwara'),
-        ('LAGOS', 'Lagos'),
-        ('NASARAWA', 'Nasarawa'),
-        ('NIGER', 'Niger'),
-        ('OGUN', 'Ogun'),
-        ('ONDO', 'Ondo'),
-        ('OSUN', 'Osun'),
-        ('OYO', 'Oyo'),
-        ('PLATEAU', 'Plateau'),
-        ('RIVERS', 'Rivers'),
-        ('SOKOTO', 'Sokoto'),
-        ('TARABA', 'Taraba'),
-        ('YOBE', 'Yobe'),
-        ('ZAMFARA', 'Zamfara'),
-    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(
         max_length=255,
@@ -92,7 +93,7 @@ class University(models.Model):
         choices=NIGERIAN_STATES,
         help_text="Nigerian state where the university is located"
     )
-    
+
     type = models.CharField(
         max_length=20,
         choices=UNIVERSITY_TYPES,

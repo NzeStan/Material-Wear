@@ -1,6 +1,12 @@
 from django.db import models
 import uuid
 
+PAYMENT_STATUS_CHOICES = [
+    ("pending", "Pending"),
+    ("success", "Success"),
+    ("failed", "Failed"),
+]
+
 
 class PaymentTransaction(models.Model):
     reference = models.CharField(max_length=100, unique=True)
@@ -8,7 +14,7 @@ class PaymentTransaction(models.Model):
     email = models.EmailField()
     status = models.CharField(
         max_length=20,
-        choices=[("pending", "Pending"), ("success", "Success"), ("failed", "Failed")],
+        choices=PAYMENT_STATUS_CHOICES,
         default="pending",
     )
     created = models.DateTimeField(auto_now_add=True)

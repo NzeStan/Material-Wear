@@ -369,6 +369,7 @@ SPECTACULAR_SETTINGS = {
     "ENUM_NAME_OVERRIDES": {
         # State choices
         "StateEnum": "products.constants.STATES",
+        "UniversityStateEnum": "academic_directory.models.university.NIGERIAN_STATES",
         # Size choices - unified since VEST_SIZES and CHURCH_SIZES are identical
         "ProductSizeEnum": "products.constants.VEST_SIZES",
         # Church choices
@@ -377,6 +378,12 @@ SPECTACULAR_SETTINGS = {
         "ProductTypeEnum": "products.constants.PRODUCT_TYPE_CHOICES",
         # NYSC Kit type choices
         "NyscKitTypeEnum": "products.constants.NYSC_KIT_TYPE_CHOICES",
+        # University type choices
+        "UniversityTypeEnum": "academic_directory.models.university.UNIVERSITY_TYPES",
+        # Payment status choices
+        "PaymentStatusEnum": "payment.models.PAYMENT_STATUS_CHOICES",
+        # Testimonial status choices
+        "TestimonialStatusEnum": "testimonials.constants.TestimonialStatus",
     },
     # ✅ ADD THIS to suppress unnecessary blank/null enums
     "ENUM_ADD_EXPLICIT_BLANK_NULL_CHOICE": False,
@@ -732,3 +739,13 @@ TWO_FACTOR_SETUP_SUCCESS_URL = "/i_must_win/"
 
 # scheme
 FORMS_URLFIELD_ASSUME_HTTPS = True
+
+
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True

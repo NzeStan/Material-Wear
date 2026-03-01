@@ -48,6 +48,8 @@ class ImageBulkOrderLinkViewSet(viewsets.ModelViewSet):
     lookup_field = "slug"
 
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return ImageBulkOrderLink.objects.none()
         if self.request.user.is_staff:
             return ImageBulkOrderLink.objects.all().prefetch_related(
                 "orders", "coupons"

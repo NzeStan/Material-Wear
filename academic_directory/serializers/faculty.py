@@ -7,12 +7,12 @@ from .university import UniversityListSerializer
 
 class FacultyListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for listing faculties."""
-    
+
     university_name = serializers.CharField(source='university.name', read_only=True)
     university_abbreviation = serializers.CharField(source='university.abbreviation', read_only=True)
-    departments_count = serializers.ReadOnlyField()
-    representatives_count = serializers.ReadOnlyField()
-    
+    departments_count = serializers.IntegerField(read_only=True)
+    representatives_count = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = Faculty
         fields = [
@@ -24,12 +24,12 @@ class FacultyListSerializer(serializers.ModelSerializer):
 
 class FacultySerializer(serializers.ModelSerializer):
     """Full faculty serializer with nested university details."""
-    
+
     university_detail = UniversityListSerializer(source='university', read_only=True)
-    departments_count = serializers.ReadOnlyField()
-    representatives_count = serializers.ReadOnlyField()
-    full_name = serializers.ReadOnlyField()
-    
+    departments_count = serializers.IntegerField(read_only=True)
+    representatives_count = serializers.IntegerField(read_only=True)
+    full_name = serializers.CharField(read_only=True)
+
     class Meta:
         model = Faculty
         fields = [

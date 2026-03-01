@@ -1,8 +1,8 @@
 # accounts/serializers.py
 from rest_framework import serializers
 from dj_rest_auth.serializers import (
-    UserDetailsSerializer, 
-    LoginSerializer, 
+    UserDetailsSerializer,
+    LoginSerializer,
     PasswordResetSerializer,
     PasswordResetConfirmSerializer
 )
@@ -11,6 +11,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.conf import settings
+from drf_spectacular.utils import extend_schema_field
+from drf_spectacular.openapi import OpenApiTypes
 import logging
 
 User = get_user_model()
@@ -33,6 +35,7 @@ class UserStatusSerializer(serializers.Serializer):
     user = serializers.SerializerMethodField()
     permissions = serializers.SerializerMethodField()
     
+    @extend_schema_field(OpenApiTypes.OBJECT)
     def get_user(self, obj):
         """Get basic user information"""
         if obj.get('is_authenticated') and obj.get('user'):
@@ -44,20 +47,21 @@ class UserStatusSerializer(serializers.Serializer):
                 'first_name': user.first_name,
                 'last_name': user.last_name,
                 'full_name': f"{user.first_name} {user.last_name}".strip() or user.email,
-                
+
                 # Account status
                 'is_active': user.is_active,
-                
+
                 # Role/Permission flags
                 'is_superuser': user.is_superuser,
                 'is_staff': user.is_staff,  # Admin access
-                
+
                 # Timestamps
                 'date_joined': user.date_joined,
                 'last_login': user.last_login,
             }
         return None
-    
+
+    @extend_schema_field(OpenApiTypes.OBJECT)
     def get_permissions(self, obj):
         """
         Get user permissions and groups
@@ -126,6 +130,7 @@ class UserStatusBasicSerializer(serializers.Serializer):
     is_authenticated = serializers.BooleanField()
     user = serializers.SerializerMethodField()
     
+    @extend_schema_field(OpenApiTypes.OBJECT)
     def get_user(self, obj):
         """Get minimal user information"""
         if obj.get('is_authenticated') and obj.get('user'):
@@ -159,7 +164,7 @@ class CustomUserSerializer(UserDetailsSerializer):
         read_only_fields = ('id', 'email', 'username', 'is_active', 'is_staff', 
                            'is_superuser', 'date_joined', 'last_login')
     
-    def get_full_name(self, obj):
+    def get_full_name(self, obj) -> str:
         """Return full name or email if names not provided"""
         full_name = f"{obj.first_name} {obj.last_name}".strip()
         return full_name if full_name else obj.email

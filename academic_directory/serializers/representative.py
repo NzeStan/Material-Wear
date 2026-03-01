@@ -8,15 +8,15 @@ from .department import DepartmentListSerializer
 
 class RepresentativeListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for listing representatives."""
-    
-    display_name = serializers.ReadOnlyField()
+
+    display_name = serializers.CharField(read_only=True)
     department_name = serializers.CharField(source='department.name', read_only=True)
     faculty_name = serializers.CharField(source='faculty.name', read_only=True)
     university_name = serializers.CharField(source='university.name', read_only=True)
     role_display = serializers.CharField(source='get_role_display', read_only=True)
     verification_status_display = serializers.CharField(source='get_verification_status_display', read_only=True)
-    current_level_display = serializers.ReadOnlyField()
-    
+    current_level_display = serializers.CharField(read_only=True, allow_null=True)
+
     class Meta:
         model = Representative
         fields = [
@@ -29,24 +29,24 @@ class RepresentativeListSerializer(serializers.ModelSerializer):
 
 class RepresentativeDetailSerializer(serializers.ModelSerializer):
     """Full serializer with all representative details and computed fields."""
-    
-    display_name = serializers.ReadOnlyField()
+
+    display_name = serializers.CharField(read_only=True)
     department_detail = DepartmentListSerializer(source='department', read_only=True)
     faculty_name = serializers.CharField(source='faculty.name', read_only=True)
     university_name = serializers.CharField(source='university.name', read_only=True)
     role_display = serializers.CharField(source='get_role_display', read_only=True)
     verification_status_display = serializers.CharField(source='get_verification_status_display', read_only=True)
     submission_source_display = serializers.CharField(source='get_submission_source_display', read_only=True)
-    
+
     # Computed fields
-    current_level = serializers.ReadOnlyField()
-    current_level_display = serializers.ReadOnlyField()
-    is_final_year = serializers.ReadOnlyField()
-    expected_graduation_year = serializers.ReadOnlyField()
-    has_graduated = serializers.ReadOnlyField()
-    
+    current_level = serializers.IntegerField(read_only=True, allow_null=True)
+    current_level_display = serializers.CharField(read_only=True, allow_null=True)
+    is_final_year = serializers.BooleanField(read_only=True)
+    expected_graduation_year = serializers.IntegerField(read_only=True, allow_null=True)
+    has_graduated = serializers.BooleanField(read_only=True)
+
     verified_by_username = serializers.CharField(source='verified_by.username', read_only=True)
-    
+
     class Meta:
         model = Representative
         fields = [
@@ -69,7 +69,7 @@ class RepresentativeDetailSerializer(serializers.ModelSerializer):
 
 class RepresentativeSerializer(serializers.ModelSerializer):
     """Main serializer for creating and updating representatives."""
-    
+
     class Meta:
         model = Representative
         fields = [
@@ -77,7 +77,7 @@ class RepresentativeSerializer(serializers.ModelSerializer):
             'department', 'role', 'entry_year', 'tenure_start_year',
             'submission_source', 'submission_source_other', 'notes'
         ]
-    
+
     def validate(self, attrs):
         """Comprehensive validation using utility functions."""
         # Normalize phone number
@@ -86,14 +86,14 @@ class RepresentativeSerializer(serializers.ModelSerializer):
                 attrs['phone_number'] = normalize_phone_number(attrs['phone_number'])
             except Exception as e:
                 raise serializers.ValidationError({'phone_number': str(e)})
-        
+
         # Validate all data
         is_valid, errors = validate_representative_data(attrs)
         if not is_valid:
             raise serializers.ValidationError(errors)
-        
+
         return attrs
-    
+
     def to_representation(self, instance):
         """Use detailed serializer for representation."""
         return RepresentativeDetailSerializer(instance, context=self.context).data
@@ -101,7 +101,7 @@ class RepresentativeSerializer(serializers.ModelSerializer):
 
 class RepresentativeVerificationSerializer(serializers.Serializer):
     """Serializer for bulk verification actions."""
-    
+
     representative_ids = serializers.ListField(
         child=serializers.IntegerField(),
         min_length=1,

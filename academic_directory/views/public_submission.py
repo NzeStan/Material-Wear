@@ -6,6 +6,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.openapi import OpenApiTypes
 
 from material.throttling import StrictAnonRateThrottle
 from ..serializers import BulkSubmissionSerializer
@@ -26,6 +28,7 @@ class PublicSubmissionView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [StrictAnonRateThrottle]
 
+    @extend_schema(request=BulkSubmissionSerializer, responses={201: OpenApiTypes.OBJECT})
     def post(self, request):
         """
         Submit representative data.

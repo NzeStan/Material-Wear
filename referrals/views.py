@@ -29,6 +29,8 @@ class ReferrerProfileViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Return profiles based on user permissions"""
+        if getattr(self, 'swagger_fake_view', False):
+            return ReferrerProfile.objects.none()
         user = self.request.user
         if user.is_staff:
             return ReferrerProfile.objects.all().select_related("user")
@@ -133,6 +135,7 @@ class SharePayloadViewSet(viewsets.ViewSet):
     with the referrer's code embedded.
     """
 
+    serializer_class = SharePayloadSerializer
     permission_classes = [IsAuthenticated]
 
     @action(detail=False, methods=["get"], url_path="generate")

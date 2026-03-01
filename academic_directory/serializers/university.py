@@ -6,11 +6,11 @@ from ..models import University
 
 class UniversityListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for listing universities."""
-    
-    faculties_count = serializers.ReadOnlyField()
-    departments_count = serializers.ReadOnlyField()
-    representatives_count = serializers.ReadOnlyField()
-    
+
+    faculties_count = serializers.IntegerField(read_only=True)
+    departments_count = serializers.IntegerField(read_only=True)
+    representatives_count = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = University
         fields = [
@@ -22,13 +22,13 @@ class UniversityListSerializer(serializers.ModelSerializer):
 
 class UniversitySerializer(serializers.ModelSerializer):
     """Full university serializer with all details."""
-    
-    faculties_count = serializers.ReadOnlyField()
-    departments_count = serializers.ReadOnlyField()
-    representatives_count = serializers.ReadOnlyField()
+
+    faculties_count = serializers.IntegerField(read_only=True)
+    departments_count = serializers.IntegerField(read_only=True)
+    representatives_count = serializers.IntegerField(read_only=True)
     state_display = serializers.CharField(source='get_state_display', read_only=True)
     type_display = serializers.CharField(source='get_type_display', read_only=True)
-    
+
     class Meta:
         model = University
         fields = [

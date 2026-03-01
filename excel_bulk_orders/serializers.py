@@ -12,6 +12,8 @@ from rest_framework import serializers
 from .models import ExcelBulkOrder, ExcelParticipant
 from bulk_orders.models import CouponCode
 from decimal import Decimal
+from drf_spectacular.utils import extend_schema_field
+from drf_spectacular.openapi import OpenApiTypes
 
 
 class ExcelParticipantSerializer(serializers.ModelSerializer):
@@ -28,7 +30,7 @@ class ExcelParticipantSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'is_coupon_applied', 'created_at']
     
-    def get_coupon_status(self, obj):
+    def get_coupon_status(self, obj) -> str:
         """Get user-friendly coupon status"""
         if obj.is_coupon_applied:
             return 'Applied - Free'
@@ -64,10 +66,10 @@ class ExcelBulkOrderListSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'reference', 'total_amount', 'created_at', 'updated_at']
     
-    def get_participant_count(self, obj):
+    def get_participant_count(self, obj) -> int:
         return obj.participants.count()
-    
-    def get_couponed_count(self, obj):
+
+    def get_couponed_count(self, obj) -> int:
         return obj.participants.filter(is_coupon_applied=True).count()
 
 
@@ -97,9 +99,11 @@ class ExcelBulkOrderDetailSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
     
+    @extend_schema_field(OpenApiTypes.OBJECT)
     def get_validation_summary(self, obj):
         return obj.get_validation_summary()
-    
+
+    @extend_schema_field(OpenApiTypes.OBJECT)
     def get_payment_breakdown(self, obj):
         """
         Calculate payment breakdown.

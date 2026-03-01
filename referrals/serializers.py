@@ -1,3 +1,4 @@
+from typing import Optional
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import ReferrerProfile, PromotionalMedia
@@ -72,7 +73,7 @@ class PromotionalMediaSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'media_url']
 
-    def get_created_by_name(self, obj):
+    def get_created_by_name(self, obj) -> Optional[str]:
         if hasattr(obj, 'created_by') and obj.created_by:
             # Get full name
             full_name = obj.created_by.get_full_name().strip()

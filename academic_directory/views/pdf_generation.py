@@ -5,6 +5,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework import status
 from django.http import HttpResponse
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.openapi import OpenApiTypes
 from ..models import Representative
 from ..utils.pdf_generator import generate_pdf_response, create_zip_from_pdfs
 
@@ -21,7 +23,8 @@ class PDFGenerationView(APIView):
     """
     
     permission_classes = [IsAuthenticated, IsAdminUser]
-    
+
+    @extend_schema(responses={(200, 'application/pdf'): OpenApiTypes.BINARY})
     def get(self, request):
         """
         Generate PDF based on query parameters.

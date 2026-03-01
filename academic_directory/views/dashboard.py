@@ -8,6 +8,7 @@ from rest_framework.decorators import action
 from datetime import timedelta
 from django.utils import timezone
 from django.db.models import Count
+from drf_spectacular.utils import extend_schema
 
 from ..models import (
     Representative, University, Faculty, Department, SubmissionNotification
@@ -24,7 +25,8 @@ class DashboardView(APIView):
     """
     
     permission_classes = [IsAuthenticated, IsAdminUser]
-    
+
+    @extend_schema(responses=DashboardStatsSerializer)
     def get(self, request):
         """Get dashboard statistics."""
         
