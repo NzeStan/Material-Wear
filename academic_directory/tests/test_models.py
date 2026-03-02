@@ -25,6 +25,7 @@ from academic_directory.models import (
     RepresentativeHistory,
     SubmissionNotification,
 )
+from academic_directory.constants import UNIVERSITY_TYPES, NIGERIAN_STATES
 
 
 # =============================================================================
@@ -120,7 +121,7 @@ class TestUniversityModel:
 
     def test_university_type_choices(self, db):
         """Test valid university types."""
-        for uni_type, _ in University.UNIVERSITY_TYPES:
+        for uni_type, _ in UNIVERSITY_TYPES:
             university = University.objects.create(
                 name=f'Test {uni_type} University',
                 abbreviation=uni_type[:3],
@@ -131,7 +132,7 @@ class TestUniversityModel:
 
     def test_university_state_choices(self, db):
         """Test that all Nigerian states are valid."""
-        assert len(University.NIGERIAN_STATES) == 37
+        assert len(NIGERIAN_STATES) == 37
 
 
 # =============================================================================
