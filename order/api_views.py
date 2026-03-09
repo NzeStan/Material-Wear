@@ -24,7 +24,8 @@ from material.background_utils import (
     send_order_confirmation_email_async,
     generate_order_confirmation_pdf_task,
 )
-from payment.utils import get_vat_breakdown
+from payment.utils import get_vat_breakdown, initialize_payment
+from payment.models import PaymentTransaction
 import logging
 
 logger = logging.getLogger(__name__)
@@ -194,9 +195,6 @@ class CheckoutView(views.APIView):
                     )
 
             # ✅ NEW: Initialize payment with Paystack immediately after order creation
-            from payment.models import PaymentTransaction
-            from payment.utils import initialize_payment
-
             # Calculate total amount with VAT
             subtotal = sum(order.total_cost for order in orders_created)
             vat_breakdown = get_vat_breakdown(subtotal)

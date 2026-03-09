@@ -82,8 +82,19 @@ class CheckoutViewBasicTests(TestCase):
         self.assertIn("error", response.data)
         self.assertEqual(response.data["error"], "Cart is empty")
 
-    def test_checkout_creates_order_from_cart(self):
+    @patch("order.api_views.initialize_payment")
+    def test_checkout_creates_order_from_cart(self, mock_initialize_payment):
         """Test checkout creates order from cart items"""
+        # Mock Paystack payment initialization
+        mock_initialize_payment.return_value = {
+            "status": True,
+            "data": {
+                "authorization_url": "https://checkout.paystack.com/test",
+                "access_code": "test_access_code",
+                "reference": "MATERIAL-TEST123",
+            },
+        }
+
         # Add item to cart
         add_url = reverse("cart:cart-add")
         self.client.post(
@@ -147,8 +158,19 @@ class CheckoutViewBasicTests(TestCase):
         self.assertEqual(payment.orders.count(), 1)
         self.assertEqual(payment.status, "pending")
 
-    def test_checkout_clears_cart_after_success(self):
+    @patch("order.api_views.initialize_payment")
+    def test_checkout_clears_cart_after_success(self, mock_initialize_payment):
         """Test checkout clears cart after successful order creation"""
+        # Mock Paystack payment initialization
+        mock_initialize_payment.return_value = {
+            "status": True,
+            "data": {
+                "authorization_url": "https://checkout.paystack.com/test",
+                "access_code": "test_access_code",
+                "reference": "MATERIAL-TEST456",
+            },
+        }
+
         # Add item to cart
         add_url = reverse("cart:cart-add")
         self.client.post(
